@@ -48,6 +48,9 @@ export async function generateAutosubsyncSubtitles(srtPath: string, videoPath: s
       message: `Error processing ${outputPath}: ${errorMessage}`,
       stdout: stdout || undefined,
       stderr: stderr || undefined,
+      isPermanent:
+        errorMessage.toLowerCase().includes('no voice activity detected') ||
+        stderr.toLowerCase().includes('no voice activity detected'),
     };
   }
 }

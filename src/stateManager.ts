@@ -152,6 +152,7 @@ export class StateManager extends EventEmitter {
       stdout?: string;
       stderr?: string;
       skipped?: boolean;
+      isPermanent?: boolean;
     },
   ): void {
     const files = this.db.getFileResults(runId);
@@ -171,7 +172,7 @@ export class StateManager extends EventEmitter {
       } else if (result.success) {
         this.db.recordEngineSuccess(filePath, engine);
       } else {
-        this.db.recordEngineFailure(filePath, engine);
+        this.db.recordEngineFailure(filePath, engine, result.isPermanent);
       }
 
       this.emitFileUpdate(runId, filePath);

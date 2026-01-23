@@ -1,4 +1,5 @@
 import { ProcessingEngine } from '../processingEngine';
+import { StateManager } from '../stateManager';
 import * as fs from 'fs';
 import * as helpers from '../helpers';
 import * as findAllSrtFilesModule from '../findAllSrtFiles';
@@ -105,5 +106,33 @@ describe('ProcessingEngine', () => {
 
     // So generateFfsubsyncSubtitles should be called 1 time only.
     expect(ffsubsyncModule.generateFfsubsyncSubtitles).toHaveBeenCalledTimes(1);
+  });
+
+  it('should skip an engine if StateManager indicates it should be skipped', async () => {
+    (fs.existsSync as jest.Mock).mockReturnValue(false);
+
+    // Inject a mock stateManager into the engine
+    const mockStateManager = {
+      shouldSkipEngine: jest.fn().mockReturnValue(true), // Always skip
+    };
+    engine.stateManager = mockStateManager as unknown as StateManager;
+
+    const engineCompletedSpy = jest.fn();
+    engine.on('file:engine_completed', engineCompletedSpy);
+
+    await engine.processRun();
+
+    // Verify that the engine was skipped
+    expect(engineCompletedSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        result: expect.objectContaining({
+          skipped: true,
+          message: 'Skipped due to 3+ consecutive failures',
+        }),
+      }),
+    );
+
+    // Verify the engine was NOT actually called
+    expect(ffsubsyncModule.generateFfsubsyncSubtitles).not.toHaveBeenCalled();
   });
 });

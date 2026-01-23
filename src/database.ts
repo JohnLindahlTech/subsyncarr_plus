@@ -357,13 +357,13 @@ export class SubsyncarrPlusDatabase {
     return results.map((r) => r.engine);
   }
 
-  recordEngineFailure(filePath: string, engine: string): void {
+  recordEngineFailure(filePath: string, engine: string, isPermanent: boolean = false): void {
     const existing = this.getEngineFailureTracking(filePath, engine);
     const now = Date.now();
 
     if (existing) {
       const newFailureCount = existing.consecutive_failures + 1;
-      const isSkipped = newFailureCount >= 3;
+      const isSkipped = isPermanent || newFailureCount >= 3;
 
       this.db
         .prepare(
@@ -384,10 +384,10 @@ export class SubsyncarrPlusDatabase {
         INSERT INTO engine_failure_tracking
           (file_path, engine, consecutive_failures, last_failure_time,
            is_skipped, created_at, updated_at)
-        VALUES (?, ?, 1, ?, 0, ?, ?)
+        VALUES (?, ?, 1, ?, ?, ?, ?)
       `,
         )
-        .run(filePath, engine, now, now, now);
+        .run(filePath, engine, now, isPermanent ? 1 : 0, now, now);
     }
   }
 

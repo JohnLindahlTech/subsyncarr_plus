@@ -48,6 +48,11 @@ export async function generateAlassSubtitles(srtPath: string, videoPath: string)
       message: `Error processing ${outputPath}: ${errorMessage}`,
       stdout: stdout || undefined,
       stderr: stderr || undefined,
+      isPermanent:
+        errorMessage.toLowerCase().includes('too few subtitle entries') ||
+        stderr.toLowerCase().includes('too few subtitle entries') ||
+        errorMessage.toLowerCase().includes('alignment failed') ||
+        stderr.toLowerCase().includes('alignment failed'),
     };
   }
 }

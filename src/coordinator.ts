@@ -86,6 +86,7 @@ export class ProcessingCoordinator {
           stdout?: string;
           stderr?: string;
           skipped?: boolean;
+          isPermanent?: boolean;
         };
       }) => {
         if (this.currentRunId) {

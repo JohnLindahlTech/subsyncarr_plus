@@ -7,6 +7,7 @@ export interface ProcessingResult {
   stdout?: string;
   stderr?: string;
   skipped?: boolean;
+  isPermanent?: boolean;
 }
 
 export const execPromise = (command: string, timeoutMs?: number): Promise<{ stdout: string; stderr: string }> => {

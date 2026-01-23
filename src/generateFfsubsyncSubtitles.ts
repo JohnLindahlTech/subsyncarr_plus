@@ -49,6 +49,13 @@ export async function generateFfsubsyncSubtitles(srtPath: string, videoPath: str
       message: `Error processing ${outputPath}: ${errorMessage}`,
       stdout: stdout || undefined,
       stderr: stderr || undefined,
+      isPermanent:
+        errorMessage.toLowerCase().includes('no speech detected') ||
+        stderr.toLowerCase().includes('no speech detected') ||
+        errorMessage.toLowerCase().includes('no audio streams found') ||
+        stderr.toLowerCase().includes('no audio streams found') ||
+        errorMessage.toLowerCase().includes('could not find a good alignment') ||
+        stderr.toLowerCase().includes('could not find a good alignment'),
     };
   }
 }
