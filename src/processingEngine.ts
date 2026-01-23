@@ -132,6 +132,7 @@ export class ProcessingEngine extends EventEmitter {
 
     // Process with each enabled engine
     let anyEngineSucceeded = false;
+    let anyEngineSkipped = false;
     for (const engine of this.enabledEngines) {
       // Check cancellation before each engine
       if (this.cancelledFiles.has(srtPath)) {
@@ -143,6 +144,7 @@ export class ProcessingEngine extends EventEmitter {
       // Check if engine should be skipped due to consecutive failures
       if (this.stateManager?.shouldSkipEngine(srtPath, engine)) {
         this.log(`[${new Date().toISOString()}] ⊘ Skipping ${engine} (3+ consecutive failures): ${fileName}`);
+        anyEngineSkipped = true;
         this.emit('file:engine_completed', {
           srtPath,
           engine,
@@ -219,6 +221,9 @@ export class ProcessingEngine extends EventEmitter {
     if (anyEngineSucceeded) {
       this.log(`[${new Date().toISOString()}] ✓ Completed successfully for: ${fileName}`);
       this.emit('file:completed', { srtPath });
+    } else if (anyEngineSkipped) {
+      this.log(`[${new Date().toISOString()}] ⊘ All attempts skipped for: ${fileName}`);
+      this.emit('file:skipped', { srtPath, reason: 'engine_skipped' });
     } else {
       this.log(`[${new Date().toISOString()}] ✗ All engines failed for: ${fileName}`);
       this.emit('file:failed', { srtPath });

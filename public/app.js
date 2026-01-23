@@ -619,4 +619,3 @@ if (document.readyState === 'loading') {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   client = new SubsyncarrPlusClient();
 }
-

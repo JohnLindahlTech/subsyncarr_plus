@@ -49,10 +49,13 @@ export class ProcessingCoordinator {
       }));
       this.stateManager.addFilesBulk(this.currentRunId!, skippedFiles);
 
-      // Update skipped count in run stats
-      files.skipped.forEach(() => {
-        this.stateManager.incrementRunCounter(this.currentRunId!, 'skipped');
-      });
+      // Update run stats in bulk for skipped files
+      if (files.skipped.length > 0) {
+        this.stateManager.incrementRunCountersBulk(this.currentRunId!, {
+          skipped: files.skipped.length,
+          completed_engines: files.skipped.length * this.enabledEngines.length,
+        });
+      }
     });
 
     this.engine.on('file:started', ({ srtPath }: { srtPath: string }) => {

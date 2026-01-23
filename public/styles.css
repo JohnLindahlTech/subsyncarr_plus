@@ -93,20 +93,26 @@ h1 {
 }
 
 @keyframes pulse-green {
-  0%, 100% {
+  0%,
+  100% {
     box-shadow: 0 0 8px rgba(16, 185, 129, 0.6);
   }
   50% {
-    box-shadow: 0 0 16px rgba(16, 185, 129, 0.9), 0 0 24px rgba(16, 185, 129, 0.4);
+    box-shadow:
+      0 0 16px rgba(16, 185, 129, 0.9),
+      0 0 24px rgba(16, 185, 129, 0.4);
   }
 }
 
 @keyframes pulse-orange {
-  0%, 100% {
+  0%,
+  100% {
     box-shadow: 0 0 8px rgba(245, 158, 11, 0.6);
   }
   50% {
-    box-shadow: 0 0 16px rgba(245, 158, 11, 0.9), 0 0 24px rgba(245, 158, 11, 0.4);
+    box-shadow:
+      0 0 16px rgba(245, 158, 11, 0.9),
+      0 0 24px rgba(245, 158, 11, 0.4);
   }
 }
 
@@ -278,7 +284,7 @@ h2 {
 }
 
 .file-card.skipped {
-  border-left-color: var(--warning);
+  border-left-color: var(--primary);
 }
 
 .file-header {

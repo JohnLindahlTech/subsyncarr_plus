@@ -147,6 +147,22 @@ export class SubsyncarrPlusDatabase {
     this.db.prepare(`UPDATE runs SET ${fields} WHERE id = ?`).run(...values, id);
   }
 
+  incrementRunCountersBulk(
+    id: string,
+    increments: {
+      completed?: number;
+      skipped?: number;
+      failed?: number;
+      completed_engines?: number;
+    },
+  ): void {
+    const fields = Object.keys(increments)
+      .map((k) => `${k} = ${k} + ?`)
+      .join(', ');
+    const values = Object.values(increments);
+    this.db.prepare(`UPDATE runs SET ${fields} WHERE id = ?`).run(...values, id);
+  }
+
   getRun(id: string): Run | null {
     const result = this.db.prepare('SELECT * FROM runs WHERE id = ?').get(id);
     return result ? (result as Run) : null;

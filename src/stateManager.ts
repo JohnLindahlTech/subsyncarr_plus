@@ -105,6 +105,18 @@ export class StateManager extends EventEmitter {
     });
   }
 
+  incrementRunCountersBulk(
+    runId: string,
+    increments: {
+      completed?: number;
+      skipped?: number;
+      failed?: number;
+      completed_engines?: number;
+    },
+  ): void {
+    this.db.incrementRunCountersBulk(runId, increments);
+  }
+
   // File management
   addFile(runId: string, filePath: string, videoPath: string | null): void {
     this.db.createFileResult(runId, filePath, videoPath);
