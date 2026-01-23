@@ -270,16 +270,32 @@ export class SubsyncarrPlusDatabase {
       .run(...values, runId, filePath);
   }
 
-  getFileResults(runId: string): FileResult[] {
-    return this.db
-      .prepare(
-        `
+  getFileResults(runId: string, limit?: number, offset?: number): FileResult[] {
+    let sql = `
       SELECT * FROM file_results
       WHERE run_id = ?
       ORDER BY created_at ASC
+    `;
+    const params: unknown[] = [runId];
+
+    if (limit !== undefined && offset !== undefined) {
+      sql += ' LIMIT ? OFFSET ?';
+      params.push(limit, offset);
+    }
+
+    return this.db.prepare(sql).all(...params) as FileResult[];
+  }
+
+  getFileCount(runId: string): number {
+    const result = this.db
+      .prepare(
+        `
+      SELECT COUNT(*) as count FROM file_results
+      WHERE run_id = ?
     `,
       )
-      .all(runId) as FileResult[];
+      .get(runId) as { count: number };
+    return result.count;
   }
 
   updateAllFileResults(runId: string, updates: Partial<FileResult>, whereStatusIn: string[]): void {

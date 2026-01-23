@@ -67,10 +67,23 @@ export class SubsyncarrPlusServer {
     // Get current status
     this.app.get('/api/status', (req, res) => {
       console.log(`[${new Date().toISOString()}] GET /api/status`);
+      const page = parseInt(req.query.page as string, 10) || 1;
+      const limit = parseInt(req.query.limit as string, 10) || 50;
+      const offset = (page - 1) * limit;
+
       const currentRun = this.stateManager.getCurrentRun();
+      const totalFiles = currentRun ? this.stateManager.getFileCount(currentRun.id) : 0;
+      const files = currentRun ? this.stateManager.getFileResults(currentRun.id, limit, offset) : [];
+
       res.json({
         currentRun,
-        files: currentRun ? this.stateManager.getFileResults(currentRun.id) : [],
+        files,
+        pagination: {
+          page,
+          limit,
+          total: totalFiles,
+          totalPages: Math.ceil(totalFiles / limit),
+        },
         isRunning: this.coordinator.isRunning(),
       });
     });
@@ -85,14 +98,25 @@ export class SubsyncarrPlusServer {
     // Get specific run details
     this.app.get('/api/runs/:id', (req, res) => {
       console.log(`[${new Date().toISOString()}] GET /api/runs/${req.params.id}`);
+      const page = parseInt(req.query.page as string, 10) || 1;
+      const limit = parseInt(req.query.limit as string, 10) || 50;
+      const offset = (page - 1) * limit;
+
       const currentRun = this.stateManager.getCurrentRun();
       const requestedId = req.params.id;
 
       // Check current run first
       if (currentRun && currentRun.id === requestedId) {
+        const totalFiles = this.stateManager.getFileCount(currentRun.id);
         return res.json({
           run: currentRun,
-          files: this.stateManager.getFileResults(currentRun.id),
+          files: this.stateManager.getFileResults(currentRun.id, limit, offset),
+          pagination: {
+            page,
+            limit,
+            total: totalFiles,
+            totalPages: Math.ceil(totalFiles / limit),
+          },
         });
       }
 
@@ -104,9 +128,16 @@ export class SubsyncarrPlusServer {
         return res.status(404).json({ error: 'Run not found' });
       }
 
+      const totalFiles = this.stateManager.getFileCount(run.id);
       res.json({
         run,
-        files: this.stateManager.getFileResults(run.id),
+        files: this.stateManager.getFileResults(run.id, limit, offset),
+        pagination: {
+          page,
+          limit,
+          total: totalFiles,
+          totalPages: Math.ceil(totalFiles / limit),
+        },
       });
     });
 
@@ -246,12 +277,21 @@ export class SubsyncarrPlusServer {
 
       // Send initial state
       const currentRun = this.stateManager.getCurrentRun();
+      const files = currentRun ? this.stateManager.getFileResults(currentRun.id, 50, 0) : [];
+      const totalFiles = currentRun ? this.stateManager.getFileCount(currentRun.id) : 0;
+
       ws.send(
         JSON.stringify({
           type: 'state',
           data: {
             currentRun,
-            files: currentRun ? this.stateManager.getFileResults(currentRun.id) : [],
+            files,
+            pagination: {
+              page: 1,
+              limit: 50,
+              total: totalFiles,
+              totalPages: Math.ceil(totalFiles / 50),
+            },
             isRunning: this.coordinator.isRunning(),
           },
         }),

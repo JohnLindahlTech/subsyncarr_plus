@@ -468,6 +468,21 @@ td {
   background: var(--primary-dark);
 }
 
+.pagination-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  background: var(--background);
+  border-radius: 6px;
+  margin-top: 12px;
+}
+
+#paginationInfo {
+  font-size: 13px;
+  color: var(--text-secondary);
+}
+
 .modal-content.logs-modal {
   max-width: 900px;
   width: 90%;

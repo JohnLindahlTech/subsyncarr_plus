@@ -1,7 +1,12 @@
 class SubsyncarrPlusClient {
   constructor() {
     this.ws = null;
-    this.state = { currentRun: null, files: [], isRunning: false };
+    this.state = {
+      currentRun: null,
+      files: [],
+      isRunning: false,
+      pagination: { page: 1, limit: 50, total: 0, totalPages: 0 },
+    };
     this.reconnectInterval = 3000;
 
     this.initWebSocket();
@@ -42,6 +47,8 @@ class SubsyncarrPlusClient {
       case 'run:started':
         this.state.currentRun = msg.data;
         this.state.isRunning = true;
+        this.state.files = []; // Clear files for new run
+        this.state.pagination.page = 1;
         this.render();
         break;
       case 'run:completed':
@@ -66,6 +73,7 @@ class SubsyncarrPlusClient {
       case 'files:cleared':
         this.state.currentRun = msg.data.currentRun;
         this.state.files = msg.data.files;
+        this.state.pagination.page = 1;
         this.render();
         break;
     }
@@ -76,16 +84,37 @@ class SubsyncarrPlusClient {
     if (index >= 0) {
       this.state.files[index] = fileData;
     } else {
-      this.state.files.push(fileData);
+      // Only add to list if it's currently processing or we're on the first page
+      // This prevents the list from growing indefinitely during a massive run
+      if (fileData.status === 'processing' || this.state.pagination.page === 1) {
+        this.state.files.unshift(fileData);
+        // Keep list size manageable if not on page 1
+        if (this.state.files.length > 100 && fileData.status !== 'processing') {
+          this.state.files.pop();
+        }
+      }
     }
   }
 
   async fetchInitialState() {
-    const response = await fetch('/api/status');
+    const response = await fetch('/api/status?page=1&limit=50');
     const data = await response.json();
     this.state = data;
     this.render();
     this.fetchHistory();
+  }
+
+  async loadMoreFiles() {
+    if (this.state.pagination.page >= this.state.pagination.totalPages) return;
+
+    const nextPage = this.state.pagination.page + 1;
+    const response = await fetch(`/api/status?page=${nextPage}&limit=50`);
+    const data = await response.json();
+
+    // Append new files
+    this.state.files = [...this.state.files, ...data.files];
+    this.state.pagination = data.pagination;
+    this.render();
   }
 
   async fetchHistory() {
@@ -93,10 +122,11 @@ class SubsyncarrPlusClient {
     const history = await response.json();
 
     // Fetch file results for each run to calculate engine stats
+    // We only fetch first page for stats calculation to avoid heavy load
     const historyWithStats = await Promise.all(
       history.map(async (run) => {
         try {
-          const filesResponse = await fetch(`/api/runs/${run.id}`);
+          const filesResponse = await fetch(`/api/runs/${run.id}?limit=100`);
           const data = await filesResponse.json();
           return { ...run, files: data.files || [] };
         } catch (error) {
@@ -204,6 +234,10 @@ class SubsyncarrPlusClient {
 
     document.getElementById('stopRun').addEventListener('click', () => {
       this.stopRun();
+    });
+
+    document.getElementById('loadMore').addEventListener('click', () => {
+      this.loadMoreFiles();
     });
 
     document.getElementById('closeModal').addEventListener('click', () => {
@@ -458,6 +492,24 @@ class SubsyncarrPlusClient {
 
     document.getElementById('completedList').innerHTML =
       completedHtml || '<p class="no-data">No completed files yet</p>';
+
+    // Update pagination UI
+    const paginationControls = document.getElementById('paginationControls');
+    const paginationInfo = document.getElementById('paginationInfo');
+    const loadMoreBtn = document.getElementById('loadMore');
+
+    if (this.state.pagination && this.state.pagination.total > 0) {
+      paginationControls.classList.remove('hidden');
+      paginationInfo.textContent = `Showing ${this.state.files.length} of ${this.state.pagination.total} files`;
+
+      if (this.state.pagination.page < this.state.pagination.totalPages) {
+        loadMoreBtn.classList.remove('hidden');
+      } else {
+        loadMoreBtn.classList.add('hidden');
+      }
+    } else {
+      paginationControls.classList.add('hidden');
+    }
   }
 
   renderEngineResults(engines) {
@@ -565,5 +617,6 @@ if (document.readyState === 'loading') {
   });
 } else {
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  client = new SubsyncarrClient();
+  client = new SubsyncarrPlusClient();
 }
+
