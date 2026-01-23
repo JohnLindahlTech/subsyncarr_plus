@@ -113,7 +113,7 @@ describe('ProcessingCoordinator', () => {
 
     await expect(startPromise).rejects.toThrow('Run was stopped during initialization');
 
-    expect(mockEngine.stopAllProcessing).toHaveBeenCalledWith(['file1.srt']);
+    expect(mockEngine.stopAllProcessing).toHaveBeenCalledWith([]);
     expect(mockStateManager.cancelRun).toHaveBeenCalledWith(runId);
 
     // Wait for the process to fully complete
@@ -145,7 +145,7 @@ describe('ProcessingCoordinator', () => {
     // Now stop the run while it's "processing"
     coordinator.stopRun();
 
-    expect(mockEngine.stopAllProcessing).toHaveBeenCalledWith(['file1.srt']);
+    expect(mockEngine.stopAllProcessing).toHaveBeenCalledWith([]);
     expect(mockStateManager.cancelRun).toHaveBeenCalledWith(runId);
 
     // Wait for the process to fully complete

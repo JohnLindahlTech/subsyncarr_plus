@@ -9,6 +9,7 @@ import { StateManager } from './stateManager';
 
 export class ProcessingEngine extends EventEmitter {
   private cancelledFiles: Set<string> = new Set();
+  private globalStopRequested: boolean = false;
   private maxConcurrent: number;
   private enabledEngines: string[];
   private logBuffer: string[] = [];
@@ -57,6 +58,10 @@ export class ProcessingEngine extends EventEmitter {
     this.log(`[${new Date().toISOString()}] Enabled engines: ${this.enabledEngines.join(', ')}`);
 
     for (let i = 0; i < srtFiles.length; i += this.maxConcurrent) {
+      if (this.globalStopRequested) {
+        this.log(`[${new Date().toISOString()}] Stop requested - stopping batch processing`);
+        break;
+      }
       const batch = srtFiles.slice(i, i + this.maxConcurrent);
       this.log(
         `[${new Date().toISOString()}] Processing batch ${Math.floor(i / this.maxConcurrent) + 1}/${Math.ceil(srtFiles.length / this.maxConcurrent)} (${batch.length} files)`,
@@ -69,14 +74,15 @@ export class ProcessingEngine extends EventEmitter {
 
   private async processFile(srtPath: string): Promise<void> {
     const fileName = srtPath.split('/').pop();
-    this.log(`[${new Date().toISOString()}] Processing: ${fileName}`);
 
-    // Check if cancelled
-    if (this.cancelledFiles.has(srtPath)) {
+    // Check if stopped or cancelled
+    if (this.globalStopRequested || this.cancelledFiles.has(srtPath)) {
       this.log(`[${new Date().toISOString()}] Skipped (cancelled): ${fileName}`);
       this.emit('file:skipped', { srtPath, reason: 'cancelled' });
       return;
     }
+
+    this.log(`[${new Date().toISOString()}] Processing: ${fileName}`);
 
     const videoPath = findMatchingVideoFile(srtPath);
 
@@ -192,11 +198,13 @@ export class ProcessingEngine extends EventEmitter {
 
   stopAllProcessing(allFiles: string[]): void {
     this.log(`[${new Date().toISOString()}] Stop requested - cancelling all remaining files`);
+    this.globalStopRequested = true;
     allFiles.forEach((file) => this.cancelledFiles.add(file));
   }
 
   reset(): void {
     this.cancelledFiles.clear();
+    this.globalStopRequested = false;
     this.clearLogs();
   }
 }

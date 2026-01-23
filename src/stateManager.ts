@@ -77,6 +77,9 @@ export class StateManager extends EventEmitter {
       status: 'cancelled',
     });
 
+    // Bulk update all files that weren't finished to 'skipped'
+    this.db.updateAllFileResults(runId, { status: 'skipped' }, ['pending', 'processing']);
+
     // End log file for this run
     this.logFileManager.endRun(runId);
 

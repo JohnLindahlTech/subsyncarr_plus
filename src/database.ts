@@ -262,6 +262,29 @@ export class SubsyncarrPlusDatabase {
       .all(runId) as FileResult[];
   }
 
+  updateAllFileResults(runId: string, updates: Partial<FileResult>, whereStatusIn: string[]): void {
+    if (whereStatusIn.length === 0) {
+      return;
+    }
+
+    const updatesWithTimestamp = { ...updates, updated_at: Date.now() };
+    const fields = Object.keys(updatesWithTimestamp)
+      .map((k) => `${k} = ?`)
+      .join(', ');
+    const values = Object.values(updatesWithTimestamp);
+    const statusPlaceholders = whereStatusIn.map(() => '?').join(', ');
+
+    this.db
+      .prepare(
+        `
+      UPDATE file_results
+      SET ${fields}
+      WHERE run_id = ? AND status IN (${statusPlaceholders})
+    `,
+      )
+      .run(...values, runId, ...whereStatusIn);
+  }
+
   // Engine failure tracking methods
   getEngineFailureTracking(filePath: string, engine: string): EngineFailureTracking | null {
     return this.db

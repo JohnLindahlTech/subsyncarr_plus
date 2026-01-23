@@ -189,12 +189,12 @@ export class ProcessingCoordinator {
       throw new Error('No run is currently in progress');
     }
 
-    // Get all files and cancel them
-    const files = this.stateManager.getFileResults(run.id);
-    const allFilePaths = files.map((f) => f.file_path);
-    this.engine.stopAllProcessing(allFilePaths);
+    // Tell engine to stop all processing.
+    // We don't need to pass all file paths anymore because the engine
+    // should just stop whatever it is doing.
+    this.engine.stopAllProcessing([]);
 
-    // Mark run as cancelled
+    // Mark run as cancelled in bulk
     this.stateManager.cancelRun(run.id);
   }
 
