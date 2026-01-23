@@ -6,6 +6,8 @@ import { generateFfsubsyncSubtitles } from './generateFfsubsyncSubtitles';
 import { generateAutosubsyncSubtitles } from './generateAutosubsyncSubtitles';
 import { generateAlassSubtitles } from './generateAlassSubtitles';
 import { StateManager } from './stateManager';
+import { getEngineOutputPath } from './helpers';
+import { existsSync } from 'fs';
 
 export class ProcessingEngine extends EventEmitter {
   private cancelledFiles: Set<string> = new Set();
@@ -51,20 +53,52 @@ export class ProcessingEngine extends EventEmitter {
     const srtFiles = await findAllSrtFiles(scanConfig);
     this.log(`[${new Date().toISOString()}] Found ${srtFiles.length} subtitle files`);
 
-    this.emit('run:files_found', srtFiles);
+    // Bulk Pre-Check: Filter out files that are already done
+    const filesToProcess: string[] = [];
+    const filesToSkip: string[] = [];
 
-    // Process in batches
+    this.log(`[${new Date().toISOString()}] Checking for existing subtitles...`);
+
+    for (const srtPath of srtFiles) {
+      let allEnginesDone = true;
+      for (const engine of this.enabledEngines) {
+        const outputPath = getEngineOutputPath(srtPath, engine);
+        if (!existsSync(outputPath)) {
+          allEnginesDone = false;
+          break;
+        }
+      }
+
+      if (allEnginesDone) {
+        filesToSkip.push(srtPath);
+      } else {
+        filesToProcess.push(srtPath);
+      }
+    }
+
+    this.log(
+      `[${new Date().toISOString()}] Pre-check results: ${filesToProcess.length} to process, ${filesToSkip.length} already done`,
+    );
+
+    // Emit the split results so Coordinator can bulk-insert
+    this.emit('run:files_found', {
+      processing: filesToProcess,
+      skipped: filesToSkip,
+      totalCount: srtFiles.length,
+    });
+
+    // Process in batches (only the ones that need processing)
     this.log(`[${new Date().toISOString()}] Processing with concurrency: ${this.maxConcurrent}`);
     this.log(`[${new Date().toISOString()}] Enabled engines: ${this.enabledEngines.join(', ')}`);
 
-    for (let i = 0; i < srtFiles.length; i += this.maxConcurrent) {
+    for (let i = 0; i < filesToProcess.length; i += this.maxConcurrent) {
       if (this.globalStopRequested) {
         this.log(`[${new Date().toISOString()}] Stop requested - stopping batch processing`);
         break;
       }
-      const batch = srtFiles.slice(i, i + this.maxConcurrent);
+      const batch = filesToProcess.slice(i, i + this.maxConcurrent);
       this.log(
-        `[${new Date().toISOString()}] Processing batch ${Math.floor(i / this.maxConcurrent) + 1}/${Math.ceil(srtFiles.length / this.maxConcurrent)} (${batch.length} files)`,
+        `[${new Date().toISOString()}] Processing batch ${Math.floor(i / this.maxConcurrent) + 1}/${Math.ceil(filesToProcess.length / this.maxConcurrent)} (${batch.length} files)`,
       );
       await Promise.all(batch.map((file) => this.processFile(file)));
     }

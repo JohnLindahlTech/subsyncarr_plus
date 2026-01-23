@@ -111,6 +111,14 @@ export class StateManager extends EventEmitter {
     this.emitFileUpdate(runId, filePath);
   }
 
+  addFilesBulk(
+    runId: string,
+    files: Array<{ filePath: string; videoPath: string | null; status: FileResult['status'] }>,
+  ): void {
+    this.db.bulkCreateFileResults(runId, files);
+    // Don't emit individual updates for bulk inserts to avoid event storm
+  }
+
   updateFileStatus(runId: string, filePath: string, status: FileResult['status'], currentEngine?: string | null): void {
     const updates: Partial<FileResult> = { status };
     if (currentEngine !== undefined) {

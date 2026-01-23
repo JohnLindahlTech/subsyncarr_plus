@@ -23,3 +23,11 @@ export const execPromise = (command: string, timeoutMs?: number): Promise<{ stdo
     maxBuffer: 1024 * 1024 * 10, // 10MB buffer for command output
   });
 };
+
+export const getEngineOutputPath = (srtPath: string, engine: string): string => {
+  const parts = srtPath.split('/');
+  const fileName = parts.pop()!;
+  const dir = parts.join('/');
+  const baseName = fileName.replace(/\.srt$/i, '');
+  return `${dir}/${baseName}.${engine}.srt`;
+};

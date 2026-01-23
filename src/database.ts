@@ -233,6 +233,26 @@ export class SubsyncarrPlusDatabase {
     stmt.run(runId, filePath, videoPath, now, now);
   }
 
+  bulkCreateFileResults(
+    runId: string,
+    files: Array<{ filePath: string; videoPath: string | null; status: FileResult['status'] }>,
+  ): void {
+    const now = Date.now();
+    const insert = this.db.prepare(`
+      INSERT INTO file_results
+        (run_id, file_path, video_path, status, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `);
+
+    const transaction = this.db.transaction((items) => {
+      for (const item of items) {
+        insert.run(runId, item.filePath, item.videoPath, item.status, now, now);
+      }
+    });
+
+    transaction(files);
+  }
+
   updateFileResult(runId: string, filePath: string, updates: Partial<FileResult>): void {
     const updatesWithTimestamp = { ...updates, updated_at: Date.now() };
     const fields = Object.keys(updatesWithTimestamp)

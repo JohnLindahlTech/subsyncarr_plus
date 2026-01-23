@@ -17,6 +17,7 @@ class MockStateManager extends EventEmitter {
   getCurrentRun = jest.fn();
   appendLog = jest.fn();
   addFile = jest.fn();
+  addFilesBulk = jest.fn();
   updateFileStatus = jest.fn();
   updateFileEngine = jest.fn();
   incrementCompletedEngines = jest.fn();
@@ -50,7 +51,11 @@ describe('ProcessingCoordinator', () => {
       await new Promise((resolve) => setTimeout(resolve, 200));
 
       // Simulate finding files
-      mockEngine.emit('run:files_found', ['file1.srt']);
+      mockEngine.emit('run:files_found', {
+        processing: ['file1.srt'],
+        skipped: [],
+        totalCount: 1,
+      });
 
       // Keep running for a bit
       await new Promise((resolve) => setTimeout(resolve, 50));
@@ -94,7 +99,11 @@ describe('ProcessingCoordinator', () => {
 
     mockEngine.processRun.mockImplementation(async () => {
       await new Promise((resolve) => setTimeout(resolve, 100));
-      mockEngine.emit('run:files_found', ['file1.srt']);
+      mockEngine.emit('run:files_found', {
+        processing: ['file1.srt'],
+        skipped: [],
+        totalCount: 1,
+      });
       await new Promise((resolve) => setTimeout(resolve, 50));
     });
 
@@ -125,7 +134,11 @@ describe('ProcessingCoordinator', () => {
     const runObject = { id: runId };
 
     mockEngine.processRun.mockImplementation(async () => {
-      mockEngine.emit('run:files_found', ['file1.srt']);
+      mockEngine.emit('run:files_found', {
+        processing: ['file1.srt'],
+        skipped: [],
+        totalCount: 1,
+      });
       // Keep running to simulate active processing
       await new Promise((resolve) => setTimeout(resolve, 200));
     });

@@ -30,13 +30,28 @@ export class ProcessingCoordinator {
       }
     });
 
-    this.engine.on('run:files_found', (files: string[]) => {
-      this.currentRunId = this.stateManager.startRun(files.length, this.enabledEngines);
+    this.engine.on('run:files_found', (files: { processing: string[]; skipped: string[]; totalCount: number }) => {
+      this.currentRunId = this.stateManager.startRun(files.totalCount, this.enabledEngines);
 
-      // Add all files to database as pending
-      files.forEach((filePath) => {
-        const videoPath = findMatchingVideoFile(filePath);
-        this.stateManager.addFile(this.currentRunId!, filePath, videoPath);
+      // Bulk add pending files
+      const pendingFiles = files.processing.map((filePath) => ({
+        filePath,
+        videoPath: findMatchingVideoFile(filePath),
+        status: 'pending' as const,
+      }));
+      this.stateManager.addFilesBulk(this.currentRunId!, pendingFiles);
+
+      // Bulk add skipped files
+      const skippedFiles = files.skipped.map((filePath) => ({
+        filePath,
+        videoPath: findMatchingVideoFile(filePath),
+        status: 'skipped' as const,
+      }));
+      this.stateManager.addFilesBulk(this.currentRunId!, skippedFiles);
+
+      // Update skipped count in run stats
+      files.skipped.forEach(() => {
+        this.stateManager.incrementRunCounter(this.currentRunId!, 'skipped');
       });
     });
 
