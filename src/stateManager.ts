@@ -269,6 +269,31 @@ export class StateManager extends EventEmitter {
     return this.db.getFailureTrackingStats();
   }
 
+  /**
+   * Performs database maintenance tasks
+   */
+  performMaintenance(): void {
+    console.log(`[${new Date().toISOString()}] Starting database maintenance...`);
+    const statsBefore = this.db.getDatabaseStats();
+
+    // 1. Delete runs older than 30 days
+    const deletedRuns = this.db.deleteOldRuns(30);
+
+    // 2. Trim logs for runs older than 7 days
+    const trimmedLogs = this.db.trimOldLogs(7);
+
+    // 3. Reclaim space
+    this.db.vacuum();
+
+    const statsAfter = this.db.getDatabaseStats();
+    const savedBytes = statsBefore.sizeBytes - statsAfter.sizeBytes;
+
+    console.log(`[${new Date().toISOString()}] Maintenance complete:`);
+    console.log(`  - Deleted runs: ${deletedRuns}`);
+    console.log(`  - Trimmed logs: ${trimmedLogs}`);
+    console.log(`  - Space reclaimed: ${(savedBytes / 1024 / 1024).toFixed(2)} MB`);
+  }
+
   close() {
     this.logFileManager.close();
     this.db.close();

@@ -49,11 +49,12 @@ export class SubsyncarrPlusDatabase {
   }
 
   private initSchema() {
-    // Optimize SQLite for low memory usage
-    this.db.pragma('cache_size = -1000'); // 1MB cache (negative means KB)
-    this.db.pragma('mmap_size = 0'); // Disable memory-mapping
-    this.db.pragma('journal_mode = WAL'); // Better concurrency
-    this.db.pragma('temp_store = MEMORY'); // Keep temp data in memory
+    // Optimize SQLite for high performance with large datasets
+    this.db.pragma('cache_size = -64000'); // 64MB cache
+    this.db.pragma('journal_mode = WAL'); // High-concurrency
+    this.db.pragma('synchronous = NORMAL'); // Faster writes, still safe in WAL mode
+    this.db.pragma('mmap_size = 268435456'); // 256MB Memory-mapping for faster reads
+    this.db.pragma('temp_store = MEMORY'); // Faster temp tables
     this.db.pragma('auto_vacuum = INCREMENTAL'); // Reclaim space gradually
 
     this.db.exec(`
@@ -234,10 +235,10 @@ export class SubsyncarrPlusDatabase {
   }
 
   /**
-   * Vacuum database to reclaim space after deletions
+   * Reclaim disk space and defragment the database
    */
   vacuum(): void {
-    this.db.pragma('incremental_vacuum');
+    this.db.exec('VACUUM');
   }
 
   /**
