@@ -85,21 +85,25 @@ export class ProcessingCoordinator {
       ({ videoPath, phase }: { videoPath: string; phase: 'extracting' | 'syncing' }) => {
         if (this.currentRunId) {
           const basename = videoPath.split('/').pop();
-          const status =
+          const status = phase === 'extracting' ? `Extracting audio...` : `Syncing subtitles...`;
+
+          this.stateManager.updateFilesVideoStatus(this.currentRunId, videoPath, status);
+
+          const runStatus =
             phase === 'extracting' ? `⚙️ Extracting audio: ${basename}...` : `⚙️ Syncing subtitles: ${basename}...`;
 
-          this.activeVideos.set(videoPath, status);
-          this.stateManager.setCurrentVideo(this.currentRunId, status);
+          this.activeVideos.set(videoPath, runStatus);
+          this.stateManager.setCurrentVideo(this.currentRunId, runStatus);
         }
       },
     );
 
     this.engine.on('video:completed', ({ videoPath }: { videoPath: string }) => {
       if (this.currentRunId) {
+        this.stateManager.updateFilesVideoStatus(this.currentRunId, videoPath, null);
         this.activeVideos.delete(videoPath);
 
         if (this.activeVideos.size > 0) {
-          // Show the next most recent active video status
           const nextStatus = Array.from(this.activeVideos.values()).pop();
           this.stateManager.setCurrentVideo(this.currentRunId, nextStatus || null);
         } else {

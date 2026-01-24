@@ -562,6 +562,7 @@ class SubsyncarrPlusClient {
             </button>
           </div>
           <div class="engine-status">
+            ${file.video_status ? `<span class="video-phase">${file.video_status}</span>` : ''}
             ${file.current_engine ? `⚙️ Working on ${file.current_engine}` : 'Starting...'}
           </div>
           ${this.renderEngineResults(engines)}

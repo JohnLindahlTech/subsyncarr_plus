@@ -22,6 +22,7 @@ export interface FileResult {
   video_path: string | null;
   status: 'pending' | 'processing' | 'completed' | 'skipped' | 'error';
   current_engine: string | null;
+  video_status: string | null;
   engines: string; // JSON stringified { ffsubsync?: {...}, autosubsync?: {...}, alass?: {...} }
   created_at: number;
   updated_at: number;
@@ -78,6 +79,7 @@ export class SubsyncarrPlusDatabase {
         video_path TEXT,
         status TEXT NOT NULL,
         current_engine TEXT,
+        video_status TEXT,
         engines TEXT DEFAULT '{}',
         created_at INTEGER NOT NULL,
         updated_at INTEGER NOT NULL,
@@ -111,6 +113,12 @@ export class SubsyncarrPlusDatabase {
     const hasCurrentVideoColumn = columns.some((col) => col.name === 'current_video');
     if (!hasCurrentVideoColumn) {
       this.db.exec(`ALTER TABLE runs ADD COLUMN current_video TEXT`);
+    }
+
+    const fileResultsColumns = this.db.pragma('table_info(file_results)') as Array<{ name: string }>;
+    const hasVideoStatusColumn = fileResultsColumns.some((col) => col.name === 'video_status');
+    if (!hasVideoStatusColumn) {
+      this.db.exec(`ALTER TABLE file_results ADD COLUMN video_status TEXT`);
     }
 
     // Migration: Create engine_failure_tracking table
@@ -294,6 +302,18 @@ export class SubsyncarrPlusDatabase {
       .run(...values, runId, filePath);
   }
 
+  updateFilesVideoStatus(runId: string, videoPath: string, videoStatus: string | null): void {
+    this.db
+      .prepare(
+        `
+      UPDATE file_results
+      SET video_status = ?, updated_at = ?
+      WHERE run_id = ? AND video_path = ?
+    `,
+      )
+      .run(videoStatus, Date.now(), runId, videoPath);
+  }
+
   getFileResults(runId: string, limit?: number, offset?: number, search?: string): FileResult[] {
     let sql = `
       SELECT * FROM file_results
@@ -350,6 +370,17 @@ export class SubsyncarrPlusDatabase {
     `,
       )
       .run(...values, runId, ...whereStatusIn);
+  }
+
+  clearCompletedFiles(runId: string): void {
+    this.db
+      .prepare(
+        `
+      DELETE FROM file_results
+      WHERE run_id = ? AND status != 'processing'
+    `,
+      )
+      .run(runId);
   }
 
   // Engine failure tracking methods

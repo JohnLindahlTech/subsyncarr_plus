@@ -125,6 +125,14 @@ export class StateManager extends EventEmitter {
     }
   }
 
+  getCurrentRun(): Run | null {
+    return this.currentRunId ? this.db.getRun(this.currentRunId) : null;
+  }
+
+  getRunHistory(limit: number = 50): Run[] {
+    return this.db.getRunHistory(limit);
+  }
+
   emitProgress(message: string): void {
     this.emit('run:progress', { message });
   }
@@ -141,6 +149,14 @@ export class StateManager extends EventEmitter {
   ): void {
     this.db.bulkCreateFileResults(runId, files);
     // Don't emit individual updates for bulk inserts to avoid event storm
+  }
+
+  private emitFileUpdate(runId: string, filePath: string): void {
+    const file = this.db.getFileResults(runId).find((f) => f.file_path === filePath);
+    const run = this.db.getRun(runId);
+    if (file) {
+      this.emit('file:updated', { file, run });
+    }
   }
 
   updateFileStatus(runId: string, filePath: string, status: FileResult['status'], currentEngine?: string | null): void {
@@ -167,59 +183,46 @@ export class StateManager extends EventEmitter {
       isPermanent?: boolean;
     },
   ): void {
-    const files = this.db.getFileResults(runId);
-    const file = files.find((f) => f.file_path === filePath);
+    const file = this.db.getFileResults(runId).find((f) => f.file_path === filePath);
+    if (!file) return;
 
-    if (file) {
-      const engines = JSON.parse(file.engines);
-      engines[engine] = result;
+    const engines = JSON.parse(file.engines || '{}');
+    engines[engine] = result;
 
-      this.db.updateFileResult(runId, filePath, {
-        engines: JSON.stringify(engines),
-      });
-
-      // Update failure tracking
-      if (result.skipped) {
-        // Skipped engines don't affect failure count
-      } else if (result.success) {
-        this.db.recordEngineSuccess(filePath, engine);
-      } else {
-        this.db.recordEngineFailure(filePath, engine, result.isPermanent);
-      }
-
-      this.emitFileUpdate(runId, filePath);
+    this.db.updateFileResult(runId, filePath, { engines: JSON.stringify(engines) });
+    const updatedFile = this.db.getFileResults(runId).find((f) => f.file_path === filePath);
+    if (updatedFile) {
+      this.emit('file:updated', { file: updatedFile, run: this.db.getRun(runId) });
     }
   }
 
-  private emitFileUpdate(runId: string, filePath: string): void {
-    const files = this.db.getFileResults(runId);
-    const file = files.find((f) => f.file_path === filePath);
-    if (file) {
-      const run = this.db.getRun(runId);
+  updateFilesVideoStatus(runId: string, videoPath: string, videoStatus: string | null): void {
+    this.db.updateFilesVideoStatus(runId, videoPath, videoStatus);
+    // Broadcast updates for all files in this group
+    const allFiles = this.db.getFileResults(runId);
+    const affectedFiles = allFiles.filter((f) => f.video_path === videoPath);
+    const run = this.db.getRun(runId);
+
+    affectedFiles.forEach((file) => {
       this.emit('file:updated', { file, run });
-    }
-  }
-
-  clearCompletedFiles(): void {
-    if (!this.currentRunId) {
-      return;
-    }
-
-    const files = this.db.getFileResults(this.currentRunId);
-    files.forEach((file) => {
-      if (['completed', 'skipped', 'error'].includes(file.status)) {
-        this.emit('file:cleared', file);
-      }
     });
   }
 
-  // Query methods
-  getCurrentRun(): Run | null {
-    return this.currentRunId ? this.db.getRun(this.currentRunId) : null;
-  }
+  clearCompletedFiles(): void {
+    if (!this.currentRunId) return;
 
-  getRunHistory(limit?: number): Run[] {
-    return this.db.getRunHistory(limit);
+    this.db.clearCompletedFiles(this.currentRunId);
+
+    // Reset counters for the UI
+    this.db.updateRun(this.currentRunId, {
+      completed: 0,
+      skipped: 0,
+      failed: 0,
+      completed_engines: 0,
+    });
+
+    const run = this.db.getRun(this.currentRunId)!;
+    this.emit('files:cleared', { currentRun: run, files: [] });
   }
 
   getFileResults(runId: string, limit?: number, offset?: number, search?: string): FileResult[] {
