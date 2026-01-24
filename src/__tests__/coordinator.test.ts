@@ -56,6 +56,7 @@ describe('ProcessingCoordinator', () => {
         processing: ['file1.srt'],
         skipped: [],
         totalCount: 1,
+        config: {},
       });
 
       // Keep running for a bit
@@ -104,6 +105,7 @@ describe('ProcessingCoordinator', () => {
         processing: ['file1.srt'],
         skipped: [],
         totalCount: 1,
+        config: {},
       });
       await new Promise((resolve) => setTimeout(resolve, 50));
     });
@@ -139,6 +141,7 @@ describe('ProcessingCoordinator', () => {
         processing: ['file1.srt'],
         skipped: [],
         totalCount: 1,
+        config: {},
       });
       // Keep running to simulate active processing
       await new Promise((resolve) => setTimeout(resolve, 200));

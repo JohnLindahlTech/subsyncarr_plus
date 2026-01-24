@@ -30,33 +30,46 @@ export class ProcessingCoordinator {
       }
     });
 
-    this.engine.on('run:files_found', (files: { processing: string[]; skipped: string[]; totalCount: number }) => {
-      this.currentRunId = this.stateManager.startRun(files.totalCount, this.enabledEngines);
+    this.engine.on(
+      'run:files_found',
+      ({
+        processing,
+        skipped,
+        totalCount,
+        config,
+      }: {
+        processing: string[];
+        skipped: string[];
+        totalCount: number;
+        config: ScanConfig;
+      }) => {
+        this.currentRunId = this.stateManager.startRun(totalCount, this.enabledEngines);
 
-      // Bulk add pending files
-      const pendingFiles = files.processing.map((filePath) => ({
-        filePath,
-        videoPath: findMatchingVideoFile(filePath),
-        status: 'pending' as const,
-      }));
-      this.stateManager.addFilesBulk(this.currentRunId!, pendingFiles);
+        // Bulk add pending files
+        const pendingFiles = processing.map((filePath) => ({
+          filePath,
+          videoPath: findMatchingVideoFile(filePath, config),
+          status: 'pending' as const,
+        }));
+        this.stateManager.addFilesBulk(this.currentRunId!, pendingFiles);
 
-      // Bulk add skipped files
-      const skippedFiles = files.skipped.map((filePath) => ({
-        filePath,
-        videoPath: findMatchingVideoFile(filePath),
-        status: 'skipped' as const,
-      }));
-      this.stateManager.addFilesBulk(this.currentRunId!, skippedFiles);
+        // Bulk add skipped files
+        const skippedFiles = skipped.map((filePath) => ({
+          filePath,
+          videoPath: findMatchingVideoFile(filePath, config),
+          status: 'skipped' as const,
+        }));
+        this.stateManager.addFilesBulk(this.currentRunId!, skippedFiles);
 
-      // Update run stats in bulk for skipped files
-      if (files.skipped.length > 0) {
-        this.stateManager.incrementRunCountersBulk(this.currentRunId!, {
-          skipped: files.skipped.length,
-          completed_engines: files.skipped.length * this.enabledEngines.length,
-        });
-      }
-    });
+        // Update run stats in bulk for skipped files
+        if (skipped.length > 0) {
+          this.stateManager.incrementRunCountersBulk(this.currentRunId!, {
+            skipped: skipped.length,
+            completed_engines: skipped.length * this.enabledEngines.length,
+          });
+        }
+      },
+    );
 
     this.engine.on('file:started', ({ srtPath }: { srtPath: string }) => {
       if (this.currentRunId) {

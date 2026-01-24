@@ -1,6 +1,7 @@
 export interface ScanConfig {
   includePaths: string[];
   excludePaths: string[];
+  enableContextAwareMatching: boolean;
 }
 
 export interface RetentionConfig {
@@ -49,6 +50,7 @@ export function getScanConfig(): ScanConfig {
   return {
     includePaths: validIncludePaths,
     excludePaths: validExcludePaths,
+    enableContextAwareMatching: process.env.ENABLE_CONTEXT_AWARE_MATCHING !== 'false',
   };
 }
 

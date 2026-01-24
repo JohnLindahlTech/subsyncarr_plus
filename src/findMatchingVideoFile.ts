@@ -1,10 +1,28 @@
-import { existsSync } from 'fs';
-import { basename, dirname, join } from 'path';
+import { existsSync, readdirSync } from 'fs';
+import { basename, dirname, join, resolve, extname } from 'path';
+
+import { ScanConfig } from './config';
 
 type VideoExtension = '.mkv' | '.mp4' | '.avi' | '.mov';
 const VIDEO_EXTENSIONS: VideoExtension[] = ['.mkv', '.mp4', '.avi', '.mov'];
 
-export function findMatchingVideoFile(srtPath: string): string | null {
+function getSingleVideoInDir(directory: string): string | null {
+  try {
+    const files = readdirSync(directory, { withFileTypes: true });
+    const videoFiles = files.filter(
+      (f) => f.isFile() && VIDEO_EXTENSIONS.includes(extname(f.name).toLowerCase() as VideoExtension),
+    );
+
+    if (videoFiles.length === 1) {
+      return join(directory, videoFiles[0].name);
+    }
+  } catch (error) {
+    // Ignore directory access errors
+  }
+  return null;
+}
+
+export function findMatchingVideoFile(srtPath: string, config?: ScanConfig): string | null {
   const directory = dirname(srtPath);
   const srtBaseName = basename(srtPath, '.srt');
 
@@ -27,6 +45,22 @@ export function findMatchingVideoFile(srtPath: string): string | null {
       if (existsSync(possibleVideoPath)) {
         return possibleVideoPath;
       }
+    }
+  }
+
+  // Only proceed to fallbacks if enabled in config
+  if (config?.enableContextAwareMatching !== false) {
+    // Fallback 1: Exactly one video in the same directory
+    const singleVideoSameDir = getSingleVideoInDir(directory);
+    if (singleVideoSameDir) {
+      return singleVideoSameDir;
+    }
+
+    // Fallback 2: Exactly one video in the parent directory
+    const parentDir = resolve(directory, '..');
+    const singleVideoParentDir = getSingleVideoInDir(parentDir);
+    if (singleVideoParentDir) {
+      return singleVideoParentDir;
     }
   }
 

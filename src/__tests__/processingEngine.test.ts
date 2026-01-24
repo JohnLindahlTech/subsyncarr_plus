@@ -42,6 +42,7 @@ describe('ProcessingEngine', () => {
       processing: ['file1.srt', 'file2.srt'],
       skipped: [],
       totalCount: 2,
+      config: expect.any(Object),
     });
   });
 
@@ -58,6 +59,7 @@ describe('ProcessingEngine', () => {
       processing: [],
       skipped: ['file1.srt', 'file2.srt'],
       totalCount: 2,
+      config: expect.any(Object),
     });
   });
 
@@ -76,6 +78,7 @@ describe('ProcessingEngine', () => {
       processing: ['file2.srt'],
       skipped: ['file1.srt'],
       totalCount: 2,
+      config: expect.any(Object),
     });
   });
 

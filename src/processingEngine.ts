@@ -18,6 +18,7 @@ export class ProcessingEngine extends EventEmitter {
   private logBuffer: string[] = [];
   private maxLogBufferSize: number;
   public stateManager?: StateManager;
+  private currentScanConfig?: ScanConfig;
 
   constructor() {
     super();
@@ -48,6 +49,7 @@ export class ProcessingEngine extends EventEmitter {
 
   async processRun(config?: ScanConfig): Promise<void> {
     const scanConfig = config || getScanConfig();
+    this.currentScanConfig = scanConfig;
     this.log(`[${new Date().toISOString()}] Scanning for subtitle files...`);
     this.log(`[${new Date().toISOString()}] Scan paths: ${JSON.stringify(scanConfig.includePaths)}`);
 
@@ -86,6 +88,7 @@ export class ProcessingEngine extends EventEmitter {
       processing: filesToProcess,
       skipped: filesToSkip,
       totalCount: srtFiles.length,
+      config: scanConfig,
     });
 
     // Process in batches (only the ones that need processing)
@@ -119,7 +122,7 @@ export class ProcessingEngine extends EventEmitter {
 
     this.log(`[${new Date().toISOString()}] Processing: ${fileName}`);
 
-    const videoPath = findMatchingVideoFile(srtPath);
+    const videoPath = findMatchingVideoFile(srtPath, this.currentScanConfig);
 
     this.emit('file:started', { srtPath, videoPath });
 
