@@ -31,8 +31,11 @@ export async function generateFfsubsyncSubtitles(
       message: `Successfully processed: ${outputPath}`,
       stdout: stdout || undefined,
       stderr: stderr || undefined,
+      command,
     };
   } catch (error) {
+    const reference = audioPath || videoPath;
+    const command = `ffsubsync "${reference}" -i "${srtPath}" -o "${outputPath}"`;
     const errorMessage = error instanceof Error ? error.message : String(error);
     const isTimeout = errorMessage.includes('SIGTERM') || errorMessage.includes('timed out');
     const isAborted = errorMessage.includes('Aborted');
@@ -41,6 +44,7 @@ export async function generateFfsubsyncSubtitles(
       return {
         success: false,
         message: `Aborted: Processing of ${outputPath} was cancelled by user`,
+        command,
         isPermanent: false, // Don't mark as permanent if manually aborted
       };
     }
@@ -56,6 +60,7 @@ export async function generateFfsubsyncSubtitles(
         message: `Timeout: ${outputPath} took longer than allowed timeout`,
         stdout: stdout || undefined,
         stderr: stderr || undefined,
+        command,
       };
     }
 
@@ -64,6 +69,7 @@ export async function generateFfsubsyncSubtitles(
       message: `Error processing ${outputPath}: ${errorMessage}`,
       stdout: stdout || undefined,
       stderr: stderr || undefined,
+      command,
       isPermanent:
         errorMessage.toLowerCase().includes('no speech detected') ||
         stderr.toLowerCase().includes('no speech detected') ||

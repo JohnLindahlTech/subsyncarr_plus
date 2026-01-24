@@ -30,8 +30,11 @@ export async function generateAutosubsyncSubtitles(
       message: `Successfully processed: ${outputPath}`,
       stdout: stdout || undefined,
       stderr: stderr || undefined,
+      command,
     };
   } catch (error) {
+    const reference = audioPath || videoPath;
+    const command = `autosubsync "${reference}" "${srtPath}" "${outputPath}"`;
     const errorMessage = error instanceof Error ? error.message : String(error);
     const isTimeout = errorMessage.includes('SIGTERM') || errorMessage.includes('timed out');
     const isAborted = errorMessage.includes('Aborted');
@@ -40,6 +43,7 @@ export async function generateAutosubsyncSubtitles(
       return {
         success: false,
         message: `Aborted: Processing of ${outputPath} was cancelled by user`,
+        command,
         isPermanent: false,
       };
     }
@@ -55,6 +59,7 @@ export async function generateAutosubsyncSubtitles(
         message: `Timeout: ${outputPath} took longer than allowed timeout`,
         stdout: stdout || undefined,
         stderr: stderr || undefined,
+        command,
       };
     }
 
@@ -63,6 +68,7 @@ export async function generateAutosubsyncSubtitles(
       message: `Error processing ${outputPath}: ${errorMessage}`,
       stdout: stdout || undefined,
       stderr: stderr || undefined,
+      command,
       isPermanent:
         errorMessage.toLowerCase().includes('no voice activity detected') ||
         stderr.toLowerCase().includes('no voice activity detected'),

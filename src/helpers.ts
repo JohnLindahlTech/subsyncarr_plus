@@ -6,6 +6,7 @@ export interface ProcessingResult {
   stdout?: string;
   stderr?: string;
   skipped?: boolean;
+  command?: string;
   isPermanent?: boolean;
 }
 

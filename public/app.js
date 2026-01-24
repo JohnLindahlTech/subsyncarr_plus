@@ -340,6 +340,21 @@ class SubsyncarrPlusClient {
       document.getElementById('logsModal').classList.add('hidden');
     });
 
+    document.getElementById('closeDebugModal').addEventListener('click', () => {
+      document.getElementById('debugModal').classList.add('hidden');
+    });
+
+    document.getElementById('closeDebugButton').addEventListener('click', () => {
+      document.getElementById('debugModal').classList.add('hidden');
+    });
+
+    // Close debug modal when clicking outside
+    document.getElementById('debugModal').addEventListener('click', (e) => {
+      if (e.target.id === 'debugModal') {
+        document.getElementById('debugModal').classList.add('hidden');
+      }
+    });
+
     document.getElementById('copyLogs').addEventListener('click', async () => {
       const logsContent = document.getElementById('logsContent').textContent;
       try {
@@ -565,7 +580,7 @@ class SubsyncarrPlusClient {
             ${file.video_status ? `<span class="video-phase">${file.video_status}</span>` : ''}
             ${file.current_engine ? `⚙️ Working on ${file.current_engine}` : 'Starting...'}
           </div>
-          ${this.renderEngineResults(engines)}
+          ${this.renderEngineResults(engines, file.file_path)}
         </div>
       `;
       })
@@ -580,7 +595,7 @@ class SubsyncarrPlusClient {
         return `
         <div class="file-card ${file.status}">
           <div class="file-name">${this.basename(file.file_path)}</div>
-          ${this.renderEngineResults(engines)}
+          ${this.renderEngineResults(engines, file.file_path)}
         </div>
       `;
       })
@@ -608,21 +623,48 @@ class SubsyncarrPlusClient {
     }
   }
 
-  renderEngineResults(engines) {
+  renderEngineResults(engines, filePath) {
     return Object.entries(engines)
       .map(([name, result]) => {
         const icon = result.success ? '✓' : '✗';
         const className = result.success ? 'success' : 'error';
-        const duration = (result.duration / 1000).toFixed(1);
+        const duration = result.duration ? (result.duration / 1000).toFixed(1) : '0.0';
+
+        // Add debug button for failed engines
+        const debugButton = !result.success ? 
+          `<button class="btn-debug" title="View Debug Info" onclick="event.stopPropagation(); client.viewDebugInfo('${filePath.replace(/'/g, "\\'")}', '${name}')">🔍</button>` : '';
 
         return `
         <div class="engine-result ${className}">
-          <span>${icon} ${name}</span>
-          <span class="duration">${duration}s</span>
+          <div class="engine-info">
+            <span>${icon} ${name}</span>
+            <span class="duration">${duration}s</span>
+          </div>
+          ${debugButton}
         </div>
       `;
       })
       .join('');
+  }
+
+  viewDebugInfo(filePath, engineName) {
+    const file = this.state.files.find(f => f.file_path === filePath);
+    if (!file) return;
+
+    try {
+      const engines = JSON.parse(file.engines);
+      const result = engines[engineName];
+      
+      if (!result) return;
+
+      document.getElementById('debugCommand').textContent = result.command || 'No command recorded';
+      document.getElementById('debugStderr').textContent = result.stderr || 'No error output';
+      document.getElementById('debugStdout').textContent = result.stdout || 'No standard output';
+      
+      document.getElementById('debugModal').classList.remove('hidden');
+    } catch (e) {
+      console.error('Failed to parse engines for debug view', e);
+    }
   }
 
   calculateEngineStats(files) {

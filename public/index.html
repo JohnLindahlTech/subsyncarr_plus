@@ -130,6 +130,33 @@
       </div>
     </div>
 
+    <!-- Debug Info Modal -->
+    <div id="debugModal" class="modal hidden">
+      <div class="modal-content debug-modal">
+        <div class="modal-header">
+          <h3>Engine Debug Info</h3>
+          <button id="closeDebugModal" class="close-btn">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="debug-section">
+            <label>Executed Command:</label>
+            <pre id="debugCommand" class="code-block"></pre>
+          </div>
+          <div class="debug-section">
+            <label>Standard Error (Last 1KB):</label>
+            <pre id="debugStderr" class="code-block error-text"></pre>
+          </div>
+          <div class="debug-section">
+            <label>Standard Output:</label>
+            <pre id="debugStdout" class="code-block"></pre>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button id="closeDebugButton" class="btn btn-secondary">Close</button>
+        </div>
+      </div>
+    </div>
+
     <script src="/app.js"></script>
   </body>
 </html>
