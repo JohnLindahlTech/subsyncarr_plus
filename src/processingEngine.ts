@@ -16,7 +16,6 @@ export class ProcessingEngine extends EventEmitter {
   private cancelledFiles: Set<string> = new Set();
   private activeControllers: Map<string, AbortController> = new Map();
   private globalStopRequested: boolean = false;
-  private maxConcurrent: number;
   private enabledEngines: string[];
   private logBuffer: string[] = [];
   private maxLogBufferSize: number;
