@@ -11,11 +11,38 @@ class SubsyncarrPlusClient {
     this.reconnectInterval = 3000;
     this.searchTimeout = null;
 
+    this.initTheme();
     this.initWebSocket();
     this.setupEventHandlers();
     this.setupInfiniteScroll();
     this.fetchInitialState();
     this.fetchConfigStatus();
+  }
+
+  initTheme() {
+    const savedTheme = localStorage.getItem('theme');
+    const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+    if (savedTheme) {
+      document.documentElement.setAttribute('data-theme', savedTheme);
+    } else if (systemPrefersDark) {
+      document.documentElement.setAttribute('data-theme', 'dark');
+    }
+
+    // Listen for system theme changes if no manual preference is set
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+      if (!localStorage.getItem('theme')) {
+        document.documentElement.setAttribute('data-theme', e.matches ? 'dark' : 'light');
+      }
+    });
+  }
+
+  toggleTheme() {
+    const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
+    const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+
+    document.documentElement.setAttribute('data-theme', newTheme);
+    localStorage.setItem('theme', newTheme);
   }
 
   initWebSocket() {
@@ -271,6 +298,10 @@ class SubsyncarrPlusClient {
   }
 
   setupEventHandlers() {
+    document.getElementById('themeToggle').addEventListener('click', () => {
+      this.toggleTheme();
+    });
+
     document.getElementById('startRun').addEventListener('click', () => {
       this.startRun();
     });
@@ -631,8 +662,9 @@ class SubsyncarrPlusClient {
         const duration = result.duration ? (result.duration / 1000).toFixed(1) : '0.0';
 
         // Add debug button for failed engines
-        const debugButton = !result.success ? 
-          `<button class="btn-debug" title="View Debug Info" onclick="event.stopPropagation(); client.viewDebugInfo('${filePath.replace(/'/g, "\\'")}', '${name}')">🔍</button>` : '';
+        const debugButton = !result.success
+          ? `<button class="btn-debug" title="View Debug Info" onclick="event.stopPropagation(); client.viewDebugInfo('${filePath.replace(/'/g, "\\'")}', '${name}')">🔍</button>`
+          : '';
 
         return `
         <div class="engine-result ${className}">
@@ -648,19 +680,19 @@ class SubsyncarrPlusClient {
   }
 
   viewDebugInfo(filePath, engineName) {
-    const file = this.state.files.find(f => f.file_path === filePath);
+    const file = this.state.files.find((f) => f.file_path === filePath);
     if (!file) return;
 
     try {
       const engines = JSON.parse(file.engines);
       const result = engines[engineName];
-      
+
       if (!result) return;
 
       document.getElementById('debugCommand').textContent = result.command || 'No command recorded';
       document.getElementById('debugStderr').textContent = result.stderr || 'No error output';
       document.getElementById('debugStdout').textContent = result.stdout || 'No standard output';
-      
+
       document.getElementById('debugModal').classList.remove('hidden');
     } catch (e) {
       console.error('Failed to parse engines for debug view', e);

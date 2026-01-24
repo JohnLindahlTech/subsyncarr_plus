@@ -1,4 +1,5 @@
 :root {
+  /* Light Theme Variables */
   --primary: #3b82f6;
   --primary-dark: #2563eb;
   --success: #10b981;
@@ -9,6 +10,35 @@
   --border: #e5e7eb;
   --text: #111827;
   --text-secondary: #6b7280;
+  --modal-overlay: rgba(0, 0, 0, 0.5);
+  --code-bg: #1e1e1e;
+  --code-text: #d4d4d4;
+  --engine-success-bg: #d1fae5;
+  --engine-success-text: #065f46;
+  --engine-error-bg: #fee2e2;
+  --engine-error-text: #991b1b;
+  --badge-running-bg: #dbeafe;
+  --badge-running-text: #1e40af;
+  --badge-cancelled-bg: #fef3c7;
+  --badge-cancelled-text: #92400e;
+}
+
+[data-theme='dark'] {
+  --background: #111827;
+  --card-bg: #1f2937;
+  --border: #374151;
+  --text: #f9fafb;
+  --text-secondary: #9ca3af;
+  --modal-overlay: rgba(0, 0, 0, 0.7);
+  --code-bg: #000000;
+  --engine-success-bg: #064e3b;
+  --engine-success-text: #34d399;
+  --engine-error-bg: #7f1d1d;
+  --engine-error-text: #f87171;
+  --badge-running-bg: #1e3a8a;
+  --badge-running-text: #bfdbfe;
+  --badge-cancelled-bg: #78350f;
+  --badge-cancelled-text: #fde68a;
 }
 
 * {
@@ -22,6 +52,9 @@ body {
   background: var(--background);
   color: var(--text);
   line-height: 1.5;
+  transition:
+    background-color 0.3s,
+    color 0.3s;
 }
 
 .container {
@@ -273,7 +306,7 @@ h2 {
 }
 
 .file-card {
-  background: #f9fafb;
+  background: var(--background);
   padding: 16px;
   border-radius: 6px;
   margin-bottom: 12px;
@@ -358,13 +391,13 @@ h2 {
 }
 
 .engine-result.success {
-  background: #d1fae5;
-  color: #065f46;
+  background: var(--engine-success-bg);
+  color: var(--engine-success-text);
 }
 
 .engine-result.error {
-  background: #fee2e2;
-  color: #991b1b;
+  background: var(--engine-error-bg);
+  color: var(--engine-error-text);
 }
 
 .duration {
@@ -394,8 +427,8 @@ h2 {
 }
 
 .code-block {
-  background: #1e1e1e;
-  color: #d4d4d4;
+  background: var(--code-bg);
+  color: var(--code-text);
   padding: 12px;
   border-radius: 6px;
   font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', monospace;
@@ -406,11 +439,11 @@ h2 {
   max-height: 250px;
   overflow-y: auto;
   margin: 0;
-  border: 1px solid #333;
+  border: 1px solid var(--border);
 }
 
 .error-text {
-  color: #f14c4c;
+  color: var(--error);
 }
 
 .modal-footer {
@@ -450,18 +483,18 @@ td {
 }
 
 .status-badge.running {
-  background: #dbeafe;
-  color: #1e40af;
+  background: var(--badge-running-bg);
+  color: var(--badge-running-text);
 }
 
 .status-badge.completed {
-  background: #d1fae5;
-  color: #065f46;
+  background: var(--engine-success-bg);
+  color: var(--engine-success-text);
 }
 
 .status-badge.cancelled {
-  background: #fef3c7;
-  color: #92400e;
+  background: var(--badge-cancelled-bg);
+  color: var(--badge-cancelled-text);
 }
 
 .no-data {
@@ -476,7 +509,7 @@ td {
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(0, 0, 0, 0.5);
+  background: var(--modal-overlay);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -489,6 +522,7 @@ td {
   border-radius: 8px;
   max-width: 500px;
   width: 90%;
+  color: var(--text);
 }
 
 .modal-header {
@@ -528,6 +562,8 @@ td {
   width: 100%;
   min-height: 120px;
   padding: 12px;
+  background: var(--background);
+  color: var(--text);
   border: 1px solid var(--border);
   border-radius: 6px;
   font-family: monospace;
@@ -570,6 +606,8 @@ td {
 
 .search-input {
   padding: 6px 12px;
+  background: var(--background);
+  color: var(--text);
   border: 1px solid var(--border);
   border-radius: 4px;
   font-size: 13px;
@@ -610,8 +648,8 @@ td {
 
 .logs-content {
   flex: 1;
-  background: #1e1e1e;
-  color: #d4d4d4;
+  background: var(--code-bg);
+  color: var(--code-text);
   padding: 16px;
   border-radius: 6px;
   font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
@@ -621,6 +659,7 @@ td {
   margin-bottom: 16px;
   white-space: pre-wrap;
   word-wrap: break-word;
+  border: 1px solid var(--border);
 }
 
 .engine-key {
@@ -650,11 +689,29 @@ td {
 }
 
 .engine-pass {
-  color: #059669;
+  color: var(--success);
   font-weight: 600;
 }
 
 .engine-fail {
-  color: #dc2626;
+  color: var(--error);
   font-weight: 600;
+}
+
+.theme-toggle {
+  background: var(--background);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 8px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.theme-toggle:hover {
+  background: var(--border);
 }
