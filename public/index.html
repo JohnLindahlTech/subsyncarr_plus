@@ -57,12 +57,16 @@
       <section id="completedSection">
         <div class="section-header">
           <h2>Completed & Skipped Files</h2>
-          <button id="clearCompleted" class="btn btn-secondary btn-sm">Clear Files</button>
+          <div class="header-actions">
+            <input type="text" id="fileSearch" placeholder="Search by filename..." class="search-input" />
+            <button id="clearCompleted" class="btn btn-secondary btn-sm">Clear Files</button>
+          </div>
         </div>
         <div id="completedList" class="file-list"></div>
         <div id="paginationControls" class="pagination-controls hidden">
           <span id="paginationInfo">Showing 0 of 0 files</span>
-          <button id="loadMore" class="btn btn-secondary btn-sm">Show More</button>
+          <div id="scrollSentinel" class="sentinel"></div>
+          <button id="loadMore" class="btn btn-secondary btn-sm hidden">Show More</button>
         </div>
       </section>
 

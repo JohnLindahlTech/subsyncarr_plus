@@ -6,11 +6,14 @@ class SubsyncarrPlusClient {
       files: [],
       isRunning: false,
       pagination: { page: 1, limit: 50, total: 0, totalPages: 0 },
+      searchQuery: '',
     };
     this.reconnectInterval = 3000;
+    this.searchTimeout = null;
 
     this.initWebSocket();
     this.setupEventHandlers();
+    this.setupInfiniteScroll();
     this.fetchInitialState();
     this.fetchConfigStatus();
   }
@@ -41,7 +44,7 @@ class SubsyncarrPlusClient {
   handleMessage(msg) {
     switch (msg.type) {
       case 'state':
-        this.state = msg.data;
+        this.state = { ...this.state, ...msg.data };
         this.render();
         break;
       case 'run:started':
@@ -81,14 +84,20 @@ class SubsyncarrPlusClient {
 
   updateFile(fileData) {
     const index = this.state.files.findIndex((f) => f.file_path === fileData.file_path);
+
+    // Check if file matches search query if we have one
+    if (this.state.searchQuery && !fileData.file_path.toLowerCase().includes(this.state.searchQuery.toLowerCase())) {
+      if (index >= 0) this.state.files.splice(index, 1);
+      return;
+    }
+
     if (index >= 0) {
       this.state.files[index] = fileData;
     } else {
       // Only add to list if it's currently processing or we're on the first page
-      // This prevents the list from growing indefinitely during a massive run
       if (fileData.status === 'processing' || this.state.pagination.page === 1) {
         this.state.files.unshift(fileData);
-        // Keep list size manageable if not on page 1
+        // Keep list size manageable
         if (this.state.files.length > 100 && fileData.status !== 'processing') {
           this.state.files.pop();
         }
@@ -97,24 +106,55 @@ class SubsyncarrPlusClient {
   }
 
   async fetchInitialState() {
-    const response = await fetch('/api/status?page=1&limit=50');
+    const searchParam = this.state.searchQuery ? `&search=${encodeURIComponent(this.state.searchQuery)}` : '';
+    const response = await fetch(`/api/status?page=1&limit=50${searchParam}`);
     const data = await response.json();
-    this.state = data;
+    this.state.currentRun = data.currentRun;
+    this.state.files = data.files;
+    this.state.pagination = data.pagination;
+    this.state.isRunning = data.isRunning;
     this.render();
     this.fetchHistory();
   }
 
+  setupInfiniteScroll() {
+    const sentinel = document.getElementById('scrollSentinel');
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          this.loadMoreFiles();
+        }
+      },
+      {
+        root: null, // use viewport
+        rootMargin: '200px', // trigger before we reach the bottom
+        threshold: 0.1,
+      },
+    );
+    observer.observe(sentinel);
+  }
+
   async loadMoreFiles() {
-    if (this.state.pagination.page >= this.state.pagination.totalPages) return;
+    if (this.isLoadingMore || this.state.pagination.page >= this.state.pagination.totalPages) return;
 
+    this.isLoadingMore = true;
     const nextPage = this.state.pagination.page + 1;
-    const response = await fetch(`/api/status?page=${nextPage}&limit=50`);
-    const data = await response.json();
+    const searchParam = this.state.searchQuery ? `&search=${encodeURIComponent(this.state.searchQuery)}` : '';
 
-    // Append new files
-    this.state.files = [...this.state.files, ...data.files];
-    this.state.pagination = data.pagination;
-    this.render();
+    try {
+      const response = await fetch(`/api/status?page=${nextPage}&limit=50${searchParam}`);
+      const data = await response.json();
+
+      // Append new files, avoiding duplicates
+      const newFiles = data.files.filter((nf) => !this.state.files.find((f) => f.file_path === nf.file_path));
+      this.state.files = [...this.state.files, ...newFiles];
+      this.state.pagination = data.pagination;
+      this.render();
+    } catch (error) {
+      console.error('Failed to load more files:', error);
+    } finally {
+      this.isLoadingMore = false;
+    }
   }
 
   async fetchHistory() {
@@ -122,7 +162,6 @@ class SubsyncarrPlusClient {
     const history = await response.json();
 
     // Fetch file results for each run to calculate engine stats
-    // We only fetch first page for stats calculation to avoid heavy load
     const historyWithStats = await Promise.all(
       history.map(async (run) => {
         try {
@@ -238,6 +277,18 @@ class SubsyncarrPlusClient {
 
     document.getElementById('loadMore').addEventListener('click', () => {
       this.loadMoreFiles();
+    });
+
+    // Search handler with debouncing
+    document.getElementById('fileSearch').addEventListener('input', (e) => {
+      const query = e.target.value;
+      clearTimeout(this.searchTimeout);
+      this.searchTimeout = setTimeout(() => {
+        this.state.searchQuery = query;
+        this.state.pagination.page = 1;
+        this.state.files = [];
+        this.fetchInitialState();
+      }, 300);
     });
 
     document.getElementById('closeModal').addEventListener('click', () => {
@@ -492,22 +543,22 @@ class SubsyncarrPlusClient {
       })
       .join('');
 
-    document.getElementById('completedList').innerHTML =
-      completedHtml || '<p class="no-data">No completed files yet</p>';
+    document.getElementById('completedList').innerHTML = completedHtml || '<p class="no-data">No results found</p>';
 
     // Update pagination UI
     const paginationControls = document.getElementById('paginationControls');
     const paginationInfo = document.getElementById('paginationInfo');
-    const loadMoreBtn = document.getElementById('loadMore');
+    const sentinel = document.getElementById('scrollSentinel');
 
     if (this.state.pagination && this.state.pagination.total > 0) {
       paginationControls.classList.remove('hidden');
       paginationInfo.textContent = `Showing ${this.state.files.length} of ${this.state.pagination.total} files`;
 
-      if (this.state.pagination.page < this.state.pagination.totalPages) {
-        loadMoreBtn.classList.remove('hidden');
+      // Hide sentinel if no more pages
+      if (this.state.pagination.page >= this.state.pagination.totalPages) {
+        sentinel.classList.add('hidden');
       } else {
-        loadMoreBtn.classList.add('hidden');
+        sentinel.classList.remove('hidden');
       }
     } else {
       paginationControls.classList.add('hidden');
@@ -612,12 +663,10 @@ class SubsyncarrPlusClient {
 }
 
 // Initialize client when DOM is ready
-let client;
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', () => {
-    client = new SubsyncarrPlusClient();
+    new SubsyncarrPlusClient();
   });
 } else {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  client = new SubsyncarrPlusClient();
+  new SubsyncarrPlusClient();
 }

@@ -69,11 +69,12 @@ export class SubsyncarrPlusServer {
       console.log(`[${new Date().toISOString()}] GET /api/status`);
       const page = parseInt(req.query.page as string, 10) || 1;
       const limit = parseInt(req.query.limit as string, 10) || 50;
+      const search = (req.query.search as string) || undefined;
       const offset = (page - 1) * limit;
 
       const currentRun = this.stateManager.getCurrentRun();
-      const totalFiles = currentRun ? this.stateManager.getFileCount(currentRun.id) : 0;
-      const files = currentRun ? this.stateManager.getFileResults(currentRun.id, limit, offset) : [];
+      const totalFiles = currentRun ? this.stateManager.getFileCount(currentRun.id, search) : 0;
+      const files = currentRun ? this.stateManager.getFileResults(currentRun.id, limit, offset, search) : [];
 
       res.json({
         currentRun,
@@ -100,6 +101,7 @@ export class SubsyncarrPlusServer {
       console.log(`[${new Date().toISOString()}] GET /api/runs/${req.params.id}`);
       const page = parseInt(req.query.page as string, 10) || 1;
       const limit = parseInt(req.query.limit as string, 10) || 50;
+      const search = (req.query.search as string) || undefined;
       const offset = (page - 1) * limit;
 
       const currentRun = this.stateManager.getCurrentRun();
@@ -107,10 +109,10 @@ export class SubsyncarrPlusServer {
 
       // Check current run first
       if (currentRun && currentRun.id === requestedId) {
-        const totalFiles = this.stateManager.getFileCount(currentRun.id);
+        const totalFiles = this.stateManager.getFileCount(currentRun.id, search);
         return res.json({
           run: currentRun,
-          files: this.stateManager.getFileResults(currentRun.id, limit, offset),
+          files: this.stateManager.getFileResults(currentRun.id, limit, offset, search),
           pagination: {
             page,
             limit,
@@ -128,10 +130,10 @@ export class SubsyncarrPlusServer {
         return res.status(404).json({ error: 'Run not found' });
       }
 
-      const totalFiles = this.stateManager.getFileCount(run.id);
+      const totalFiles = this.stateManager.getFileCount(run.id, search);
       res.json({
         run,
-        files: this.stateManager.getFileResults(run.id, limit, offset),
+        files: this.stateManager.getFileResults(run.id, limit, offset, search),
         pagination: {
           page,
           limit,

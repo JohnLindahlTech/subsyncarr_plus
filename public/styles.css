@@ -474,6 +474,20 @@ td {
   background: var(--primary-dark);
 }
 
+.header-actions {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+}
+
+.search-input {
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 13px;
+  width: 250px;
+}
+
 .pagination-controls {
   display: flex;
   justify-content: space-between;
@@ -482,6 +496,15 @@ td {
   background: var(--background);
   border-radius: 6px;
   margin-top: 12px;
+  position: relative;
+}
+
+.sentinel {
+  position: absolute;
+  bottom: 0;
+  height: 10px;
+  width: 100%;
+  pointer-events: none;
 }
 
 #paginationInfo {

@@ -25,6 +25,7 @@ class MockStateManager extends EventEmitter {
   incrementRunCountersBulk = jest.fn();
   completeRun = jest.fn();
   getFileResults = jest.fn();
+  getFileCount = jest.fn();
   cancelRun = jest.fn();
 }
 

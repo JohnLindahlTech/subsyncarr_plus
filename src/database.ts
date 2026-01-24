@@ -286,13 +286,19 @@ export class SubsyncarrPlusDatabase {
       .run(...values, runId, filePath);
   }
 
-  getFileResults(runId: string, limit?: number, offset?: number): FileResult[] {
+  getFileResults(runId: string, limit?: number, offset?: number, search?: string): FileResult[] {
     let sql = `
       SELECT * FROM file_results
       WHERE run_id = ?
-      ORDER BY created_at ASC
     `;
     const params: unknown[] = [runId];
+
+    if (search) {
+      sql += ' AND file_path LIKE ?';
+      params.push(`%${search}%`);
+    }
+
+    sql += ' ORDER BY created_at ASC';
 
     if (limit !== undefined && offset !== undefined) {
       sql += ' LIMIT ? OFFSET ?';
@@ -302,15 +308,16 @@ export class SubsyncarrPlusDatabase {
     return this.db.prepare(sql).all(...params) as FileResult[];
   }
 
-  getFileCount(runId: string): number {
-    const result = this.db
-      .prepare(
-        `
-      SELECT COUNT(*) as count FROM file_results
-      WHERE run_id = ?
-    `,
-      )
-      .get(runId) as { count: number };
+  getFileCount(runId: string, search?: string): number {
+    let sql = 'SELECT COUNT(*) as count FROM file_results WHERE run_id = ?';
+    const params: unknown[] = [runId];
+
+    if (search) {
+      sql += ' AND file_path LIKE ?';
+      params.push(`%${search}%`);
+    }
+
+    const result = this.db.prepare(sql).get(...params) as { count: number };
     return result.count;
   }
 

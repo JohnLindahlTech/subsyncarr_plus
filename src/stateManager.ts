@@ -210,12 +210,12 @@ export class StateManager extends EventEmitter {
     return this.db.getRunHistory(limit);
   }
 
-  getFileResults(runId: string, limit?: number, offset?: number): FileResult[] {
-    return this.db.getFileResults(runId, limit, offset);
+  getFileResults(runId: string, limit?: number, offset?: number, search?: string): FileResult[] {
+    return this.db.getFileResults(runId, limit, offset, search);
   }
 
-  getFileCount(runId: string): number {
-    return this.db.getFileCount(runId);
+  getFileCount(runId: string, search?: string): number {
+    return this.db.getFileCount(runId, search);
   }
 
   appendLog(runId: string, logMessage: string): void {
