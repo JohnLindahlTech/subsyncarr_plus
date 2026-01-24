@@ -54,6 +54,10 @@ class SubsyncarrPlusClient {
         this.state.pagination.page = 1;
         this.render();
         break;
+      case 'run:updated':
+        this.state.currentRun = msg.data;
+        this.render();
+        break;
       case 'run:completed':
         this.state.currentRun = msg.data;
         this.state.isRunning = false;
@@ -381,6 +385,9 @@ class SubsyncarrPlusClient {
 
   async startRun(paths = null) {
     try {
+      this.state.isRunning = true;
+      this.render();
+
       const response = await fetch('/api/run/start', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -390,9 +397,13 @@ class SubsyncarrPlusClient {
       if (!response.ok) {
         const error = await response.json();
         alert(`Failed to start run: ${error.error}`);
+        this.state.isRunning = false;
+        this.render();
       }
     } catch (error) {
       alert(`Failed to start run: ${error.message}`);
+      this.state.isRunning = false;
+      this.render();
     }
   }
 
@@ -484,23 +495,36 @@ class SubsyncarrPlusClient {
   }
 
   renderProgress() {
-    const { currentRun } = this.state;
+    const { currentRun, isRunning } = this.state;
     const section = document.getElementById('currentRun');
 
-    if (!currentRun || currentRun.status === 'completed') {
+    if (!isRunning && (!currentRun || currentRun.status === 'completed')) {
       section.classList.add('hidden');
       return;
     }
 
     section.classList.remove('hidden');
 
+    if (isRunning && !currentRun) {
+      document.getElementById('progressFill').style.width = '0%';
+      document.getElementById('progressText').textContent = 'Scanning & Initializing...';
+      return;
+    }
+
+    if (currentRun && currentRun.current_video) {
+      document.getElementById('progressText').textContent =
+        `Extracting audio: ${this.basename(currentRun.current_video)}...`;
+    } else if (currentRun) {
+      const finishedFiles = currentRun.completed + currentRun.skipped + currentRun.failed;
+      const percent =
+        currentRun.total_engines > 0 ? (currentRun.completed_engines / currentRun.total_engines) * 100 : 0;
+      document.getElementById('progressText').textContent =
+        `${finishedFiles} / ${currentRun.total_files} files (${Math.round(percent)}%)`;
+    }
+
     // Use engine-level progress for more granular updates
     const percent = currentRun.total_engines > 0 ? (currentRun.completed_engines / currentRun.total_engines) * 100 : 0;
-    const finishedFiles = currentRun.completed + currentRun.skipped + currentRun.failed;
-
     document.getElementById('progressFill').style.width = `${percent}%`;
-    document.getElementById('progressText').textContent =
-      `${finishedFiles} / ${currentRun.total_files} files (${Math.round(percent)}%)`;
   }
 
   renderFiles() {

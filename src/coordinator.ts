@@ -71,6 +71,18 @@ export class ProcessingCoordinator {
       },
     );
 
+    this.engine.on('video:started', ({ videoPath }: { videoPath: string }) => {
+      if (this.currentRunId) {
+        this.stateManager.setCurrentVideo(this.currentRunId, videoPath);
+      }
+    });
+
+    this.engine.on('video:completed', () => {
+      if (this.currentRunId) {
+        this.stateManager.setCurrentVideo(this.currentRunId, null);
+      }
+    });
+
     this.engine.on('file:started', ({ srtPath }: { srtPath: string }) => {
       if (this.currentRunId) {
         this.stateManager.updateFileStatus(this.currentRunId, srtPath, 'processing', null);

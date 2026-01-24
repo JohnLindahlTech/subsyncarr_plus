@@ -12,6 +12,7 @@ export interface Run {
   completed_engines: number;
   status: 'running' | 'completed' | 'cancelled';
   logs: string;
+  current_video: string | null;
 }
 
 export interface FileResult {
@@ -66,7 +67,8 @@ export class SubsyncarrPlusDatabase {
         total_engines INTEGER DEFAULT 0,
         completed_engines INTEGER DEFAULT 0,
         status TEXT NOT NULL,
-        logs TEXT DEFAULT ''
+        logs TEXT DEFAULT '',
+        current_video TEXT
       );
 
       CREATE TABLE IF NOT EXISTS file_results (
@@ -103,6 +105,12 @@ export class SubsyncarrPlusDatabase {
     const hasCompletedEnginesColumn = columns.some((col) => col.name === 'completed_engines');
     if (!hasCompletedEnginesColumn) {
       this.db.exec(`ALTER TABLE runs ADD COLUMN completed_engines INTEGER DEFAULT 0`);
+    }
+
+    // Migration: Add current_video column if it doesn't exist
+    const hasCurrentVideoColumn = columns.some((col) => col.name === 'current_video');
+    if (!hasCurrentVideoColumn) {
+      this.db.exec(`ALTER TABLE runs ADD COLUMN current_video TEXT`);
     }
 
     // Migration: Create engine_failure_tracking table

@@ -139,6 +139,8 @@ export class ProcessingEngine extends EventEmitter {
       return;
     }
 
+    this.emit('video:started', { videoPath, srtPaths });
+
     const tempAudioPath = path.join(os.tmpdir(), `subsyncarr_${randomUUID()}.wav`);
     let audioExtracted = false;
 
@@ -174,6 +176,7 @@ export class ProcessingEngine extends EventEmitter {
           // Ignore cleanup errors
         }
       }
+      this.emit('video:completed', { videoPath });
     }
   }
 

@@ -117,6 +117,14 @@ export class StateManager extends EventEmitter {
     this.db.incrementRunCountersBulk(runId, increments);
   }
 
+  setCurrentVideo(runId: string, videoPath: string | null): void {
+    this.db.updateRun(runId, { current_video: videoPath });
+    const run = this.db.getRun(runId);
+    if (run) {
+      this.emit('run:updated', run);
+    }
+  }
+
   // File management
   addFile(runId: string, filePath: string, videoPath: string | null): void {
     this.db.createFileResult(runId, filePath, videoPath);

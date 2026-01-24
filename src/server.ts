@@ -317,6 +317,10 @@ export class SubsyncarrPlusServer {
       this.broadcast({ type: 'run:started', data: run });
     });
 
+    this.stateManager.on('run:updated', (run) => {
+      this.broadcast({ type: 'run:updated', data: run });
+    });
+
     this.stateManager.on('run:completed', (run) => {
       console.log(`[${new Date().toISOString()}] Broadcasting run:completed to ${this.clients.size} clients`);
       this.broadcast({ type: 'run:completed', data: run });
