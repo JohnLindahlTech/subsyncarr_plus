@@ -277,23 +277,32 @@ export class StateManager extends EventEmitter {
     const statsBefore = this.db.getDatabaseStats();
 
     // 1. Delete runs older than 30 days
-    const deletedRuns = this.db.deleteOldRuns(30);
+    const deletedRunIds = this.db.deleteOldRuns(30);
 
-    // 2. Trim logs for runs older than 7 days
+    // 2. Delete corresponding log files
+    deletedRunIds.forEach((id) => {
+      this.logFileManager.deleteLog(id);
+    });
+
+    // 3. Trim database logs for runs older than 7 days
     const trimmedLogs = this.db.trimOldLogs(7);
 
-    // 3. Reclaim space
+    // 4. Also clean up any "orphan" log files that might have been missed
+    const orphanLogs = this.logFileManager.deleteOldLogs(30);
+
+    // 5. Reclaim space
     this.db.vacuum();
 
     const statsAfter = this.db.getDatabaseStats();
     const savedBytes = statsBefore.sizeBytes - statsAfter.sizeBytes;
 
     console.log(`[${new Date().toISOString()}] Maintenance complete:`);
-    console.log(`  - Deleted runs: ${deletedRuns}`);
-    console.log(`  - Trimmed logs: ${trimmedLogs}`);
+    console.log(`  - Deleted runs: ${deletedRunIds.length}`);
+    console.log(`  - Deleted run log files: ${deletedRunIds.length}`);
+    console.log(`  - Cleaned orphan log files: ${orphanLogs}`);
+    console.log(`  - Trimmed database logs: ${trimmedLogs}`);
     console.log(`  - Space reclaimed: ${(savedBytes / 1024 / 1024).toFixed(2)} MB`);
   }
-
   close() {
     this.logFileManager.close();
     this.db.close();

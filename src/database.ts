@@ -200,8 +200,16 @@ export class SubsyncarrPlusDatabase {
   /**
    * Delete old runs and their associated file results
    */
-  deleteOldRuns(olderThanDays: number): number {
+  deleteOldRuns(olderThanDays: number): string[] {
     const cutoffTime = Date.now() - olderThanDays * 24 * 60 * 60 * 1000;
+
+    // Find run IDs to delete
+    const runsToDelete = this.db.prepare('SELECT id FROM runs WHERE start_time < ?').all(cutoffTime) as Array<{
+      id: string;
+    }>;
+    const runIds = runsToDelete.map((r) => r.id);
+
+    if (runIds.length === 0) return [];
 
     // Use transaction for atomicity
     const deleteFiles = this.db.prepare(
@@ -211,8 +219,8 @@ export class SubsyncarrPlusDatabase {
 
     const transaction = this.db.transaction(() => {
       deleteFiles.run(cutoffTime);
-      const result = deleteRuns.run(cutoffTime);
-      return result.changes;
+      deleteRuns.run(cutoffTime);
+      return runIds;
     });
 
     return transaction();

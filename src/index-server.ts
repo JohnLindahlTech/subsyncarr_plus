@@ -62,8 +62,8 @@ async function main() {
 
     // Delete very old runs
     const deleted = db.deleteOldRuns(retentionConfig.keepRunsDays);
-    if (deleted > 0) {
-      console.log(`[${new Date().toISOString()}] Deleted ${deleted} old runs`);
+    if (deleted.length > 0) {
+      console.log(`[${new Date().toISOString()}] Deleted ${deleted.length} old runs`);
       db.vacuum(); // Reclaim space
       console.log(`[${new Date().toISOString()}] Database vacuumed`);
     }
