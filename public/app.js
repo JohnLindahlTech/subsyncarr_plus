@@ -604,10 +604,10 @@ class SubsyncarrPlusClient {
       .map((file) => {
         const engines = JSON.parse(file.engines);
         return `
-        <div class="file-card processing">
+        <div class="file-card processing" data-file-path="${file.file_path}">
           <div class="file-header">
             <div class="file-name">${this.basename(file.file_path)}</div>
-            <button class="btn-skip" onclick="client.skipFile('${file.file_path.replace(/'/g, "\\'")}')">
+            <button class="btn-skip" data-action="skip" data-file-path="${file.file_path}">
               Skip
             </button>
           </div>
@@ -628,7 +628,7 @@ class SubsyncarrPlusClient {
       .map((file) => {
         const engines = JSON.parse(file.engines);
         return `
-        <div class="file-card ${file.status}">
+        <div class="file-card ${file.status}" data-file-path="${file.file_path}">
           <div class="file-name">${this.basename(file.file_path)}</div>
           ${this.renderEngineResults(engines, file.file_path)}
         </div>
@@ -656,6 +656,9 @@ class SubsyncarrPlusClient {
     } else {
       paginationControls.classList.add('hidden');
     }
+
+    // Attach event listeners for dynamic buttons (event delegation)
+    this.attachDynamicFileEvents();
   }
 
   renderEngineResults(engines, filePath) {
@@ -667,7 +670,7 @@ class SubsyncarrPlusClient {
 
         // Add debug button for failed engines
         const debugButton = !result.success
-          ? `<button class="btn-debug" title="View Debug Info" onclick="event.stopPropagation(); client.viewDebugInfo('${filePath.replace(/'/g, "\\'")}', '${name}')">🔍</button>`
+          ? `<button class="btn-debug" title="View Debug Info" data-action="debug" data-file-path="${filePath}" data-engine-name="${name}">🔍</button>`
           : '';
 
         return `
@@ -681,6 +684,58 @@ class SubsyncarrPlusClient {
       `;
       })
       .join('');
+  }
+  // Attach event listeners for dynamic file actions using event delegation
+  attachDynamicFileEvents() {
+    // Files in progress
+    const filesInProgress = document.getElementById('filesInProgress');
+    if (filesInProgress) {
+      filesInProgress.onclick = (e) => {
+        const btn = e.target.closest('button');
+        if (!btn) return;
+        if (btn.classList.contains('btn-skip') && btn.dataset.filePath) {
+          e.preventDefault();
+          this.skipFile(btn.dataset.filePath);
+        }
+        if (btn.classList.contains('btn-debug') && btn.dataset.filePath && btn.dataset.engineName) {
+          e.preventDefault();
+          e.stopPropagation();
+          this.viewDebugInfo(btn.dataset.filePath, btn.dataset.engineName);
+        }
+      };
+    }
+
+    // Completed files
+    const completedList = document.getElementById('completedList');
+    if (completedList) {
+      completedList.onclick = (e) => {
+        const btn = e.target.closest('button');
+        if (!btn) return;
+        if (btn.classList.contains('btn-debug') && btn.dataset.filePath && btn.dataset.engineName) {
+          e.preventDefault();
+          e.stopPropagation();
+          this.viewDebugInfo(btn.dataset.filePath, btn.dataset.engineName);
+        }
+      };
+    }
+
+    // History logs view
+    const historyBody = document.getElementById('historyBody');
+    if (historyBody) {
+      historyBody.onclick = (e) => {
+        const btn = e.target.closest('button');
+        if (!btn) return;
+        if (btn.classList.contains('btn-view-logs') && btn.closest('tr')) {
+          e.preventDefault();
+          const runId =
+            btn.closest('tr').querySelector('button.btn-view-logs').getAttribute('data-run-id') ||
+            btn.closest('tr').getAttribute('data-run-id');
+          // Fallback: get runId from button if set
+          const id = btn.dataset.runId || runId;
+          if (id) this.viewLogs(id);
+        }
+      };
+    }
   }
 
   viewDebugInfo(filePath, engineName) {
@@ -753,7 +808,7 @@ class SubsyncarrPlusClient {
         const engineStats = this.calculateEngineStats(run.files || []);
 
         return `
-        <tr>
+        <tr data-run-id="${run.id}">
           <td>${new Date(run.start_time).toLocaleString()}</td>
           <td><span class="status-badge ${run.status}">${run.status}</span></td>
           <td>${run.total_files}</td>
@@ -765,7 +820,7 @@ class SubsyncarrPlusClient {
           ${this.renderEngineCell(engineStats.alass)}
           <td>${duration}</td>
           <td>
-            <button class="btn-view-logs" onclick="client.viewLogs('${run.id}')">
+            <button class="btn-view-logs" data-action="view-logs" data-run-id="${run.id}">
               📄 View Logs
             </button>
           </td>
@@ -776,6 +831,8 @@ class SubsyncarrPlusClient {
 
     document.getElementById('historyBody').innerHTML =
       html || '<tr><td colspan="11" class="no-data">No runs yet</td></tr>';
+    // Attach event listeners for dynamic logs view
+    this.attachDynamicFileEvents();
   }
 
   async runDryRun() {
