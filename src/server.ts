@@ -173,7 +173,13 @@ export class SubsyncarrPlusServer {
           return res.status(409).json({ error: 'A run is already in progress' });
         }
 
-        const config = paths ? { includePaths: paths, excludePaths: [] } : undefined;
+        const config = paths
+          ? {
+              includePaths: paths,
+              excludePaths: [],
+              enableContextAwareMatching: true,
+            }
+          : undefined;
 
         const runId = await this.coordinator.startRun(config);
         res.json({ runId });

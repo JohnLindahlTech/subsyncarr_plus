@@ -105,13 +105,24 @@ docker run -d \
 | `SCAN_PATHS`                    | `/scan_dir`                   | Comma-separated directories to scan for SRT files (must be mounted as volumes)   |
 | `EXCLUDE_PATHS`                 | _(none)_                      | Comma-separated directories to exclude from scanning                             |
 | `CRON_SCHEDULE`                 | `0 0 * * *`                   | Cron expression for sync schedule (daily at midnight), or `disabled` to turn off |
-| `MAX_CONCURRENT_SYNC_TASKS`     | `1`                           | Number of subtitle files to process in parallel (higher = faster but more CPU)   |
+| `MAX_CONCURRENT_SYNC_TASKS`     | `1`                           | Number of **video files** to process in parallel (higher = faster but more CPU)  |
 | `INCLUDE_ENGINES`               | `ffsubsync,autosubsync,alass` | Which sync engines to use (comma-separated)                                      |
 | `ENABLE_CONTEXT_AWARE_MATCHING` | `true`                        | Fallback to solitary video files if no direct filename match exists              |
 | `SYNC_ENGINE_TIMEOUT_MS`        | `1800000`                     | Timeout for each sync engine in milliseconds (30 min default)                    |
-| `TZ`                            | _(system)_                    | Timezone for logging and cron scheduling (e.g., `America/New_York`)              |
-| `PUID`                          | `1000`                        | User ID for file permissions (run `id -u` to find yours)                         |
-| `PGID`                          | `1000`                        | Group ID for file permissions (run `id -g` to find yours)                        |
+
+### Temporary Directory & Audio Extraction
+
+Subsyncarr Plus uses a unified audio extraction pattern to maximize performance. For each video, audio is extracted once into a temporary `.wav` file and shared across all engines and subtitles.
+
+By default, the system's temporary directory is used. For large runs or to reduce SSD wear, it is recommended to mount a high-speed volume or RAM disk to `/tmp`:
+
+```yaml
+services:
+  subsyncarr-plus:
+    volumes:
+      - /path/to/media:/media
+      - /dev/shm:/tmp # Example: Use host RAM disk for temporary audio
+```
 
 ### Database & Log Configuration
 

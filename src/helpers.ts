@@ -59,3 +59,9 @@ export const getEngineOutputPath = (srtPath: string, engine: string): string => 
   const baseName = fileName.replace(/\.srt$/i, '');
   return `${dir}/${baseName}.${engine}.srt`;
 };
+
+export const extractAudio = async (videoPath: string, outputPath: string, signal?: AbortSignal): Promise<void> => {
+  // Extract audio: mono, 16kHz (common denominator for most engines)
+  const command = `ffmpeg -y -i "${videoPath}" -vn -ac 1 -ar 16000 "${outputPath}"`;
+  await execPromise(command, undefined, signal);
+};

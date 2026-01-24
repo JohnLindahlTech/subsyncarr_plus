@@ -6,8 +6,11 @@ import { generateFfsubsyncSubtitles } from './generateFfsubsyncSubtitles';
 import { generateAutosubsyncSubtitles } from './generateAutosubsyncSubtitles';
 import { generateAlassSubtitles } from './generateAlassSubtitles';
 import { StateManager } from './stateManager';
-import { getEngineOutputPath } from './helpers';
-import { existsSync } from 'fs';
+import { getEngineOutputPath, extractAudio } from './helpers';
+import { existsSync, unlinkSync } from 'fs';
+import * as path from 'path';
+import { randomUUID } from 'crypto';
+import * as os from 'os';
 
 export class ProcessingEngine extends EventEmitter {
   private cancelledFiles: Set<string> = new Set();
@@ -91,26 +94,90 @@ export class ProcessingEngine extends EventEmitter {
       config: scanConfig,
     });
 
-    // Process in batches (only the ones that need processing)
-    this.log(`[${new Date().toISOString()}] Processing with concurrency: ${this.maxConcurrent}`);
+    // Group files by video path
+    const groups = new Map<string, string[]>();
+    for (const srtPath of filesToProcess) {
+      const videoPath = findMatchingVideoFile(srtPath, scanConfig);
+      if (videoPath) {
+        const list = groups.get(videoPath) || [];
+        list.push(srtPath);
+        groups.set(videoPath, list);
+      } else {
+        // No video found, will be handled by processFile emitting no_video
+        const list = groups.get('no_video') || [];
+        list.push(srtPath);
+        groups.set('no_video', list);
+      }
+    }
+
+    const groupList = Array.from(groups.entries());
+
+    // Process in batches of VIDEOS
+    this.log(`[${new Date().toISOString()}] Processing with concurrency: ${this.maxConcurrent} videos`);
     this.log(`[${new Date().toISOString()}] Enabled engines: ${this.enabledEngines.join(', ')}`);
 
-    for (let i = 0; i < filesToProcess.length; i += this.maxConcurrent) {
+    for (let i = 0; i < groupList.length; i += this.maxConcurrent) {
       if (this.globalStopRequested) {
         this.log(`[${new Date().toISOString()}] Stop requested - stopping batch processing`);
         break;
       }
-      const batch = filesToProcess.slice(i, i + this.maxConcurrent);
+      const batch = groupList.slice(i, i + this.maxConcurrent);
       this.log(
-        `[${new Date().toISOString()}] Processing batch ${Math.floor(i / this.maxConcurrent) + 1}/${Math.ceil(filesToProcess.length / this.maxConcurrent)} (${batch.length} files)`,
+        `[${new Date().toISOString()}] Processing batch ${Math.floor(i / this.maxConcurrent) + 1}/${Math.ceil(groupList.length / this.maxConcurrent)} (${batch.length} videos)`,
       );
-      await Promise.all(batch.map((file) => this.processFile(file)));
+      await Promise.all(batch.map(([videoPath, srtPaths]) => this.processVideoGroup(videoPath, srtPaths)));
     }
 
     this.log(`[${new Date().toISOString()}] All files processed`);
   }
 
-  private async processFile(srtPath: string): Promise<void> {
+  private async processVideoGroup(videoPath: string, srtPaths: string[]): Promise<void> {
+    if (videoPath === 'no_video') {
+      for (const srtPath of srtPaths) {
+        await this.processFile(srtPath);
+      }
+      return;
+    }
+
+    const tempAudioPath = path.join(os.tmpdir(), `subsyncarr_${randomUUID()}.wav`);
+    let audioExtracted = false;
+
+    try {
+      // Extract audio once for the entire group
+      this.log(`[${new Date().toISOString()}] Extracting audio for group: ${path.basename(videoPath)}`);
+
+      // Use a controller just for the extraction part
+      const extractionController = new AbortController();
+      // If any srt in the group is skipped, we don't necessarily want to kill extraction
+      // but if the whole run is stopped, we do.
+
+      try {
+        await extractAudio(videoPath, tempAudioPath, extractionController.signal);
+        audioExtracted = true;
+      } catch (err) {
+        this.log(
+          `[${new Date().toISOString()}] Audio extraction failed: ${err instanceof Error ? err.message : String(err)}`,
+        );
+        // Fall back to direct video processing if extraction fails
+      }
+
+      // Process all files in the group (sequentially within group to avoid CPU overload)
+      for (const srtPath of srtPaths) {
+        if (this.globalStopRequested) break;
+        await this.processFile(srtPath, audioExtracted ? tempAudioPath : undefined);
+      }
+    } finally {
+      if (audioExtracted && existsSync(tempAudioPath)) {
+        try {
+          unlinkSync(tempAudioPath);
+        } catch (e) {
+          // Ignore cleanup errors
+        }
+      }
+    }
+  }
+
+  private async processFile(srtPath: string, audioPath?: string): Promise<void> {
     const fileName = srtPath.split('/').pop();
 
     // Check if stopped or cancelled
@@ -132,7 +199,11 @@ export class ProcessingEngine extends EventEmitter {
       return;
     }
 
-    this.log(`[${new Date().toISOString()}] Found video: ${videoPath.split('/').pop()}`);
+    if (audioPath) {
+      this.log(`[${new Date().toISOString()}] Using shared audio reference for: ${fileName}`);
+    } else {
+      this.log(`[${new Date().toISOString()}] Found video: ${videoPath.split('/').pop()}`);
+    }
 
     const controller = new AbortController();
     this.activeControllers.set(srtPath, controller);
@@ -175,13 +246,13 @@ export class ProcessingEngine extends EventEmitter {
         try {
           switch (engine) {
             case 'ffsubsync':
-              result = await generateFfsubsyncSubtitles(srtPath, videoPath, controller.signal);
+              result = await generateFfsubsyncSubtitles(srtPath, videoPath, controller.signal, audioPath);
               break;
             case 'autosubsync':
-              result = await generateAutosubsyncSubtitles(srtPath, videoPath, controller.signal);
+              result = await generateAutosubsyncSubtitles(srtPath, videoPath, controller.signal, audioPath);
               break;
             case 'alass':
-              result = await generateAlassSubtitles(srtPath, videoPath, controller.signal);
+              result = await generateAlassSubtitles(srtPath, videoPath, controller.signal, audioPath);
               break;
             default:
               continue;

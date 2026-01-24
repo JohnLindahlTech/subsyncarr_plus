@@ -6,6 +6,7 @@ export async function generateFfsubsyncSubtitles(
   srtPath: string,
   videoPath: string,
   signal?: AbortSignal,
+  audioPath?: string,
 ): Promise<ProcessingResult> {
   const directory = dirname(srtPath);
   const srtBaseName = basename(srtPath, '.srt');
@@ -21,7 +22,8 @@ export async function generateFfsubsyncSubtitles(
   }
 
   try {
-    const command = `ffsubsync "${videoPath}" -i "${srtPath}" -o "${outputPath}"`;
+    const reference = audioPath || videoPath;
+    const command = `ffsubsync "${reference}" -i "${srtPath}" -o "${outputPath}"`;
     console.log(`${new Date().toLocaleString()} Processing: ${command}`);
     const { stdout, stderr } = await execPromise(command, undefined, signal);
     return {

@@ -6,6 +6,7 @@ export async function generateAutosubsyncSubtitles(
   srtPath: string,
   videoPath: string,
   signal?: AbortSignal,
+  audioPath?: string,
 ): Promise<ProcessingResult> {
   const directory = dirname(srtPath);
   const srtBaseName = basename(srtPath, '.srt');
@@ -20,7 +21,8 @@ export async function generateAutosubsyncSubtitles(
   }
 
   try {
-    const command = `autosubsync "${videoPath}" "${srtPath}" "${outputPath}"`;
+    const reference = audioPath || videoPath;
+    const command = `autosubsync "${reference}" "${srtPath}" "${outputPath}"`;
     console.log(`${new Date().toLocaleString()} Processing: ${command}`);
     const { stdout, stderr } = await execPromise(command, undefined, signal);
     return {
