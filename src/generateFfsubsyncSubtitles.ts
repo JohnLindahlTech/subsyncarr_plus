@@ -2,7 +2,11 @@ import { basename, dirname, join } from 'path';
 import { execPromise, ProcessingResult } from './helpers';
 import { existsSync } from 'fs';
 
-export async function generateFfsubsyncSubtitles(srtPath: string, videoPath: string): Promise<ProcessingResult> {
+export async function generateFfsubsyncSubtitles(
+  srtPath: string,
+  videoPath: string,
+  signal?: AbortSignal,
+): Promise<ProcessingResult> {
   const directory = dirname(srtPath);
   const srtBaseName = basename(srtPath, '.srt');
   const outputPath = join(directory, `${srtBaseName}.ffsubsync.srt`);
@@ -19,7 +23,7 @@ export async function generateFfsubsyncSubtitles(srtPath: string, videoPath: str
   try {
     const command = `ffsubsync "${videoPath}" -i "${srtPath}" -o "${outputPath}"`;
     console.log(`${new Date().toLocaleString()} Processing: ${command}`);
-    const { stdout, stderr } = await execPromise(command);
+    const { stdout, stderr } = await execPromise(command, undefined, signal);
     return {
       success: true,
       message: `Successfully processed: ${outputPath}`,
@@ -29,6 +33,15 @@ export async function generateFfsubsyncSubtitles(srtPath: string, videoPath: str
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     const isTimeout = errorMessage.includes('SIGTERM') || errorMessage.includes('timed out');
+    const isAborted = errorMessage.includes('Aborted');
+
+    if (isAborted) {
+      return {
+        success: false,
+        message: `Aborted: Processing of ${outputPath} was cancelled by user`,
+        isPermanent: false, // Don't mark as permanent if manually aborted
+      };
+    }
 
     // Extract stdout/stderr from error if available
     const execError = error as { stdout?: string; stderr?: string };

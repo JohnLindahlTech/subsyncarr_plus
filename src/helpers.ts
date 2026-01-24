@@ -1,4 +1,3 @@
-import { promisify } from 'util';
 import { exec } from 'child_process';
 
 export interface ProcessingResult {
@@ -10,7 +9,11 @@ export interface ProcessingResult {
   isPermanent?: boolean;
 }
 
-export const execPromise = (command: string, timeoutMs?: number): Promise<{ stdout: string; stderr: string }> => {
+export const execPromise = (
+  command: string,
+  timeoutMs?: number,
+  signal?: AbortSignal,
+): Promise<{ stdout: string; stderr: string }> => {
   // Read from env var with default of 30 minutes (1800000ms)
   const defaultTimeout = process.env.SYNC_ENGINE_TIMEOUT_MS
     ? parseInt(process.env.SYNC_ENGINE_TIMEOUT_MS, 10)
@@ -18,10 +21,34 @@ export const execPromise = (command: string, timeoutMs?: number): Promise<{ stdo
 
   const timeout = timeoutMs ?? defaultTimeout;
 
-  // Use promisified exec with timeout option
-  return promisify(exec)(command, {
-    timeout,
-    maxBuffer: 1024 * 1024 * 10, // 10MB buffer for command output
+  return new Promise((resolve, reject) => {
+    const child = exec(command, { timeout, maxBuffer: 1024 * 1024 * 10 }, (error, stdout, stderr) => {
+      if (error) {
+        // Attach stdout/stderr to error for debugging
+        const err = error as Error & { stdout?: string; stderr?: string };
+        err.stdout = stdout;
+        err.stderr = stderr;
+        reject(err);
+      } else {
+        resolve({ stdout, stderr });
+      }
+    });
+
+    if (signal) {
+      signal.addEventListener(
+        'abort',
+        () => {
+          child.kill('SIGTERM'); // Try graceful kill first
+          // Force kill if it doesn't exit quickly?
+          // For simplicity, we rely on SIGTERM. ffmpeg usually handles it.
+          const err = new Error('Aborted') as Error & { stdout?: string; stderr?: string };
+          err.stdout = '';
+          err.stderr = 'Process aborted by user';
+          reject(err);
+        },
+        { once: true },
+      );
+    }
   });
 };
 

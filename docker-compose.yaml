@@ -4,7 +4,7 @@ services:
   subsyncarr-plus:
     image: tomtomw123/subsyncarr-plus:latest
     container_name: subsyncarr-plus
-    user: "1000:10"
+    user: '1000:10'
     ports:
       - '3000:3000' # Web UI
     volumes:
@@ -19,9 +19,9 @@ services:
     deploy:
       resources:
         limits:
-          memory: 768M      # Hard limit - increased for file-based logging and large runs
+          memory: 768M # Hard limit - increased for file-based logging and large runs
         reservations:
-          memory: 128M      # Minimum guaranteed memory
+          memory: 128M # Minimum guaranteed memory
     environment:
       - TZ=Etc/UTC # Replace with your own timezone
       - PUID=1000

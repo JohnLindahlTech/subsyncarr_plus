@@ -11,6 +11,7 @@ import { existsSync } from 'fs';
 
 export class ProcessingEngine extends EventEmitter {
   private cancelledFiles: Set<string> = new Set();
+  private activeControllers: Map<string, AbortController> = new Map();
   private globalStopRequested: boolean = false;
   private maxConcurrent: number;
   private enabledEngines: string[];
@@ -130,108 +131,119 @@ export class ProcessingEngine extends EventEmitter {
 
     this.log(`[${new Date().toISOString()}] Found video: ${videoPath.split('/').pop()}`);
 
-    // Process with each enabled engine
-    let anyEngineSucceeded = false;
-    let anyEngineSkipped = false;
-    for (const engine of this.enabledEngines) {
-      // Check cancellation before each engine
-      if (this.cancelledFiles.has(srtPath)) {
-        this.log(`[${new Date().toISOString()}] Skipped (cancelled): ${fileName}`);
-        this.emit('file:skipped', { srtPath, reason: 'cancelled' });
-        return;
-      }
+    const controller = new AbortController();
+    this.activeControllers.set(srtPath, controller);
 
-      // Check if engine should be skipped due to consecutive failures
-      if (this.stateManager?.shouldSkipEngine(srtPath, engine)) {
-        this.log(`[${new Date().toISOString()}] ⊘ Skipping ${engine} (3+ consecutive failures): ${fileName}`);
-        anyEngineSkipped = true;
-        this.emit('file:engine_completed', {
-          srtPath,
-          engine,
-          result: {
-            success: false,
-            duration: 0,
-            message: 'Skipped due to 3+ consecutive failures',
-            skipped: true,
-          },
-        });
-        continue; // Skip to next engine
-      }
-
-      this.log(`[${new Date().toISOString()}] Starting ${engine} for: ${fileName}`);
-      this.emit('file:engine_started', { srtPath, engine });
-
-      const startTime = Date.now();
-      let result;
-
-      try {
-        switch (engine) {
-          case 'ffsubsync':
-            result = await generateFfsubsyncSubtitles(srtPath, videoPath);
-            break;
-          case 'autosubsync':
-            result = await generateAutosubsyncSubtitles(srtPath, videoPath);
-            break;
-          case 'alass':
-            result = await generateAlassSubtitles(srtPath, videoPath);
-            break;
-          default:
-            continue;
+    try {
+      // Process with each enabled engine
+      let anyEngineSucceeded = false;
+      let anyEngineSkipped = false;
+      for (const engine of this.enabledEngines) {
+        // Check cancellation before each engine
+        if (this.globalStopRequested || this.cancelledFiles.has(srtPath)) {
+          this.log(`[${new Date().toISOString()}] Skipped (cancelled): ${fileName}`);
+          this.emit('file:skipped', { srtPath, reason: 'cancelled' });
+          return;
         }
 
-        const duration = Date.now() - startTime;
-        const status = result.success ? '✓' : '✗';
-        this.log(
-          `[${new Date().toISOString()}] ${status} ${engine} completed (${(duration / 1000).toFixed(1)}s): ${fileName}`,
-        );
-        if (!result.success) {
-          this.log(`[${new Date().toISOString()}]   Error: ${result.message}`);
-          // Log stderr if available for debugging
-          if (result.stderr) {
-            this.log(`[${new Date().toISOString()}]   Stderr: ${result.stderr.substring(0, 500)}`);
+        // Check if engine should be skipped due to consecutive failures
+        if (this.stateManager?.shouldSkipEngine(srtPath, engine)) {
+          this.log(`[${new Date().toISOString()}] ⊘ Skipping ${engine} (3+ consecutive failures): ${fileName}`);
+          anyEngineSkipped = true;
+          this.emit('file:engine_completed', {
+            srtPath,
+            engine,
+            result: {
+              success: false,
+              duration: 0,
+              message: 'Skipped due to 3+ consecutive failures',
+              skipped: true,
+            },
+          });
+          continue; // Skip to next engine
+        }
+
+        this.log(`[${new Date().toISOString()}] Starting ${engine} for: ${fileName}`);
+        this.emit('file:engine_started', { srtPath, engine });
+
+        const startTime = Date.now();
+        let result;
+
+        try {
+          switch (engine) {
+            case 'ffsubsync':
+              result = await generateFfsubsyncSubtitles(srtPath, videoPath, controller.signal);
+              break;
+            case 'autosubsync':
+              result = await generateAutosubsyncSubtitles(srtPath, videoPath, controller.signal);
+              break;
+            case 'alass':
+              result = await generateAlassSubtitles(srtPath, videoPath, controller.signal);
+              break;
+            default:
+              continue;
           }
+
+          const duration = Date.now() - startTime;
+          const status = result.success ? '✓' : '✗';
+          this.log(
+            `[${new Date().toISOString()}] ${status} ${engine} completed (${(duration / 1000).toFixed(1)}s): ${fileName}`,
+          );
+          if (!result.success) {
+            this.log(`[${new Date().toISOString()}]   Error: ${result.message}`);
+            // Log stderr if available for debugging
+            if (result.stderr) {
+              this.log(`[${new Date().toISOString()}]   Stderr: ${result.stderr.substring(0, 500)}`);
+            }
+          }
+
+          if (result.success) {
+            anyEngineSucceeded = true;
+          }
+
+          this.emit('file:engine_completed', {
+            srtPath,
+            engine,
+            result: { ...result, duration },
+          });
+        } catch (error) {
+          const duration = Date.now() - startTime;
+          this.log(`[${new Date().toISOString()}] ✗ ${engine} failed (${(duration / 1000).toFixed(1)}s): ${fileName}`);
+          this.log(`[${new Date().toISOString()}]   Error: ${error instanceof Error ? error.message : String(error)}`);
+
+          this.emit('file:engine_completed', {
+            srtPath,
+            engine,
+            result: {
+              success: false,
+              message: error instanceof Error ? error.message : String(error),
+              duration,
+            },
+          });
         }
-
-        if (result.success) {
-          anyEngineSucceeded = true;
-        }
-
-        this.emit('file:engine_completed', {
-          srtPath,
-          engine,
-          result: { ...result, duration },
-        });
-      } catch (error) {
-        const duration = Date.now() - startTime;
-        this.log(`[${new Date().toISOString()}] ✗ ${engine} failed (${(duration / 1000).toFixed(1)}s): ${fileName}`);
-        this.log(`[${new Date().toISOString()}]   Error: ${error instanceof Error ? error.message : String(error)}`);
-
-        this.emit('file:engine_completed', {
-          srtPath,
-          engine,
-          result: {
-            success: false,
-            message: error instanceof Error ? error.message : String(error),
-            duration,
-          },
-        });
       }
-    }
 
-    if (anyEngineSucceeded) {
-      this.log(`[${new Date().toISOString()}] ✓ Completed successfully for: ${fileName}`);
-      this.emit('file:completed', { srtPath });
-    } else if (anyEngineSkipped) {
-      this.log(`[${new Date().toISOString()}] ⊘ All attempts skipped for: ${fileName}`);
-      this.emit('file:skipped', { srtPath, reason: 'engine_skipped' });
-    } else {
-      this.log(`[${new Date().toISOString()}] ✗ All engines failed for: ${fileName}`);
-      this.emit('file:failed', { srtPath });
+      if (anyEngineSucceeded) {
+        this.log(`[${new Date().toISOString()}] ✓ Completed successfully for: ${fileName}`);
+        this.emit('file:completed', { srtPath });
+      } else if (anyEngineSkipped) {
+        this.log(`[${new Date().toISOString()}] ⊘ All attempts skipped for: ${fileName}`);
+        this.emit('file:skipped', { srtPath, reason: 'engine_skipped' });
+      } else {
+        this.log(`[${new Date().toISOString()}] ✗ All engines failed for: ${fileName}`);
+        this.emit('file:failed', { srtPath });
+      }
+    } finally {
+      this.activeControllers.delete(srtPath);
     }
   }
 
   skipFile(filePath: string): void {
     this.cancelledFiles.add(filePath);
+    const controller = this.activeControllers.get(filePath);
+    if (controller) {
+      controller.abort();
+    }
     this.emit('file:skip_requested', { filePath });
   }
 
@@ -239,10 +251,17 @@ export class ProcessingEngine extends EventEmitter {
     this.log(`[${new Date().toISOString()}] Stop requested - cancelling all remaining files`);
     this.globalStopRequested = true;
     allFiles.forEach((file) => this.cancelledFiles.add(file));
+
+    // Abort all active tasks
+    this.activeControllers.forEach((controller) => {
+      controller.abort();
+    });
+    this.activeControllers.clear();
   }
 
   reset(): void {
     this.cancelledFiles.clear();
+    this.activeControllers.clear();
     this.globalStopRequested = false;
     this.clearLogs();
   }
