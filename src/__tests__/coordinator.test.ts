@@ -29,7 +29,12 @@ class MockStateManager extends EventEmitter {
   getFileResults = jest.fn();
   getFileCount = jest.fn();
   cancelRun = jest.fn();
+  getAverageEngineDuration = jest.fn().mockReturnValue(30000);
 }
+
+jest.mock('../findMatchingVideoFile', () => ({
+  findMatchingVideoFile: jest.fn().mockReturnValue({ videoPath: '/video/movie.mkv', reason: 'exact_match' }),
+}));
 
 describe('ProcessingCoordinator', () => {
   let coordinator: ProcessingCoordinator;

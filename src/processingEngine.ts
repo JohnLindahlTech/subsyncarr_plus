@@ -102,7 +102,7 @@ export class ProcessingEngine extends EventEmitter {
     // Group files by video path
     const groups = new Map<string, string[]>();
     for (const srtPath of filesToProcess) {
-      const videoPath = findMatchingVideoFile(srtPath, scanConfig, fileIndex);
+      const { videoPath } = findMatchingVideoFile(srtPath, scanConfig, fileIndex);
       if (videoPath) {
         const list = groups.get(videoPath) || [];
         list.push(srtPath);
@@ -219,7 +219,7 @@ export class ProcessingEngine extends EventEmitter {
 
     this.log(`[${new Date().toISOString()}] Processing: ${fileName}`);
 
-    const videoPath = findMatchingVideoFile(srtPath, this.currentScanConfig, fileIndex);
+    const { videoPath } = findMatchingVideoFile(srtPath, this.currentScanConfig, fileIndex);
 
     this.emit('file:started', { srtPath, videoPath });
 
@@ -368,5 +368,93 @@ export class ProcessingEngine extends EventEmitter {
     this.activeControllers.clear();
     this.globalStopRequested = false;
     this.clearLogs();
+  }
+
+  async dryRun(config?: ScanConfig): Promise<{
+    totalSRTs: number;
+    alreadyDone: number;
+    matched: Array<{ srt: string; video: string; reason: string }>;
+    missingVideo: Array<{ srt: string; reason: string; details?: string }>;
+    permanentFailures: number;
+    estimatedMs: number;
+  }> {
+    const scanConfig = config || getScanConfig();
+    const { srtFiles, fileIndex } = await findAllSrtFiles(scanConfig);
+
+    const results = {
+      totalSRTs: srtFiles.length,
+      alreadyDone: 0,
+      matched: [] as Array<{ srt: string; video: string; reason: string }>,
+      missingVideo: [] as Array<{ srt: string; reason: string; details?: string }>,
+      permanentFailures: 0,
+      estimatedMs: 0,
+    };
+
+    // Pre-calculate average engine durations
+    const avgEngineDurations = this.enabledEngines.reduce(
+      (acc, engine) => {
+        acc[engine] = this.stateManager?.getAverageEngineDuration(engine) || 30000;
+        return acc;
+      },
+      {} as Record<string, number>,
+    );
+
+    const totalAvgDurationPerFile = Object.values(avgEngineDurations).reduce((a, b) => a + b, 0);
+
+    for (const srtPath of srtFiles) {
+      // 1. Check if already done
+      let allEnginesDone = true;
+      const dir = path.dirname(srtPath);
+      const baseName = path.basename(srtPath, '.srt');
+
+      for (const engine of this.enabledEngines) {
+        if (!fileIndex.get(dir)?.has(`${baseName}.${engine}.srt`)) {
+          allEnginesDone = false;
+          break;
+        }
+      }
+
+      if (allEnginesDone) {
+        results.alreadyDone++;
+        continue;
+      }
+
+      // 2. Check for permanent failure (speech detection etc)
+      if (this.stateManager) {
+        let isAnyEnginePermanentFailure = false;
+        for (const engine of this.enabledEngines) {
+          if (this.stateManager.shouldSkipEngine(srtPath, engine)) {
+            isAnyEnginePermanentFailure = true;
+            break;
+          }
+        }
+        if (isAnyEnginePermanentFailure) {
+          results.permanentFailures++;
+          continue;
+        }
+      }
+
+      // 3. Try to match video
+      const match = findMatchingVideoFile(srtPath, scanConfig, fileIndex);
+      if (match.videoPath) {
+        results.matched.push({
+          srt: path.basename(srtPath),
+          video: path.basename(match.videoPath),
+          reason: match.reason,
+        });
+        results.estimatedMs += totalAvgDurationPerFile;
+      } else {
+        results.missingVideo.push({
+          srt: path.basename(srtPath),
+          reason: match.reason,
+          details: match.details,
+        });
+      }
+    }
+
+    const maxConcurrent = parseInt(process.env.MAX_CONCURRENT_SYNC_TASKS || '1', 10);
+    results.estimatedMs = results.estimatedMs / maxConcurrent;
+
+    return results;
   }
 }

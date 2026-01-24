@@ -6,25 +6,25 @@ import { generateAlassSubtitles } from './generateAlassSubtitles';
 import { ScanConfig } from './config';
 
 export const processSrtFile = async (srtFile: string, config?: ScanConfig, fileIndex?: Map<string, Set<string>>) => {
-  const videoFile = findMatchingVideoFile(srtFile, config, fileIndex);
+  const matchResult = findMatchingVideoFile(srtFile, config, fileIndex);
   const includeEngines = process.env.INCLUDE_ENGINES?.split(',') || ['ffsubsync', 'autosubsync', 'alass'];
 
-  if (videoFile) {
+  if (matchResult && matchResult.videoPath) {
     if (includeEngines.includes('ffsubsync')) {
       const startTime = Date.now();
-      const ffsubsyncResult = await generateFfsubsyncSubtitles(srtFile, videoFile);
+      const ffsubsyncResult = await generateFfsubsyncSubtitles(srtFile, matchResult.videoPath);
       const duration = Date.now() - startTime;
       console.log(`${new Date().toLocaleString()} ffsubsync result: ${ffsubsyncResult.message} (${duration}ms)`);
     }
     if (includeEngines.includes('autosubsync')) {
       const startTime = Date.now();
-      const autosubsyncResult = await generateAutosubsyncSubtitles(srtFile, videoFile);
+      const autosubsyncResult = await generateAutosubsyncSubtitles(srtFile, matchResult.videoPath);
       const duration = Date.now() - startTime;
       console.log(`${new Date().toLocaleString()} autosubsync result: ${autosubsyncResult.message} (${duration}ms)`);
     }
     if (includeEngines.includes('alass')) {
       const startTime = Date.now();
-      const alassResult = await generateAlassSubtitles(srtFile, videoFile);
+      const alassResult = await generateAlassSubtitles(srtFile, matchResult.videoPath);
       const duration = Date.now() - startTime;
       console.log(`${new Date().toLocaleString()} alass result: ${alassResult.message} (${duration}ms)`);
     }

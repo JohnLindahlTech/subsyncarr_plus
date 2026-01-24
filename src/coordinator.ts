@@ -51,19 +51,25 @@ export class ProcessingCoordinator {
         this.currentRunId = this.stateManager.startRun(totalCount, this.enabledEngines);
 
         // Bulk add pending files
-        const pendingFiles = processing.map((filePath) => ({
-          filePath,
-          videoPath: findMatchingVideoFile(filePath, config),
-          status: 'pending' as const,
-        }));
+        const pendingFiles = processing.map((filePath) => {
+          const match = findMatchingVideoFile(filePath, config);
+          return {
+            filePath,
+            videoPath: match.videoPath,
+            status: 'pending' as const,
+          };
+        });
         this.stateManager.addFilesBulk(this.currentRunId!, pendingFiles);
 
         // Bulk add skipped files
-        const skippedFiles = skipped.map((filePath) => ({
-          filePath,
-          videoPath: findMatchingVideoFile(filePath, config),
-          status: 'skipped' as const,
-        }));
+        const skippedFiles = skipped.map((filePath) => {
+          const match = findMatchingVideoFile(filePath, config);
+          return {
+            filePath,
+            videoPath: match.videoPath,
+            status: 'skipped' as const,
+          };
+        });
         this.stateManager.addFilesBulk(this.currentRunId!, skippedFiles);
 
         // Update run stats in bulk for skipped files
@@ -274,5 +280,19 @@ export class ProcessingCoordinator {
 
   isRunning(): boolean {
     return this.processingPromise !== null;
+  }
+
+  async dryRun(config?: ScanConfig): Promise<{
+    totalSRTs: number;
+    alreadyDone: number;
+    matched: Array<{ srt: string; video: string; reason: string }>;
+    missingVideo: Array<{ srt: string; reason: string; details?: string }>;
+    permanentFailures: number;
+    estimatedMs: number;
+  }> {
+    if (this.isRunning()) {
+      throw new Error('Cannot perform dry run while a real run is in progress');
+    }
+    return this.engine.dryRun(config);
   }
 }

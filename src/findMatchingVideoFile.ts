@@ -6,7 +6,16 @@ import { ScanConfig } from './config';
 type VideoExtension = '.mkv' | '.mp4' | '.avi' | '.mov';
 const VIDEO_EXTENSIONS: VideoExtension[] = ['.mkv', '.mp4', '.avi', '.mov'];
 
-function getSingleVideoInDir(directory: string, fileIndex?: Map<string, Set<string>>): string | null {
+export interface MatchResult {
+  videoPath: string | null;
+  reason: 'exact_match' | 'tag_match' | 'context_fallback' | 'ambiguous' | 'no_videos_found' | 'not_attempted';
+  details?: string;
+}
+
+function getSingleVideoInDir(
+  directory: string,
+  fileIndex?: Map<string, Set<string>>,
+): { videoPath: string | null; reason: 'solitary' | 'ambiguous' | 'none' } {
   try {
     const filenames = fileIndex
       ? Array.from(fileIndex.get(directory) || [])
@@ -17,19 +26,22 @@ function getSingleVideoInDir(directory: string, fileIndex?: Map<string, Set<stri
     );
 
     if (videoFiles.length === 1) {
-      return join(directory, videoFiles[0]);
+      return { videoPath: join(directory, videoFiles[0]), reason: 'solitary' };
+    }
+    if (videoFiles.length > 1) {
+      return { videoPath: null, reason: 'ambiguous' };
     }
   } catch (error) {
     // Ignore directory access errors
   }
-  return null;
+  return { videoPath: null, reason: 'none' };
 }
 
 export function findMatchingVideoFile(
   srtPath: string,
   config?: ScanConfig,
   fileIndex?: Map<string, Set<string>>,
-): string | null {
+): MatchResult {
   const directory = dirname(srtPath);
   const srtBaseName = basename(srtPath, '.srt');
 
@@ -40,43 +52,53 @@ export function findMatchingVideoFile(
     return fileIndex.get(dir)?.has(name) || false;
   };
 
-  // Try exact match first
+  // 1. Try exact match first
   for (const ext of VIDEO_EXTENSIONS) {
     const possibleVideoPath = join(directory, `${srtBaseName}${ext}`);
     if (fileExists(possibleVideoPath)) {
-      return possibleVideoPath;
+      return { videoPath: possibleVideoPath, reason: 'exact_match' };
     }
   }
 
-  // Progressive tag removal - split by dots and try removing one segment at a time
+  // 2. Progressive tag removal
   const segments = srtBaseName.split('.');
   while (segments.length > 1) {
-    segments.pop(); // Remove the last segment
+    segments.pop();
     const baseNameToTry = segments.join('.');
 
     for (const ext of VIDEO_EXTENSIONS) {
       const possibleVideoPath = join(directory, `${baseNameToTry}${ext}`);
       if (fileExists(possibleVideoPath)) {
-        return possibleVideoPath;
+        return {
+          videoPath: possibleVideoPath,
+          reason: 'tag_match',
+          details: `Matched after removing tags: ${baseNameToTry}`,
+        };
       }
     }
   }
 
-  // Only proceed to fallbacks if enabled in config
+  // 3. Context-aware fallbacks
   if (config?.enableContextAwareMatching !== false) {
-    // Fallback 1: Exactly one video in the same directory
-    const singleVideoSameDir = getSingleVideoInDir(directory, fileIndex);
-    if (singleVideoSameDir) {
-      return singleVideoSameDir;
+    const sameDir = getSingleVideoInDir(directory, fileIndex);
+    if (sameDir.videoPath) {
+      return { videoPath: sameDir.videoPath, reason: 'context_fallback', details: 'Solitary video in same directory' };
     }
 
-    // Fallback 2: Exactly one video in the parent directory
     const parentDir = resolve(directory, '..');
-    const singleVideoParentDir = getSingleVideoInDir(parentDir, fileIndex);
-    if (singleVideoParentDir) {
-      return singleVideoParentDir;
+    const pDir = getSingleVideoInDir(parentDir, fileIndex);
+    if (pDir.videoPath) {
+      return { videoPath: pDir.videoPath, reason: 'context_fallback', details: 'Solitary video in parent directory' };
+    }
+
+    if (sameDir.reason === 'ambiguous' || pDir.reason === 'ambiguous') {
+      return {
+        videoPath: null,
+        reason: 'ambiguous',
+        details: 'Found multiple videos, rename SRT to match one exactly',
+      };
     }
   }
 
-  return null;
+  return { videoPath: null, reason: 'no_videos_found', details: 'Checked current and parent directory' };
 }

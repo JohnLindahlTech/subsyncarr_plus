@@ -24,7 +24,10 @@ describe('ProcessingEngine', () => {
     engine = new ProcessingEngine();
 
     // Default mocks
-    (findMatchingVideoFileModule.findMatchingVideoFile as jest.Mock).mockReturnValue('/video/path/movie.mkv');
+    (findMatchingVideoFileModule.findMatchingVideoFile as jest.Mock).mockReturnValue({
+      videoPath: '/video/path/movie.mkv',
+      reason: 'exact_match',
+    });
     (helpers.getEngineOutputPath as jest.Mock).mockImplementation((path, engine) => `${path}.${engine}.srt`);
     (findAllSrtFilesModule.findAllSrtFiles as jest.Mock).mockResolvedValue({
       srtFiles: ['file1.srt', 'file2.srt'],
@@ -159,10 +162,10 @@ describe('ProcessingEngine', () => {
 
     // Mock each file having its own unique video path
     (findMatchingVideoFileModule.findMatchingVideoFile as jest.Mock).mockImplementation((srtPath) => {
-      if (srtPath === 'file1.srt') return '/v1/movie1.mkv';
-      if (srtPath === 'file2.srt') return '/v2/movie2.mkv';
-      if (srtPath === 'file3.srt') return '/v3/movie3.mkv';
-      return null;
+      if (srtPath === 'file1.srt') return { videoPath: '/v1/movie1.mkv', reason: 'exact_match' };
+      if (srtPath === 'file2.srt') return { videoPath: '/v2/movie2.mkv', reason: 'exact_match' };
+      if (srtPath === 'file3.srt') return { videoPath: '/v3/movie3.mkv', reason: 'exact_match' };
+      return { videoPath: null, reason: 'no_videos_found' };
     });
 
     let activeWorkers = 0;

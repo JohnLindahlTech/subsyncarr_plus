@@ -209,6 +209,19 @@ export class SubsyncarrPlusServer {
       }
     });
 
+    // Dry Run
+    this.app.post('/api/run/dry-run', async (req, res) => {
+      console.log(`[${new Date().toISOString()}] POST /api/run/dry-run`);
+      try {
+        const results = await this.coordinator.dryRun();
+        res.json(results);
+      } catch (error) {
+        res.status(500).json({
+          error: error instanceof Error ? error.message : 'Unknown error',
+        });
+      }
+    });
+
     // Stop current run
     this.app.post('/api/run/stop', (_req, res) => {
       console.log(`[${new Date().toISOString()}] POST /api/run/stop`);

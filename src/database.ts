@@ -532,4 +532,26 @@ export class SubsyncarrPlusDatabase {
   close() {
     this.db.close();
   }
+
+  /**
+   * Get average duration for an engine in milliseconds
+   */
+  getAverageEngineDuration(engine: string): number {
+    try {
+      // Extract duration from JSON engines column
+      const result = this.db
+        .prepare(
+          `
+        SELECT AVG(json_extract(engines, '$.' || ? || '.duration')) as avg_duration
+        FROM file_results
+        WHERE json_extract(engines, '$.' || ? || '.success') = 1
+      `,
+        )
+        .get(engine, engine) as { avg_duration: number | null };
+
+      return result.avg_duration || 30000; // Default to 30s if no data
+    } catch (e) {
+      return 30000;
+    }
+  }
 }

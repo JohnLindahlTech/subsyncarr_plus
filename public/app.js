@@ -311,6 +311,10 @@ class SubsyncarrPlusClient {
       document.getElementById('customPaths').value = ''; // Clear previous input
     });
 
+    document.getElementById('dryRun').addEventListener('click', () => {
+      this.runDryRun();
+    });
+
     document.getElementById('stopRun').addEventListener('click', () => {
       this.stopRun();
     });
@@ -772,6 +776,53 @@ class SubsyncarrPlusClient {
 
     document.getElementById('historyBody').innerHTML =
       html || '<tr><td colspan="11" class="no-data">No runs yet</td></tr>';
+  }
+
+  async runDryRun() {
+    try {
+      const btn = document.getElementById('dryRun');
+      const originalText = btn.innerHTML;
+      btn.innerHTML = '⌛ Scanning...';
+      btn.disabled = true;
+
+      const response = await fetch('/api/run/dry-run', { method: 'POST' });
+      const data = await response.json();
+
+      btn.innerHTML = originalText;
+      btn.disabled = false;
+
+      this.renderDryRunResults(data);
+    } catch (error) {
+      alert(`Dry run failed: ${error.message}`);
+    }
+  }
+
+  renderDryRunResults(data) {
+    document.getElementById('dryTotal').textContent = data.totalSRTs;
+    document.getElementById('dryDone').textContent = data.alreadyDone;
+    document.getElementById('dryMatched').textContent = data.matched.length;
+    document.getElementById('dryMissing').textContent = data.missingVideo.length;
+
+    // Format estimate
+    const totalSeconds = Math.floor(data.estimatedMs / 1000);
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    document.getElementById('dryEstimate').textContent = `${hours}h ${minutes}m`;
+
+    const missingHtml = data.missingVideo
+      .map(
+        (m) => `
+      <div class="missing-item">
+        <div class="missing-file">${m.srt}</div>
+        <div class="missing-reason">${m.details || m.reason}</div>
+      </div>
+    `,
+      )
+      .join('');
+
+    document.getElementById('dryMissingList').innerHTML =
+      missingHtml || '<p>No missing videos found! Everything matched.</p>';
+    document.getElementById('dryRunModal').classList.remove('hidden');
   }
 
   basename(path) {

@@ -15,14 +15,16 @@ describe('findMatchingVideoFile', () => {
   it('should find an exact match', () => {
     (fs.existsSync as jest.Mock).mockImplementation((p) => p === '/media/Movies/Matrix/subs/sv.mkv');
     const result = findMatchingVideoFile(mockSrtPath);
-    expect(result).toBe('/media/Movies/Matrix/subs/sv.mkv');
+    expect(result.videoPath).toBe('/media/Movies/Matrix/subs/sv.mkv');
+    expect(result.reason).toBe('exact_match');
   });
 
   it('should find a match via progressive tag removal', () => {
     const srt = '/media/Movies/Movie.2024.1080p.srt';
     (fs.existsSync as jest.Mock).mockImplementation((p) => p === '/media/Movies/Movie.2024.mkv');
     const result = findMatchingVideoFile(srt);
-    expect(result).toBe('/media/Movies/Movie.2024.mkv');
+    expect(result.videoPath).toBe('/media/Movies/Movie.2024.mkv');
+    expect(result.reason).toBe('tag_match');
   });
 
   it('should fallback to solitary video in same directory', () => {
@@ -34,7 +36,8 @@ describe('findMatchingVideoFile', () => {
     ]);
 
     const result = findMatchingVideoFile(mockSrtPath);
-    expect(result).toBe('/media/Movies/Matrix/subs/other_name.mkv');
+    expect(result.videoPath).toBe('/media/Movies/Matrix/subs/other_name.mkv');
+    expect(result.reason).toBe('context_fallback');
   });
 
   it('should fallback to solitary video in parent directory', () => {
@@ -50,7 +53,8 @@ describe('findMatchingVideoFile', () => {
     });
 
     const result = findMatchingVideoFile(mockSrtPath);
-    expect(result).toBe('/media/Movies/Matrix/Matrix.1999.mkv');
+    expect(result.videoPath).toBe('/media/Movies/Matrix/Matrix.1999.mkv');
+    expect(result.reason).toBe('context_fallback');
   });
 
   it('should find match using fileIndex without disk access', () => {
@@ -61,7 +65,8 @@ describe('findMatchingVideoFile', () => {
     const existsSpy = jest.spyOn(fs, 'existsSync');
 
     const result = findMatchingVideoFile('/media/Movies/movie.srt', undefined, fileIndex);
-    expect(result).toBe('/media/Movies/movie.mkv');
+    expect(result.videoPath).toBe('/media/Movies/movie.mkv');
+    expect(result.reason).toBe('exact_match');
     expect(existsSpy).not.toHaveBeenCalled();
   });
 
@@ -73,6 +78,7 @@ describe('findMatchingVideoFile', () => {
     ]);
 
     const result = findMatchingVideoFile(mockSrtPath);
-    expect(result).toBeNull();
+    expect(result.videoPath).toBeNull();
+    expect(result.reason).toBe('ambiguous');
   });
 });

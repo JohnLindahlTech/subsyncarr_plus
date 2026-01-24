@@ -40,6 +40,7 @@
             <span id="themeIcon">🌓</span>
             <span id="themeLabel">Theme</span>
           </button>
+          <button id="dryRun" class="btn btn-secondary">🔍 Dry Run Scan</button>
           <button id="startRun" class="btn btn-primary">▶ Start Full Run</button>
           <button id="startCustom" class="btn btn-secondary">📁 Scan Specific Path</button>
           <button id="stopRun" class="btn btn-danger hidden">⏹ Stop Processing</button>
@@ -157,6 +158,49 @@
         </div>
         <div class="modal-footer">
           <button id="closeDebugButton" class="btn btn-secondary">Close</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Dry Run Modal -->
+    <div id="dryRunModal" class="modal hidden">
+      <div class="modal-content debug-modal">
+        <div class="modal-header">
+          <h3>Dry Run Impact Report</h3>
+          <button id="closeDryRunModal" class="close-btn">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="summary-grid">
+            <div class="summary-card">
+              <label>Total SRTs</label>
+              <div id="dryTotal" class="summary-value">-</div>
+            </div>
+            <div class="summary-card success">
+              <label>Already Done</label>
+              <div id="dryDone" class="summary-value">-</div>
+            </div>
+            <div class="summary-card primary">
+              <label>Matched to Video</label>
+              <div id="dryMatched" class="summary-value">-</div>
+            </div>
+            <div class="summary-card danger">
+              <label>Missing Video</label>
+              <div id="dryMissing" class="summary-value">-</div>
+            </div>
+          </div>
+
+          <div class="debug-section">
+            <label>Estimated Execution Time (at current concurrency):</label>
+            <div id="dryEstimate" class="estimate-value">-</div>
+          </div>
+
+          <div class="debug-section">
+            <label>Missing Video Details:</label>
+            <div id="dryMissingList" class="detail-list"></div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button id="closeDryRunButton" class="btn btn-secondary">Close</button>
         </div>
       </div>
     </div>

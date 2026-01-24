@@ -269,6 +269,10 @@ export class StateManager extends EventEmitter {
     return this.db.getFailureTrackingStats();
   }
 
+  getAverageEngineDuration(engine: string): number {
+    return this.db.getAverageEngineDuration(engine);
+  }
+
   /**
    * Performs database maintenance tasks
    */
