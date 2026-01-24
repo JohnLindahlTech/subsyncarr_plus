@@ -538,7 +538,7 @@ class SubsyncarrPlusClient {
       progressText.textContent = `${finishedFiles} / ${currentRun.total_files} files (${Math.round(percent)}%)`;
 
       if (currentRun.current_video) {
-        currentTaskStatus.textContent = `⚙️ Extracting audio: ${this.basename(currentRun.current_video)}...`;
+        currentTaskStatus.textContent = currentRun.current_video;
       } else {
         currentTaskStatus.textContent = '';
       }

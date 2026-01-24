@@ -10,6 +10,7 @@ export class ProcessingCoordinator {
   private enabledEngines: string[];
   private currentRunId: string | null = null;
   private stopRequested: boolean = false;
+  private activeVideos: Map<string, string> = new Map(); // videoPath -> status message
 
   constructor(
     private engine: ProcessingEngine,
@@ -75,15 +76,35 @@ export class ProcessingCoordinator {
       },
     );
 
-    this.engine.on('video:started', ({ videoPath }: { videoPath: string }) => {
-      if (this.currentRunId) {
-        this.stateManager.setCurrentVideo(this.currentRunId, videoPath);
-      }
+    this.engine.on('video:started', () => {
+      // Handled by phase_changed for more detail
     });
 
-    this.engine.on('video:completed', () => {
+    this.engine.on(
+      'video:phase_changed',
+      ({ videoPath, phase }: { videoPath: string; phase: 'extracting' | 'syncing' }) => {
+        if (this.currentRunId) {
+          const basename = videoPath.split('/').pop();
+          const status =
+            phase === 'extracting' ? `⚙️ Extracting audio: ${basename}...` : `⚙️ Syncing subtitles: ${basename}...`;
+
+          this.activeVideos.set(videoPath, status);
+          this.stateManager.setCurrentVideo(this.currentRunId, status);
+        }
+      },
+    );
+
+    this.engine.on('video:completed', ({ videoPath }: { videoPath: string }) => {
       if (this.currentRunId) {
-        this.stateManager.setCurrentVideo(this.currentRunId, null);
+        this.activeVideos.delete(videoPath);
+
+        if (this.activeVideos.size > 0) {
+          // Show the next most recent active video status
+          const nextStatus = Array.from(this.activeVideos.values()).pop();
+          this.stateManager.setCurrentVideo(this.currentRunId, nextStatus || null);
+        } else {
+          this.stateManager.setCurrentVideo(this.currentRunId, null);
+        }
       }
     });
 
@@ -164,6 +185,7 @@ export class ProcessingCoordinator {
     this.engine.reset();
     this.currentRunId = null;
     this.stopRequested = false;
+    this.activeVideos.clear();
 
     const ac = new AbortController();
     // Use events.once for cleaner listener handling with AbortSignal support

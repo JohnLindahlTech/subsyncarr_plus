@@ -165,6 +165,7 @@ export class ProcessingEngine extends EventEmitter {
     }
 
     this.emit('video:started', { videoPath, srtPaths });
+    this.emit('video:phase_changed', { videoPath, phase: 'extracting' });
 
     const tempAudioPath = path.join(os.tmpdir(), `subsyncarr_${randomUUID()}.wav`);
     let audioExtracted = false;
@@ -187,6 +188,8 @@ export class ProcessingEngine extends EventEmitter {
         );
         // Fall back to direct video processing if extraction fails
       }
+
+      this.emit('video:phase_changed', { videoPath, phase: 'syncing' });
 
       // Process all files in the group (sequentially within group to avoid CPU overload)
       for (const srtPath of srtPaths) {
