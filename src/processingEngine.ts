@@ -6,7 +6,7 @@ import { generateFfsubsyncSubtitles } from './generateFfsubsyncSubtitles';
 import { generateAutosubsyncSubtitles } from './generateAutosubsyncSubtitles';
 import { generateAlassSubtitles } from './generateAlassSubtitles';
 import { StateManager } from './stateManager';
-import { getEngineOutputPath, extractAudio } from './helpers';
+import { extractAudio } from './helpers';
 import { existsSync, unlinkSync } from 'fs';
 import * as path from 'path';
 import { randomUUID } from 'crypto';
@@ -57,7 +57,7 @@ export class ProcessingEngine extends EventEmitter {
     this.log(`[${new Date().toISOString()}] Scanning for subtitle files...`);
     this.log(`[${new Date().toISOString()}] Scan paths: ${JSON.stringify(scanConfig.includePaths)}`);
 
-    const srtFiles = await findAllSrtFiles(scanConfig);
+    const { srtFiles, fileIndex } = await findAllSrtFiles(scanConfig);
     this.log(`[${new Date().toISOString()}] Found ${srtFiles.length} subtitle files`);
 
     // Bulk Pre-Check: Filter out files that are already done
@@ -69,9 +69,12 @@ export class ProcessingEngine extends EventEmitter {
 
     for (const srtPath of srtFiles) {
       let allEnginesDone = true;
+      const dir = path.dirname(srtPath);
+      const baseName = path.basename(srtPath, '.srt');
+
       for (const engine of this.enabledEngines) {
-        const outputPath = getEngineOutputPath(srtPath, engine);
-        if (!existsSync(outputPath)) {
+        const outputName = `${baseName}.${engine}.srt`;
+        if (!fileIndex.get(dir)?.has(outputName)) {
           allEnginesDone = false;
           break;
         }
@@ -94,12 +97,13 @@ export class ProcessingEngine extends EventEmitter {
       skipped: filesToSkip,
       totalCount: srtFiles.length,
       config: scanConfig,
+      fileIndex, // Pass the index through for matching
     });
 
     // Group files by video path
     const groups = new Map<string, string[]>();
     for (const srtPath of filesToProcess) {
-      const videoPath = findMatchingVideoFile(srtPath, scanConfig);
+      const videoPath = findMatchingVideoFile(srtPath, scanConfig, fileIndex);
       if (videoPath) {
         const list = groups.get(videoPath) || [];
         list.push(srtPath);
@@ -127,16 +131,20 @@ export class ProcessingEngine extends EventEmitter {
       this.log(
         `[${new Date().toISOString()}] Processing batch ${Math.floor(i / this.maxConcurrent) + 1}/${Math.ceil(groupList.length / this.maxConcurrent)} (${batch.length} videos)`,
       );
-      await Promise.all(batch.map(([videoPath, srtPaths]) => this.processVideoGroup(videoPath, srtPaths)));
+      await Promise.all(batch.map(([videoPath, srtPaths]) => this.processVideoGroup(videoPath, srtPaths, fileIndex)));
     }
 
     this.log(`[${new Date().toISOString()}] All files processed`);
   }
 
-  private async processVideoGroup(videoPath: string, srtPaths: string[]): Promise<void> {
+  private async processVideoGroup(
+    videoPath: string,
+    srtPaths: string[],
+    fileIndex: Map<string, Set<string>>,
+  ): Promise<void> {
     if (videoPath === 'no_video') {
       for (const srtPath of srtPaths) {
-        await this.processFile(srtPath);
+        await this.processFile(srtPath, undefined, fileIndex);
       }
       return;
     }
@@ -168,7 +176,7 @@ export class ProcessingEngine extends EventEmitter {
       // Process all files in the group (sequentially within group to avoid CPU overload)
       for (const srtPath of srtPaths) {
         if (this.globalStopRequested) break;
-        await this.processFile(srtPath, audioExtracted ? tempAudioPath : undefined);
+        await this.processFile(srtPath, audioExtracted ? tempAudioPath : undefined, fileIndex);
       }
     } finally {
       if (audioExtracted && existsSync(tempAudioPath)) {
@@ -182,7 +190,7 @@ export class ProcessingEngine extends EventEmitter {
     }
   }
 
-  private async processFile(srtPath: string, audioPath?: string): Promise<void> {
+  private async processFile(srtPath: string, audioPath?: string, fileIndex?: Map<string, Set<string>>): Promise<void> {
     const fileName = srtPath.split('/').pop();
 
     // Check if stopped or cancelled
@@ -194,7 +202,7 @@ export class ProcessingEngine extends EventEmitter {
 
     this.log(`[${new Date().toISOString()}] Processing: ${fileName}`);
 
-    const videoPath = findMatchingVideoFile(srtPath, this.currentScanConfig);
+    const videoPath = findMatchingVideoFile(srtPath, this.currentScanConfig, fileIndex);
 
     this.emit('file:started', { srtPath, videoPath });
 

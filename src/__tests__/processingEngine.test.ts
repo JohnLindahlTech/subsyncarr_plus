@@ -25,48 +25,62 @@ describe('ProcessingEngine', () => {
 
     // Default mocks
     (helpers.getEngineOutputPath as jest.Mock).mockImplementation((path, engine) => `${path}.${engine}.srt`);
-    (findAllSrtFilesModule.findAllSrtFiles as jest.Mock).mockResolvedValue(['file1.srt', 'file2.srt']);
+    (findAllSrtFilesModule.findAllSrtFiles as jest.Mock).mockResolvedValue({
+      srtFiles: ['file1.srt', 'file2.srt'],
+      fileIndex: new Map([['.', new Set(['file1.srt', 'file2.srt'])]]),
+    });
     (ffsubsyncModule.generateFfsubsyncSubtitles as jest.Mock).mockResolvedValue({ success: true, message: 'Done' });
   });
 
   it('should categorize files correctly when outputs do not exist (process all)', async () => {
-    // Setup: No output files exist
-    (fs.existsSync as jest.Mock).mockReturnValue(false);
+    // Setup: No output files exist in the index
+    (findAllSrtFilesModule.findAllSrtFiles as jest.Mock).mockResolvedValue({
+      srtFiles: ['file1.srt', 'file2.srt'],
+      fileIndex: new Map([['.', new Set(['file1.srt', 'file2.srt'])]]),
+    });
 
     const filesFoundSpy = jest.fn();
     engine.on('run:files_found', filesFoundSpy);
 
     await engine.processRun();
 
-    expect(filesFoundSpy).toHaveBeenCalledWith({
-      processing: ['file1.srt', 'file2.srt'],
-      skipped: [],
-      totalCount: 2,
-      config: expect.any(Object),
-    });
+    expect(filesFoundSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        processing: ['file1.srt', 'file2.srt'],
+        skipped: [],
+      }),
+    );
   });
 
   it('should categorize files correctly when all outputs exist (skip all)', async () => {
-    // Setup: All output files exist
-    (fs.existsSync as jest.Mock).mockReturnValue(true);
+    // Setup: All output files exist in the index
+    (findAllSrtFilesModule.findAllSrtFiles as jest.Mock).mockResolvedValue({
+      srtFiles: ['file1.srt'],
+      fileIndex: new Map([
+        ['.', new Set(['file1.srt', 'file1.ffsubsync.srt', 'file1.autosubsync.srt', 'file1.alass.srt'])],
+      ]),
+    });
 
     const filesFoundSpy = jest.fn();
     engine.on('run:files_found', filesFoundSpy);
 
     await engine.processRun();
 
-    expect(filesFoundSpy).toHaveBeenCalledWith({
-      processing: [],
-      skipped: ['file1.srt', 'file2.srt'],
-      totalCount: 2,
-      config: expect.any(Object),
-    });
+    expect(filesFoundSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        processing: [],
+        skipped: ['file1.srt'],
+      }),
+    );
   });
 
   it('should split files correctly (mixed state)', async () => {
-    // Setup: file1 exists, file2 missing
-    (fs.existsSync as jest.Mock).mockImplementation((path: string) => {
-      return path.includes('file1');
+    // Setup: file1 has all outputs, file2 has none
+    (findAllSrtFilesModule.findAllSrtFiles as jest.Mock).mockResolvedValue({
+      srtFiles: ['file1.srt', 'file2.srt'],
+      fileIndex: new Map([
+        ['.', new Set(['file1.srt', 'file1.ffsubsync.srt', 'file1.autosubsync.srt', 'file1.alass.srt', 'file2.srt'])],
+      ]),
     });
 
     const filesFoundSpy = jest.fn();
@@ -74,12 +88,12 @@ describe('ProcessingEngine', () => {
 
     await engine.processRun();
 
-    expect(filesFoundSpy).toHaveBeenCalledWith({
-      processing: ['file2.srt'],
-      skipped: ['file1.srt'],
-      totalCount: 2,
-      config: expect.any(Object),
-    });
+    expect(filesFoundSpy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        processing: ['file2.srt'],
+        skipped: ['file1.srt'],
+      }),
+    );
   });
 
   it('should stop batch processing if global stop is requested', async () => {

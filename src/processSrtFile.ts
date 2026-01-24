@@ -3,9 +3,10 @@ import { findMatchingVideoFile } from './findMatchingVideoFile';
 import { generateAutosubsyncSubtitles } from './generateAutosubsyncSubtitles';
 import { generateFfsubsyncSubtitles } from './generateFfsubsyncSubtitles';
 import { generateAlassSubtitles } from './generateAlassSubtitles';
+import { ScanConfig } from './config';
 
-export const processSrtFile = async (srtFile: string) => {
-  const videoFile = findMatchingVideoFile(srtFile);
+export const processSrtFile = async (srtFile: string, config?: ScanConfig, fileIndex?: Map<string, Set<string>>) => {
+  const videoFile = findMatchingVideoFile(srtFile, config, fileIndex);
   const includeEngines = process.env.INCLUDE_ENGINES?.split(',') || ['ffsubsync', 'autosubsync', 'alass'];
 
   if (videoFile) {

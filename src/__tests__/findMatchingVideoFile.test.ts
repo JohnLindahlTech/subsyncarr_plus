@@ -53,6 +53,18 @@ describe('findMatchingVideoFile', () => {
     expect(result).toBe('/media/Movies/Matrix/Matrix.1999.mkv');
   });
 
+  it('should find match using fileIndex without disk access', () => {
+    const fileIndex = new Map<string, Set<string>>();
+    fileIndex.set('/media/Movies', new Set(['movie.mkv', 'movie.srt']));
+
+    // existsSync should NOT be called if index is working
+    const existsSpy = jest.spyOn(fs, 'existsSync');
+
+    const result = findMatchingVideoFile('/media/Movies/movie.srt', undefined, fileIndex);
+    expect(result).toBe('/media/Movies/movie.mkv');
+    expect(existsSpy).not.toHaveBeenCalled();
+  });
+
   it('should return null if multiple videos exist in same directory (ambiguous)', () => {
     (fs.existsSync as jest.Mock).mockReturnValue(false);
     (fs.readdirSync as jest.Mock).mockReturnValue([
