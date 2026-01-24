@@ -53,6 +53,7 @@ export class ProcessingEngine extends EventEmitter {
   async processRun(config?: ScanConfig): Promise<void> {
     const scanConfig = config || getScanConfig();
     this.currentScanConfig = scanConfig;
+    this.emit('run:init_progress', 'Scanning directories...');
     this.log(`[${new Date().toISOString()}] Scanning for subtitle files...`);
     this.log(`[${new Date().toISOString()}] Scan paths: ${JSON.stringify(scanConfig.includePaths)}`);
 
@@ -63,6 +64,7 @@ export class ProcessingEngine extends EventEmitter {
     const filesToProcess: string[] = [];
     const filesToSkip: string[] = [];
 
+    this.emit('run:init_progress', `Checking ${srtFiles.length} files for existing subtitles...`);
     this.log(`[${new Date().toISOString()}] Checking for existing subtitles...`);
 
     for (const srtPath of srtFiles) {

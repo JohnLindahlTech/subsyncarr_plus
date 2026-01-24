@@ -52,10 +52,15 @@ class SubsyncarrPlusClient {
         this.state.isRunning = true;
         this.state.files = []; // Clear files for new run
         this.state.pagination.page = 1;
+        this.state.initMessage = null;
         this.render();
         break;
       case 'run:updated':
         this.state.currentRun = msg.data;
+        this.render();
+        break;
+      case 'run:progress':
+        this.state.initMessage = msg.data.message;
         this.render();
         break;
       case 'run:completed':
@@ -386,6 +391,7 @@ class SubsyncarrPlusClient {
   async startRun(paths = null) {
     try {
       this.state.isRunning = true;
+      this.state.initMessage = 'Scanning directories...';
       this.render();
 
       const response = await fetch('/api/run/start', {
@@ -507,7 +513,7 @@ class SubsyncarrPlusClient {
 
     if (isRunning && !currentRun) {
       document.getElementById('progressFill').style.width = '0%';
-      document.getElementById('progressText').textContent = 'Scanning & Initializing...';
+      document.getElementById('progressText').textContent = this.state.initMessage || 'Scanning & Initializing...';
       return;
     }
 

@@ -30,6 +30,10 @@ export class ProcessingCoordinator {
       }
     });
 
+    this.engine.on('run:init_progress', (message: string) => {
+      this.stateManager.emitProgress(message);
+    });
+
     this.engine.on(
       'run:files_found',
       ({

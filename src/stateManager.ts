@@ -125,6 +125,10 @@ export class StateManager extends EventEmitter {
     }
   }
 
+  emitProgress(message: string): void {
+    this.emit('run:progress', { message });
+  }
+
   // File management
   addFile(runId: string, filePath: string, videoPath: string | null): void {
     this.db.createFileResult(runId, filePath, videoPath);
