@@ -5,6 +5,8 @@ import * as helpers from '../helpers';
 import * as findAllSrtFilesModule from '../findAllSrtFiles';
 import * as ffsubsyncModule from '../generateFfsubsyncSubtitles';
 
+import * as findMatchingVideoFileModule from '../findMatchingVideoFile';
+
 // Mock external dependencies
 jest.mock('fs');
 jest.mock('../helpers');
@@ -12,9 +14,7 @@ jest.mock('../findAllSrtFiles');
 jest.mock('../generateFfsubsyncSubtitles');
 jest.mock('../generateAutosubsyncSubtitles');
 jest.mock('../generateAlassSubtitles');
-jest.mock('../findMatchingVideoFile', () => ({
-  findMatchingVideoFile: jest.fn().mockReturnValue('/video/path/movie.mkv'),
-}));
+jest.mock('../findMatchingVideoFile');
 
 describe('ProcessingEngine', () => {
   let engine: ProcessingEngine;
@@ -24,6 +24,7 @@ describe('ProcessingEngine', () => {
     engine = new ProcessingEngine();
 
     // Default mocks
+    (findMatchingVideoFileModule.findMatchingVideoFile as jest.Mock).mockReturnValue('/video/path/movie.mkv');
     (helpers.getEngineOutputPath as jest.Mock).mockImplementation((path, engine) => `${path}.${engine}.srt`);
     (findAllSrtFilesModule.findAllSrtFiles as jest.Mock).mockResolvedValue({
       srtFiles: ['file1.srt', 'file2.srt'],
@@ -96,32 +97,24 @@ describe('ProcessingEngine', () => {
     );
   });
 
-  it('should stop batch processing if global stop is requested', async () => {
-    (fs.existsSync as jest.Mock).mockReturnValue(false);
+  it('should stop processing if global stop is requested (Worker Pool)', async () => {
+    // Setup: 2 files in different videos so they are in separate pool items
+    (findAllSrtFilesModule.findAllSrtFiles as jest.Mock).mockResolvedValue({
+      srtFiles: ['file1.srt', 'file2.srt'],
+      fileIndex: new Map([
+        ['/dir1', new Set(['file1.srt'])],
+        ['/dir2', new Set(['file2.srt'])],
+      ]),
+    });
 
-    // Mock processing to be slow so we can stop it
     (ffsubsyncModule.generateFfsubsyncSubtitles as jest.Mock).mockImplementation(async () => {
       engine.stopAllProcessing([]); // Trigger stop during first file
       return { success: true };
     });
 
-    // We expect it to process the first batch but then stop.
-    // Since concurrency is 1 by default (or set in constructor), it might stop after file1.
-    // Let's force concurrency 1 for test safety if possible, but the default is 1.
-
     await engine.processRun();
 
-    // Verify stopped state handling
-    // We can't easily check internal state, but we can check if file2 was processed.
-    // If stop works, file2 (in second batch) should NOT be touched.
-    // Wait, processRun loop checks globalStopRequested at start of batch.
-
-    // With 2 files and concurrency 1:
-    // Batch 1: file1. Processing... triggers stop.
-    // Loop continues to Batch 2.
-    // Batch 2 check: globalStopRequested is true. Break.
-
-    // So generateFfsubsyncSubtitles should be called 1 time only.
+    // Verify that the second video was never started because the pool saw the stop flag
     expect(ffsubsyncModule.generateFfsubsyncSubtitles).toHaveBeenCalledTimes(1);
   });
 
@@ -151,5 +144,47 @@ describe('ProcessingEngine', () => {
 
     // Verify the engine was NOT actually called
     expect(ffsubsyncModule.generateFfsubsyncSubtitles).not.toHaveBeenCalled();
+  });
+
+  it('should process multiple videos in parallel based on maxConcurrent', async () => {
+    // Setup: 3 files in different directories (so 3 different videos)
+    (findAllSrtFilesModule.findAllSrtFiles as jest.Mock).mockResolvedValue({
+      srtFiles: ['file1.srt', 'file2.srt', 'file3.srt'],
+      fileIndex: new Map([
+        ['/v1', new Set(['file1.srt'])],
+        ['/v2', new Set(['file2.srt'])],
+        ['/v3', new Set(['file3.srt'])],
+      ]),
+    });
+
+    // Mock each file having its own unique video path
+    (findMatchingVideoFileModule.findMatchingVideoFile as jest.Mock).mockImplementation((srtPath) => {
+      if (srtPath === 'file1.srt') return '/v1/movie1.mkv';
+      if (srtPath === 'file2.srt') return '/v2/movie2.mkv';
+      if (srtPath === 'file3.srt') return '/v3/movie3.mkv';
+      return null;
+    });
+
+    let activeWorkers = 0;
+    let maxActiveWorkers = 0;
+
+    // Simplify to only 1 engine to make concurrency tracking clear
+    process.env.INCLUDE_ENGINES = 'ffsubsync';
+    const engineWithPool = new ProcessingEngine();
+
+    (ffsubsyncModule.generateFfsubsyncSubtitles as jest.Mock).mockImplementation(async () => {
+      activeWorkers++;
+      maxActiveWorkers = Math.max(maxActiveWorkers, activeWorkers);
+      await new Promise((resolve) => setTimeout(resolve, 50)); // Hold slot
+      activeWorkers--;
+      return { success: true };
+    });
+
+    // Pass override directly to processRun
+    await engineWithPool.processRun(undefined, 2);
+
+    // Verify that at some point we had 2 active workers, but never 3
+    expect(maxActiveWorkers).toBe(2);
+    expect(ffsubsyncModule.generateFfsubsyncSubtitles).toHaveBeenCalledTimes(3);
   });
 });

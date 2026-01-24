@@ -25,7 +25,6 @@ export class ProcessingEngine extends EventEmitter {
 
   constructor() {
     super();
-    this.maxConcurrent = parseInt(process.env.MAX_CONCURRENT_SYNC_TASKS || '1', 10);
     this.enabledEngines = process.env.INCLUDE_ENGINES?.split(',') || ['ffsubsync', 'autosubsync', 'alass'];
     this.maxLogBufferSize = parseInt(process.env.LOG_BUFFER_SIZE || '1000', 10);
   }
@@ -50,8 +49,9 @@ export class ProcessingEngine extends EventEmitter {
     this.logBuffer = [];
   }
 
-  async processRun(config?: ScanConfig): Promise<void> {
+  async processRun(config?: ScanConfig, maxConcurrentOverride?: number): Promise<void> {
     const scanConfig = config || getScanConfig();
+    const maxConcurrent = maxConcurrentOverride || parseInt(process.env.MAX_CONCURRENT_SYNC_TASKS || '1', 10);
     this.currentScanConfig = scanConfig;
     this.emit('run:init_progress', 'Scanning directories...');
     this.log(`[${new Date().toISOString()}] Scanning for subtitle files...`);
@@ -118,20 +118,35 @@ export class ProcessingEngine extends EventEmitter {
 
     const groupList = Array.from(groups.entries());
 
-    // Process in batches of VIDEOS
-    this.log(`[${new Date().toISOString()}] Processing with concurrency: ${this.maxConcurrent} videos`);
+    // Process using a Worker Pool to avoid idle time between batches
+    this.log(`[${new Date().toISOString()}] Processing with concurrency: ${maxConcurrent} videos (Worker Pool)`);
     this.log(`[${new Date().toISOString()}] Enabled engines: ${this.enabledEngines.join(', ')}`);
 
-    for (let i = 0; i < groupList.length; i += this.maxConcurrent) {
-      if (this.globalStopRequested) {
-        this.log(`[${new Date().toISOString()}] Stop requested - stopping batch processing`);
-        break;
-      }
-      const batch = groupList.slice(i, i + this.maxConcurrent);
-      this.log(
-        `[${new Date().toISOString()}] Processing batch ${Math.floor(i / this.maxConcurrent) + 1}/${Math.ceil(groupList.length / this.maxConcurrent)} (${batch.length} videos)`,
-      );
-      await Promise.all(batch.map(([videoPath, srtPaths]) => this.processVideoGroup(videoPath, srtPaths, fileIndex)));
+    const queue = [...groupList];
+    const totalVideos = groupList.length;
+    let completedVideos = 0;
+
+    const workers = Array(Math.min(maxConcurrent, totalVideos))
+      .fill(null)
+      .map(async () => {
+        while (queue.length > 0 && !this.globalStopRequested) {
+          const item = queue.shift();
+          if (!item) break;
+
+          const [videoPath, srtPaths] = item;
+          await this.processVideoGroup(videoPath, srtPaths, fileIndex);
+
+          completedVideos++;
+          if (completedVideos % maxConcurrent === 0 || completedVideos === totalVideos) {
+            this.log(`[${new Date().toISOString()}] Progress: ${completedVideos}/${totalVideos} videos processed`);
+          }
+        }
+      });
+
+    await Promise.all(workers);
+
+    if (this.globalStopRequested) {
+      this.log(`[${new Date().toISOString()}] Processing halted by stop request`);
     }
 
     this.log(`[${new Date().toISOString()}] All files processed`);
