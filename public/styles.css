@@ -263,6 +263,15 @@ h2 {
   text-align: right;
 }
 
+.current-task-status {
+  margin-top: -12px;
+  margin-bottom: 20px;
+  font-size: 13px;
+  color: var(--text-secondary);
+  font-style: italic;
+  min-height: 1.2em;
+}
+
 .file-card {
   background: #f9fafb;
   padding: 16px;

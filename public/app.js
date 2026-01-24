@@ -509,29 +509,59 @@ class SubsyncarrPlusClient {
       return;
     }
 
-    section.classList.remove('hidden');
+        section.classList.remove('hidden');
 
-    if (isRunning && !currentRun) {
-      document.getElementById('progressFill').style.width = '0%';
-      document.getElementById('progressText').textContent = this.state.initMessage || 'Scanning & Initializing...';
-      return;
-    }
+    
 
-    if (currentRun && currentRun.current_video) {
-      document.getElementById('progressText').textContent =
-        `Extracting audio: ${this.basename(currentRun.current_video)}...`;
-    } else if (currentRun) {
-      const finishedFiles = currentRun.completed + currentRun.skipped + currentRun.failed;
-      const percent =
-        currentRun.total_engines > 0 ? (currentRun.completed_engines / currentRun.total_engines) * 100 : 0;
-      document.getElementById('progressText').textContent =
-        `${finishedFiles} / ${currentRun.total_files} files (${Math.round(percent)}%)`;
-    }
+        const progressText = document.getElementById('progressText');
 
-    // Use engine-level progress for more granular updates
-    const percent = currentRun.total_engines > 0 ? (currentRun.completed_engines / currentRun.total_engines) * 100 : 0;
-    document.getElementById('progressFill').style.width = `${percent}%`;
-  }
+        const currentTaskStatus = document.getElementById('currentTaskStatus');
+
+        const progressFill = document.getElementById('progressFill');
+
+    
+
+        if (isRunning && !currentRun) {
+
+          progressFill.style.width = '0%';
+
+          progressText.textContent = '0%';
+
+          currentTaskStatus.textContent = this.state.initMessage || 'Scanning & Initializing...';
+
+          return;
+
+        }
+
+    
+
+        if (currentRun) {
+
+          const finishedFiles = currentRun.completed + currentRun.skipped + currentRun.failed;
+
+          const percent = currentRun.total_engines > 0 ? (currentRun.completed_engines / currentRun.total_engines) * 100 : 0;
+
+          
+
+          progressFill.style.width = `${percent}%`;
+
+          progressText.textContent = `${finishedFiles} / ${currentRun.total_files} files (${Math.round(percent)}%)`;
+
+    
+
+          if (currentRun.current_video) {
+
+            currentTaskStatus.textContent = `⚙️ Extracting audio: ${this.basename(currentRun.current_video)}...`;
+
+          } else {
+
+            currentTaskStatus.textContent = '';
+
+          }
+
+        }
+
+      }
 
   renderFiles() {
     const processing = this.state.files.filter((f) => f.status === 'processing');
