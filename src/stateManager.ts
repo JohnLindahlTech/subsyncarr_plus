@@ -3,6 +3,7 @@ import { SubsyncarrPlusPlusDatabase, Run, FileResult } from './database';
 import { randomUUID } from 'crypto';
 import { LogFileManager } from './logFileManager';
 import * as path from 'path';
+import cron from 'node-cron';
 
 interface MaintenanceResult {
   success: boolean;
@@ -28,6 +29,20 @@ export class StateManager extends EventEmitter {
     this.logFileManager = new LogFileManager(logDir);
 
     this.handleIncompleteRuns();
+    this.setupMaintenanceSchedule();
+  }
+
+  private setupMaintenanceSchedule(): void {
+    // Run maintenance every day at 3 AM
+    cron.schedule('0 3 * * *', () => {
+      this.performMaintenance();
+    });
+
+    // Also run once on startup (background) after a short delay
+    // but only if a run isn't already active
+    setTimeout(() => {
+      this.performMaintenance();
+    }, 10000);
   }
 
   private handleIncompleteRuns(): void {

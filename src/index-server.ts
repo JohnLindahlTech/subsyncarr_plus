@@ -3,7 +3,6 @@ import { StateManager } from './stateManager';
 import { ProcessingCoordinator } from './coordinator';
 import { SubsyncarrPlusPlusServer } from './server';
 import { schedule } from 'node-cron';
-import { getRetentionConfig } from './config';
 import { existsSync, renameSync } from 'fs';
 
 async function main() {
@@ -58,51 +57,6 @@ async function main() {
   } else {
     console.log(`[${new Date().toISOString()}] Automatic scheduling disabled`);
   }
-
-  // Setup periodic database cleanup
-  const retentionConfig = getRetentionConfig();
-  const cleanupIntervalMs = retentionConfig.cleanupIntervalHours * 60 * 60 * 1000;
-
-  setInterval(() => {
-    console.log(`[${new Date().toISOString()}] Running database cleanup...`);
-
-    const db = stateManager.getDatabase();
-    const logFileManager = stateManager.getLogFileManager();
-
-    // Trim old logs first (database field is now unused but kept for compatibility)
-    const trimmed = db.trimOldLogs(retentionConfig.trimLogsDays, retentionConfig.maxLogSizeBytes);
-    if (trimmed > 0) {
-      console.log(`[${new Date().toISOString()}] Trimmed logs for ${trimmed} runs`);
-    }
-
-    // Delete old log files
-    const deletedLogFiles = logFileManager.deleteOldLogs(retentionConfig.keepRunsDays);
-    if (deletedLogFiles > 0) {
-      console.log(`[${new Date().toISOString()}] Deleted ${deletedLogFiles} old log files`);
-    }
-
-    // Delete very old runs
-    const deleted = db.deleteOldRuns(retentionConfig.keepRunsDays);
-    if (deleted.length > 0) {
-      console.log(`[${new Date().toISOString()}] Deleted ${deleted.length} old runs`);
-      db.vacuum(); // Reclaim space
-      console.log(`[${new Date().toISOString()}] Database vacuumed`);
-    }
-
-    const stats = db.getDatabaseStats();
-    console.log(`[${new Date().toISOString()}] Database size: ${(stats.sizeBytes / 1024 / 1024).toFixed(2)} MB`);
-  }, cleanupIntervalMs);
-
-  // Run cleanup on startup after 5 seconds
-  setTimeout(() => {
-    console.log(`[${new Date().toISOString()}] Running initial database cleanup...`);
-    const db = stateManager.getDatabase();
-    const logFileManager = stateManager.getLogFileManager();
-    db.trimOldLogs(retentionConfig.trimLogsDays, retentionConfig.maxLogSizeBytes);
-    logFileManager.deleteOldLogs(retentionConfig.keepRunsDays);
-    db.deleteOldRuns(retentionConfig.keepRunsDays);
-    db.vacuum();
-  }, 5000);
 
   // Log memory usage periodically
   setInterval(
