@@ -361,6 +361,10 @@ class SubsyncarrPlusClient {
       this.retryAllFailed();
     });
 
+    document.getElementById('viewDashboard').addEventListener('click', () => {
+      this.viewDashboard();
+    });
+
     document.getElementById('startRun').addEventListener('click', () => {
       this.startRun();
     });
@@ -464,6 +468,14 @@ class SubsyncarrPlusClient {
       document.getElementById('healthModal').classList.add('hidden');
     });
 
+    document.getElementById('closeDashboardModal').addEventListener('click', () => {
+      document.getElementById('dashboardModal').classList.add('hidden');
+    });
+
+    document.getElementById('closeDashboardButton').addEventListener('click', () => {
+      document.getElementById('dashboardModal').classList.add('hidden');
+    });
+
     // Close modals when clicking outside
     window.addEventListener('click', (e) => {
       if (e.target.id === 'customPathModal') {
@@ -481,6 +493,9 @@ class SubsyncarrPlusClient {
       }
       if (e.target.id === 'healthModal') {
         document.getElementById('healthModal').classList.add('hidden');
+      }
+      if (e.target.id === 'dashboardModal') {
+        document.getElementById('dashboardModal').classList.add('hidden');
       }
     });
 
@@ -994,6 +1009,78 @@ class SubsyncarrPlusClient {
     document.getElementById('dryMissingList').innerHTML =
       missingHtml || '<p>No missing videos found! Everything matched.</p>';
     document.getElementById('dryRunModal').classList.remove('hidden');
+  }
+
+  async viewDashboard() {
+    try {
+      const [statsRes, errorRes] = await Promise.all([fetch('/api/stats/global'), fetch('/api/stats/errors')]);
+
+      const stats = await statsRes.json();
+      const errors = await errorRes.json();
+
+      this.renderDashboard(stats, errors);
+      document.getElementById('dashboardModal').classList.remove('hidden');
+    } catch (error) {
+      alert(`Failed to load dashboard: ${error.message}`);
+    }
+  }
+
+  renderDashboard(stats, errors) {
+    // 1. Render Global Stats
+    const globalHtml = `
+      <div class="summary-card">
+        <label>Total Subtitles</label>
+        <div class="summary-value">${stats.total_files}</div>
+      </div>
+      <div class="summary-card success">
+        <label>Synchronized</label>
+        <div class="summary-value">${stats.success_count || 0}</div>
+      </div>
+      <div class="summary-card danger">
+        <label>Errored</label>
+        <div class="summary-value">${stats.error_count || 0}</div>
+      </div>
+      <div class="summary-card primary">
+        <label>Skipped/Manual</label>
+        <div class="summary-value">${stats.skipped_count || 0}</div>
+      </div>
+    `;
+    document.getElementById('globalStatsGrid').innerHTML = globalHtml;
+
+    // 2. Render Engine Stats
+    const engineHtml = stats.engines
+      .map((e) => {
+        const rate = e.total > 0 ? Math.round((e.success / e.total) * 100) : 0;
+        return `
+        <div class="summary-card">
+          <label>${e.engine}</label>
+          <div class="summary-value">${rate}%</div>
+          <small>${e.success}/${e.total} passed</small>
+        </div>
+      `;
+      })
+      .join('');
+    document.getElementById('engineStatsGrid').innerHTML = engineHtml;
+
+    // 3. Render Error Groups
+    const errorHtml =
+      errors
+        .map(
+          (g) => `
+      <div class="error-group-item">
+        <div class="error-group-header">
+          <span class="error-group-count">${g.count} files</span>
+          <span class="error-group-message">${g.message}</span>
+        </div>
+        <div class="error-group-examples">
+          e.g., ${g.examples.join(', ')}
+        </div>
+      </div>
+    `,
+        )
+        .join('') || '<p>No systemic errors detected.</p>';
+
+    document.getElementById('errorSummaryList').innerHTML = errorHtml;
   }
 
   renderHealthStatus() {

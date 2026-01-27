@@ -7,6 +7,7 @@ export async function generateAlassSubtitles(
   videoPath: string,
   signal?: AbortSignal,
   audioPath?: string,
+  timeoutMs?: number,
 ): Promise<ProcessingResult> {
   const directory = dirname(srtPath);
   const srtBaseName = basename(srtPath, '.srt');
@@ -24,7 +25,7 @@ export async function generateAlassSubtitles(
     const reference = audioPath || videoPath;
     const command = `alass "${reference}" "${srtPath}" "${outputPath}"`;
     console.log(`${new Date().toLocaleString()} Processing: ${command}`);
-    const { stdout, stderr } = await execPromise(command, undefined, signal);
+    const { stdout, stderr } = await execPromise(command, timeoutMs, signal);
     return {
       success: true,
       message: `Successfully processed: ${outputPath}`,

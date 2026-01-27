@@ -24,22 +24,6 @@ This document outlines recommended optimizations to improve the scalability, mai
 
 - **Benefit:** Provides data-driven insights into the synchronization quality and helps the user identify potentially "shaky" matches.
 
-## 3. Error Grouping & Aggregation
-
-- **The Problem:** Viewing 1,000+ individual error cards is overwhelming and makes it hard to identify systemic issues (like a missing dependency).
-- **The Fix:** Implement an "Error Summary" view that aggregates failures by their root cause using the permanent failure detection regexes.
-- **Benefit:** Allows the user to quickly identify if a large number of failures are due to a single environmental issue or specific media patterns.
-
-## 4. Granular & Adaptive Timeouts
-
-- **The Problem:** While a global 30-minute timeout exists, it is often too long for short episodes and may be too short for 4K REMUX movies. A single hung process can still block a worker slot for half an hour.
-- **The Fix:**
-
-1. Implement per-engine timeouts (e.g., `ffsubsync` usually finishes in <5 mins, while `alass` may need more).
-2. Implement adaptive timeouts based on video duration (e.g., `Timeout = VideoDuration * 0.1 + 60s`).
-
-- **Benefit:** Prevents individual files from stalling the entire queue while ensuring complex matches have enough time to succeed.
-
 # Completed Optimizations
 
 The following items have been successfully implemented and verified:
@@ -47,7 +31,7 @@ The following items have been successfully implemented and verified:
 ## 1. Immediate Task Termination (Process Management)
 
 - **Problem:** "Stop Run" and "Skip File" buttons were previously non-immediate.
-- **Solution:** Implemented PID tracking and `AbortSignal` support.
+- **Solution:** Implemented PID tracking and `AbortSignal` support. The application now sends `SIGTERM` to subprocesses instantly.
 - **Status:** Done.
 
 ## 2. End-to-End Pagination & Scalability
@@ -76,7 +60,7 @@ The following items have been successfully implemented and verified:
 
 ## 6. Server-Side Search & Filtering
 
-- **Problem:** Finding specific files was impossible.
+- **Problem:** Finding specific files in large runs was impossible.
 - **Solution:** Added SQL-based filtering and debounced search.
 - **Status:** Done.
 
@@ -149,4 +133,16 @@ The following items have been successfully implemented and verified:
 
 - **Problem:** WebSocket messages were sometimes missed, leading to stale UI.
 - **Solution:** Implemented periodic 30s background sync, Tab-Visibility refresh, and reconnection catch-up.
+- **Status:** Done.
+
+## 19. Error Grouping & Aggregation (Library Dashboard)
+
+- **Problem:** Analyzing 1,000+ failures was overwhelming.
+- **Solution:** Implemented a global Statistics Dashboard that groups errors by their root cause and shows engine success rates across all runs.
+- **Status:** Done.
+
+## 20. Granular & Adaptive Timeouts
+
+- **Problem:** Global 30m timeout was too long for short clips and too short for 4K REMUXes.
+- **Solution:** Implemented adaptive timeouts based on video duration (`10% duration + 60s`).
 - **Status:** Done.

@@ -6,7 +6,7 @@ import { generateFfsubsyncSubtitles } from './generateFfsubsyncSubtitles';
 import { generateAutosubsyncSubtitles } from './generateAutosubsyncSubtitles';
 import { generateAlassSubtitles } from './generateAlassSubtitles';
 import { StateManager } from './stateManager';
-import { extractAudio } from './helpers';
+import { extractAudio, getVideoDuration } from './helpers';
 import { existsSync, unlinkSync } from 'fs';
 import * as path from 'path';
 import { randomUUID } from 'crypto';
@@ -245,6 +245,14 @@ export class ProcessingEngine extends EventEmitter {
     this.activeControllers.set(srtPath, controller);
 
     try {
+      // #4: Adaptive Timeout based on video duration
+      const videoSeconds = await getVideoDuration(videoPath);
+      // Timeout = 10% of video length + 60s buffer, converted to ms
+      const timeoutMs = Math.round(videoSeconds * 0.1 + 60) * 1000;
+      this.log(
+        `[${new Date().toISOString()}] Using adaptive timeout: ${Math.round(timeoutMs / 1000)}s for ${fileName}`,
+      );
+
       // Process with each enabled engine
       let anyEngineSucceeded = false;
       let anyEngineSkipped = false;
@@ -283,13 +291,13 @@ export class ProcessingEngine extends EventEmitter {
         try {
           switch (engine) {
             case 'ffsubsync':
-              result = await generateFfsubsyncSubtitles(srtPath, videoPath, controller.signal, audioPath);
+              result = await generateFfsubsyncSubtitles(srtPath, videoPath, controller.signal, audioPath, timeoutMs);
               break;
             case 'autosubsync':
-              result = await generateAutosubsyncSubtitles(srtPath, videoPath, controller.signal, audioPath);
+              result = await generateAutosubsyncSubtitles(srtPath, videoPath, controller.signal, audioPath, timeoutMs);
               break;
             case 'alass':
-              result = await generateAlassSubtitles(srtPath, videoPath, controller.signal, audioPath);
+              result = await generateAlassSubtitles(srtPath, videoPath, controller.signal, audioPath, timeoutMs);
               break;
             default:
               continue;

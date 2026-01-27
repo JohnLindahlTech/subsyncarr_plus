@@ -45,6 +45,7 @@
             <span id="themeIcon">🌓</span>
             <span id="themeLabel">Theme</span>
           </button>
+          <button id="viewDashboard" class="btn btn-secondary">📊 Library Dashboard</button>
           <button id="dryRun" class="btn btn-secondary">🔍 Dry Run Scan</button>
           <div class="btn-group">
             <button id="startRun" class="btn btn-primary">▶ Start Full Run</button>
@@ -175,6 +176,35 @@
         </div>
         <div class="modal-footer">
           <button id="closeDebugButton" class="btn btn-secondary">Close</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Dashboard Modal -->
+    <div id="dashboardModal" class="modal hidden">
+      <div class="modal-content debug-modal">
+        <div class="modal-header">
+          <h3>Library Dashboard</h3>
+          <button id="closeDashboardModal" class="btn-close">&times;</button>
+        </div>
+        <div class="modal-body">
+          <h4>Overall Success Rate</h4>
+          <div class="summary-grid" id="globalStatsGrid">
+            <!-- Global stats injected here -->
+          </div>
+
+          <h4>Engine Performance (Lifetime)</h4>
+          <div class="summary-grid" id="engineStatsGrid">
+            <!-- Engine stats injected here -->
+          </div>
+
+          <h4>Top Failure Reasons</h4>
+          <div id="errorSummaryList" class="detail-list">
+            <!-- Error groups injected here -->
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button id="closeDashboardButton" class="btn btn-secondary">Close</button>
         </div>
       </div>
     </div>

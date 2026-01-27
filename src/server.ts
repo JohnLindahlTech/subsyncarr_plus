@@ -45,6 +45,7 @@ export class SubsyncarrPlusServer {
 
     const dependencies = [
       { cmd: 'ffmpeg', args: ['-version'] },
+      { cmd: 'ffprobe', args: ['-version'] },
       ...engines.map((engine) => ({ cmd: engine, args: ['--version'] })),
     ];
 
@@ -116,6 +117,16 @@ export class SubsyncarrPlusServer {
     // Get health status
     this.app.get('/api/health', (_req, res) => {
       res.json(this.healthStatus);
+    });
+
+    // Get global statistics
+    this.app.get('/api/stats/global', (_req, res) => {
+      res.json(this.stateManager.getGlobalStats());
+    });
+
+    // Get error groupings
+    this.app.get('/api/stats/errors', (_req, res) => {
+      res.json(this.stateManager.getErrorGroups());
     });
 
     // Get current status

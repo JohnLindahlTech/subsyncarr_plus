@@ -278,6 +278,14 @@ export class StateManager extends EventEmitter {
     return this.db.getAverageEngineDuration(engine);
   }
 
+  getGlobalStats() {
+    return this.db.getGlobalStats();
+  }
+
+  getErrorGroups() {
+    return this.db.getErrorGroups();
+  }
+
   /**
    * Performs database maintenance tasks
    */

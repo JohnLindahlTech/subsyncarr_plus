@@ -548,6 +548,84 @@ export class SubsyncarrPlusDatabase {
   }
 
   /**
+   * Get global statistics across all historical runs
+   */
+  getGlobalStats() {
+    const stats = this.db
+      .prepare(
+        `
+      SELECT 
+        COUNT(*) as total_files,
+        SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as success_count,
+        SUM(CASE WHEN status = 'error' THEN 1 ELSE 0 END) as error_count,
+        SUM(CASE WHEN status = 'skipped' THEN 1 ELSE 0 END) as skipped_count
+      FROM file_results
+    `,
+      )
+      .get() as { total_files: number; success_count: number; error_count: number; skipped_count: number };
+
+    const engineStats = ['ffsubsync', 'autosubsync', 'alass'].map((engine) => {
+      const res = this.db
+        .prepare(
+          `
+        SELECT 
+          COUNT(*) as total,
+          SUM(CASE WHEN json_extract(engines, '$.' || ? || '.success') = 1 THEN 1 ELSE 0 END) as success
+        FROM file_results
+        WHERE json_extract(engines, '$.' || ? || '.success') IS NOT NULL
+      `,
+        )
+        .get(engine, engine) as { total: number; success: number };
+      return { engine, ...res };
+    });
+
+    return { ...stats, engines: engineStats };
+  }
+
+  /**
+   * Aggregates errors by their message to identify systemic issues
+   */
+  getErrorGroups(limit: number = 10) {
+    // This is a complex query because engine results are nested JSON
+    // We'll simplify by looking at the last engine that failed for each errored file
+    const engines = ['ffsubsync', 'autosubsync', 'alass'];
+    const groups: Record<string, { message: string; count: number; examples: string[] }> = {};
+
+    const erroredFiles = this.db
+      .prepare(
+        `
+      SELECT file_path, engines FROM file_results 
+      WHERE status = 'error' 
+      ORDER BY updated_at DESC 
+      LIMIT 500
+    `,
+      )
+      .all() as Array<{ file_path: string; engines: string }>;
+
+    erroredFiles.forEach((file) => {
+      const engineData = JSON.parse(file.engines);
+      // Find the message from the first failed engine we find
+      for (const e of engines) {
+        if (engineData[e] && !engineData[e].success && engineData[e].message) {
+          const msg = engineData[e].message;
+          if (!groups[msg]) {
+            groups[msg] = { message: msg, count: 0, examples: [] };
+          }
+          groups[msg].count++;
+          if (groups[msg].examples.length < 3) {
+            groups[msg].examples.push(file.file_path.split('/').pop() || '');
+          }
+          break;
+        }
+      }
+    });
+
+    return Object.values(groups)
+      .sort((a, b) => b.count - a.count)
+      .slice(0, limit);
+  }
+
+  /**
    * Get average duration for an engine in milliseconds
    */
   getAverageEngineDuration(engine: string): number {
