@@ -409,8 +409,9 @@ class SubsyncarrPlusPlusClient {
   async viewLogs(id) {
     const res = await fetch(`/api/runs/${id}/logs`);
     const data = await res.json();
-    document.getElementById('logsContent').textContent = data.logs || 'No logs';
-    document.getElementById('logsModal').classList.remove('hidden');
+    document.getElementById('logsOverlayContent').textContent = data.logs || 'No logs found for this run.';
+    document.getElementById('logsOverlayTitle').textContent = `Run Logs: ${id}`;
+    document.getElementById('logsOverlay').classList.remove('hidden');
   }
 
   async viewDebugInfo(filePath) {
@@ -521,6 +522,10 @@ class SubsyncarrPlusPlusClient {
     document.getElementById('clearCompleted').onclick = () => fetch('/api/files/clear', { method: 'POST' });
     document.getElementById('closeOverlay').onclick = () =>
       document.getElementById('detailsOverlay').classList.add('hidden');
+    document.getElementById('closeLogsOverlay').onclick = () =>
+      document.getElementById('logsOverlay').classList.add('hidden');
+    document.getElementById('copyLogsOverlay').onclick = () =>
+      navigator.clipboard.writeText(document.getElementById('logsOverlayContent').textContent);
     document.getElementById('closeDryRunModal').onclick = () =>
       document.getElementById('dryRunModal').classList.add('hidden');
     document.getElementById('closeDryRunButton').onclick = () =>
@@ -552,7 +557,11 @@ class SubsyncarrPlusPlusClient {
   }
 
   handleGlobalClick(e) {
-    if (e.target.classList.contains('modal') || e.target.classList.contains('details-overlay')) {
+    if (
+      e.target.classList.contains('modal') ||
+      e.target.classList.contains('details-overlay') ||
+      e.target.classList.contains('logs-overlay')
+    ) {
       e.target.classList.add('hidden');
       return;
     }

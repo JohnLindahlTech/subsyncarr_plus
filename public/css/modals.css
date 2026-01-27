@@ -162,6 +162,11 @@
   border-left: 4px solid var(--danger);
 }
 
+.logs-view-large {
+  max-height: calc(100vh - 160px);
+  height: 100%;
+}
+
 .btn-icon {
   background: var(--secondary);
   border: 1px solid var(--border);
