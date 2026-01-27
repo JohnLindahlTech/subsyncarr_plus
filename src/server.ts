@@ -415,7 +415,7 @@ export class SubsyncarrPlusPlusServer {
 
   start(port: number = 3000, host: string = '127.0.0.1') {
     this.httpServer.listen(port, host, () => {
-      console.log(`[${new Date().toISOString()}] Subsyncarr Plus UI available at http://${host}:${port}`);
+      console.log(`[${new Date().toISOString()}] Subsyncarr Plus Plus UI available at http://${host}:${port}`);
     });
   }
 

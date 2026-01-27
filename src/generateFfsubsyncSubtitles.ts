@@ -31,11 +31,29 @@ export async function generateFfsubsyncSubtitles(
     console.log(`${new Date().toLocaleString()} Processing: ${command}`);
     const { stdout, stderr } = await execPromise(command, timeoutMs, signal);
 
-    // Parse score from stdout: "fit score: 0.85"
+    // Parse score from stdout. ffsubsync can output "fit score: 0.85" or large alignment scores.
     let score: number | undefined;
-    const scoreMatch = stdout.match(/fit score:\s*([0-9.]+)/i);
-    if (scoreMatch) {
-      score = Math.round(parseFloat(scoreMatch[1]) * 100);
+    const fitMatch = stdout.match(/fit score:\s*([0-9.]+)/i);
+    const scoreMatch = stdout.match(/score:\s*([0-9.]+)/i);
+
+    if (fitMatch) {
+      const val = parseFloat(fitMatch[1]);
+      // If it's a small decimal, it's a normalized fit score (0.0 - 1.0)
+      if (val <= 1.0) {
+        score = Math.round(val * 100);
+      } else {
+        // If it's a large number, it's a raw score
+        score = Math.min(Math.round(val / 1000), 100); // Crude normalization for raw scores
+      }
+    } else if (scoreMatch) {
+      const val = parseFloat(scoreMatch[1]);
+      if (val <= 1.0) {
+        score = Math.round(val * 100);
+      } else {
+        // Raw alignment scores are often > 100,000.
+        // We'll cap it at 100 for the UI but keep the relative magnitude.
+        score = Math.min(Math.round(val / 1000), 100);
+      }
     }
 
     return {

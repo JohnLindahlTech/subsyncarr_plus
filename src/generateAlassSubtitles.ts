@@ -35,8 +35,10 @@ export async function generateAlassSubtitles(
     let score: number | undefined;
     const scoreMatch = stdout.match(/Score:\s*([0-9.]+)/i);
     if (scoreMatch) {
-      // alass scores vary wildly, but we'll capture it for relative comparison
-      score = parseFloat(scoreMatch[1]);
+      const rawScore = parseFloat(scoreMatch[1]);
+      // alass scores are typically 0-20. 10 is very good.
+      // We'll normalize 0-15+ to 0-100% for comparison logic.
+      score = Math.min(Math.round((rawScore / 15) * 100), 100);
     }
 
     return {
