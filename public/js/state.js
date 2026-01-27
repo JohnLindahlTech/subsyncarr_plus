@@ -24,35 +24,42 @@ export class StateManager {
     this.ws = null;
   }
 
-  update(deltas) {
-    // Quality Fix: Intelligent File Merging
-
-    // When we get a list of files from the server (e.g. the "Live" set),
-
-    // we want to merge them into our local state so we don't lose
-
-    // track of files the user might be looking at in the Explorer.
-
+  update(deltas, mode = 'replace') {
     if (deltas.files) {
-      const mergedFiles = [...this.state.files];
+      if (mode === 'merge') {
+        const { searchQuery, agreementFilter, statusFilter, files } = this.state;
+        const mergedFiles = [...files];
 
-      deltas.files.forEach((newFile) => {
-        const idx = mergedFiles.findIndex((f) => f.file_path === newFile.file_path);
+        deltas.files.forEach((newFile) => {
+          const matchesAgreement = !agreementFilter || newFile.agreement_status === agreementFilter;
+          const matchesStatus = !statusFilter || newFile.status === statusFilter;
+          const matchesSearch = !searchQuery || newFile.file_path.toLowerCase().includes(searchQuery.toLowerCase());
 
-        if (idx >= 0) {
-          mergedFiles[idx] = { ...mergedFiles[idx], ...newFile };
-        } else {
-          mergedFiles.unshift(newFile);
-        }
-      });
+          const idx = mergedFiles.findIndex((f) => f.file_path === newFile.file_path);
 
-      // Sort to ensure the most recent updates are always correctly positioned
+          if (idx >= 0) {
+            // Update existing entry
+            mergedFiles[idx] = { ...mergedFiles[idx], ...newFile };
 
-      deltas.files = mergedFiles.sort((a, b) => b.updated_at - a.updated_at);
+            // If it no longer matches filters (and we aren't in Live view), remove it
+            if (this.state.activeView !== 'live' && !(matchesAgreement && matchesStatus && matchesSearch)) {
+              mergedFiles.splice(idx, 1);
+            }
+          } else {
+            // New entry: only add if it matches filters or we are in Live view
+            if (this.state.activeView === 'live' || (matchesAgreement && matchesStatus && matchesSearch)) {
+              mergedFiles.unshift(newFile);
+            }
+          }
+        });
+
+        // Always keep sorted by update time for consistency
+        deltas.files = mergedFiles.sort((a, b) => b.updated_at - a.updated_at);
+      }
+      // In 'replace' mode, deltas.files simply overwrites this.state.files
     }
 
     this.state = { ...this.state, ...deltas };
-
     this.updateCallback(this.state);
   }
 
@@ -66,7 +73,7 @@ export class StateManager {
       const msg = JSON.parse(event.data);
       switch (msg.type) {
         case 'state':
-          this.update({ ...msg.data });
+          this.update({ ...msg.data }, 'merge');
           break;
         case 'run:started':
           this.update({ currentRun: msg.data, isRunning: true, files: [] });
