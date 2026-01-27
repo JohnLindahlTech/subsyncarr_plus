@@ -196,6 +196,62 @@ export class StateManager extends EventEmitter {
     this.emitFileUpdate(runId, filePath, updates);
   }
 
+  reconcileFileResults(
+    runId: string,
+    filePath: string,
+  ): { bestEngine: string | null; status: 'verified' | 'suspicious' | 'low_confidence' } {
+    const file = this.db.getFileResults(runId).find((f) => f.file_path === filePath);
+    if (!file) return { bestEngine: null, status: 'low_confidence' };
+
+    interface EngineResult {
+      success: boolean;
+      score?: number;
+      message?: string;
+    }
+
+    const engines: Record<string, EngineResult> = JSON.parse(file.engines || '{}');
+    const successes = Object.entries(engines).filter(([, res]) => res.success && res.score !== undefined) as Array<
+      [string, Required<Pick<EngineResult, 'success' | 'score'>>]
+    >;
+
+    if (successes.length === 0) {
+      return { bestEngine: null, status: 'low_confidence' };
+    }
+
+    // Sort by score descending
+    successes.sort((a, b) => b[1].score - a[1].score);
+    const [bestName, bestResult] = successes[0];
+
+    let status: 'verified' | 'suspicious' | 'low_confidence' = 'low_confidence';
+
+    if (successes.length >= 2) {
+      const secondScore = successes[1][1].score;
+      // If the top two engines agree within 5 points and are both high, it's verified
+      if (Math.abs(bestResult.score - secondScore) <= 5 && bestResult.score > 70) {
+        status = 'verified';
+      } else if (Math.abs(bestResult.score - secondScore) > 30) {
+        // High disagreement between engines
+        status = 'suspicious';
+      } else {
+        status = 'verified'; // General consensus
+      }
+    } else {
+      // Only one engine succeeded
+      status = bestResult.score > 80 ? 'verified' : 'low_confidence';
+    }
+
+    const updates = {
+      best_engine: bestName,
+      best_score: bestResult.score,
+      agreement_status: status,
+    };
+
+    this.db.updateFileResult(runId, filePath, updates);
+    this.emitFileUpdate(runId, filePath, updates);
+
+    return { bestEngine: bestName, status };
+  }
+
   updateFilesVideoStatus(runId: string, videoPath: string, videoStatus: string | null): void {
     this.db.updateFilesVideoStatus(runId, videoPath, videoStatus);
 

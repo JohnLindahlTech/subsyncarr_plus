@@ -735,9 +735,24 @@ class SubsyncarrPlusClient {
     const completedHtml = completed
       .map((file) => {
         const engines = JSON.parse(file.engines);
+
+        // Agreement Status Badge
+        let statusBadge = '';
+        if (file.agreement_status) {
+          const statusClass = `status-${file.agreement_status}`;
+          const label = file.agreement_status.replace('_', ' ').toUpperCase();
+          statusBadge = `<span class="agreement-badge ${statusClass}">${label}</span>`;
+        }
+
         return `
         <div class="file-card ${file.status}" data-file-path="${file.file_path}">
-          <div class="file-name">${this.basename(file.file_path)}</div>
+          <div class="file-header">
+            <div class="file-name">${this.basename(file.file_path)}</div>
+            ${statusBadge}
+          </div>
+          <div class="engine-status">
+            ${file.best_engine ? `<span class="best-engine-label">Best: 🏆 ${file.best_engine}</span>` : ''}
+          </div>
           ${this.renderEngineResults(engines, file.file_path)}
         </div>
       `;

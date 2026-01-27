@@ -24,6 +24,9 @@ export interface FileResult {
   current_engine: string | null;
   video_status: string | null;
   engines: string; // JSON stringified { ffsubsync?: {...}, autosubsync?: {...}, alass?: {...} }
+  best_engine: string | null;
+  best_score: number | null;
+  agreement_status: 'verified' | 'suspicious' | 'low_confidence' | null;
   created_at: number;
   updated_at: number;
 }
@@ -120,6 +123,14 @@ export class SubsyncarrPlusDatabase {
     const hasVideoStatusColumn = fileResultsColumns.some((col) => col.name === 'video_status');
     if (!hasVideoStatusColumn) {
       this.db.exec(`ALTER TABLE file_results ADD COLUMN video_status TEXT`);
+    }
+
+    // Migration: Add quality metrics columns
+    const hasBestEngineColumn = fileResultsColumns.some((col) => col.name === 'best_engine');
+    if (!hasBestEngineColumn) {
+      this.db.exec(`ALTER TABLE file_results ADD COLUMN best_engine TEXT`);
+      this.db.exec(`ALTER TABLE file_results ADD COLUMN best_score INTEGER`);
+      this.db.exec(`ALTER TABLE file_results ADD COLUMN agreement_status TEXT`);
     }
 
     // Migration: Create engine_failure_tracking table

@@ -558,6 +558,57 @@ td {
   color: var(--badge-cancelled-text);
 }
 
+/* Agreement Badges */
+.agreement-badge {
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.5px;
+}
+
+.status-verified {
+  background: #d1fae5;
+  color: #065f46;
+  border: 1px solid #10b981;
+}
+
+.status-suspicious {
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #f59e0b;
+}
+
+.status-low_confidence {
+  background: #f3f4f6;
+  color: #374151;
+  border: 1px solid #d1d5db;
+}
+
+[data-theme='dark'] .status-verified {
+  background: rgba(16, 185, 129, 0.2);
+  color: #34d399;
+}
+[data-theme='dark'] .status-suspicious {
+  background: rgba(245, 158, 11, 0.2);
+  color: #fbbf24;
+}
+[data-theme='dark'] .status-low_confidence {
+  background: rgba(107, 114, 128, 0.2);
+  color: #9ca3af;
+}
+
+.best-engine-label {
+  font-weight: 700;
+  font-size: 12px;
+  color: var(--primary);
+  background: var(--background);
+  padding: 2px 8px;
+  border-radius: 12px;
+  display: inline-block;
+  margin-bottom: 8px;
+}
+
 .no-data {
   color: var(--text-secondary);
   text-align: center;

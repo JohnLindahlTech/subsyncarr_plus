@@ -344,6 +344,12 @@ export class ProcessingEngine extends EventEmitter {
 
       if (anyEngineSucceeded) {
         this.log(`[${new Date().toISOString()}] ✓ Completed successfully for: ${fileName}`);
+        if (this.stateManager) {
+          const runId = this.stateManager.getCurrentRun()?.id;
+          if (runId) {
+            this.stateManager.reconcileFileResults(runId, srtPath);
+          }
+        }
         this.emit('file:completed', { srtPath });
       } else if (anyEngineSkipped) {
         this.log(`[${new Date().toISOString()}] ⊘ All attempts skipped for: ${fileName}`);
