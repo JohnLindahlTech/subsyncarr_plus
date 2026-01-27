@@ -408,11 +408,17 @@ export class StateManager extends EventEmitter {
    * Performs database maintenance tasks in a separate thread to avoid locking the UI
    */
   performMaintenance(): void {
-    console.log(`[${new Date().toISOString()}] Starting off-thread database maintenance...`);
+    if (this.currentRunId) {
+      console.log(`[${new Date().toISOString()}] Skipping maintenance: A run is currently in progress.`);
+      return;
+    }
 
-    // We point to the JS file in dist because that's where the compiled code lives
+    console.log(`[${new Date().toISOString()}] Starting off-thread database maintenance. Closing main connection...`);
+
+    // We must close the connection so the worker can get an exclusive lock for VACUUM
+    this.db.close();
+
     const workerPath = path.join(__dirname, 'maintenanceWorker.js');
-
     const { Worker } = require('worker_threads');
     const worker = new Worker(workerPath, {
       workerData: {
@@ -422,7 +428,14 @@ export class StateManager extends EventEmitter {
       },
     });
 
+    const finish = () => {
+      // Always re-open the database connection for the main application
+      this.db = new SubsyncarrPlusPlusDatabase(this.dbPath);
+      console.log(`[${new Date().toISOString()}] Main database connection re-opened.`);
+    };
+
     worker.on('message', (result: MaintenanceResult) => {
+      finish();
       if (result.success && result.deletedRunIds && result.reclaimedBytes !== undefined) {
         // Main thread cleans up the log files based on what worker deleted from DB
         result.deletedRunIds.forEach((id: string) => {
@@ -442,6 +455,7 @@ export class StateManager extends EventEmitter {
     });
 
     worker.on('error', (err: Error) => {
+      finish();
       console.error(`[${new Date().toISOString()}] Maintenance worker thread error:`, err);
     });
   }
