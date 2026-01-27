@@ -140,7 +140,7 @@ export class StateManager extends EventEmitter {
   // File management
   addFile(runId: string, filePath: string, videoPath: string | null): void {
     this.db.createFileResult(runId, filePath, videoPath);
-    this.emitFileUpdate(runId, filePath);
+    this.emitFileUpdate(runId, filePath, {});
   }
 
   addFilesBulk(
@@ -151,12 +151,13 @@ export class StateManager extends EventEmitter {
     // Don't emit individual updates for bulk inserts to avoid event storm
   }
 
-  private emitFileUpdate(runId: string, filePath: string): void {
-    const file = this.db.getFileResults(runId).find((f) => f.file_path === filePath);
+  private emitFileUpdate(runId: string, filePath: string, deltas: Partial<FileResult>): void {
     const run = this.db.getRun(runId);
-    if (file) {
-      this.emit('file:updated', { file, run });
-    }
+    // Send the absolute minimum: filePath (ID) and the changed fields
+    this.emit('file:updated', {
+      file: { file_path: filePath, ...deltas },
+      run,
+    });
   }
 
   updateFileStatus(runId: string, filePath: string, status: FileResult['status'], currentEngine?: string | null): void {
@@ -166,7 +167,7 @@ export class StateManager extends EventEmitter {
     }
 
     this.db.updateFileResult(runId, filePath, updates);
-    this.emitFileUpdate(runId, filePath);
+    this.emitFileUpdate(runId, filePath, updates);
   }
 
   updateFileEngine(
@@ -189,22 +190,22 @@ export class StateManager extends EventEmitter {
     const engines = JSON.parse(file.engines || '{}');
     engines[engine] = result;
 
-    this.db.updateFileResult(runId, filePath, { engines: JSON.stringify(engines) });
-    const updatedFile = this.db.getFileResults(runId).find((f) => f.file_path === filePath);
-    if (updatedFile) {
-      this.emit('file:updated', { file: updatedFile, run: this.db.getRun(runId) });
-    }
+    const updates = { engines: JSON.stringify(engines) };
+    this.db.updateFileResult(runId, filePath, updates);
+    this.emitFileUpdate(runId, filePath, updates);
   }
 
   updateFilesVideoStatus(runId: string, videoPath: string, videoStatus: string | null): void {
     this.db.updateFilesVideoStatus(runId, videoPath, videoStatus);
-    // Broadcast updates for all files in this group
+
+    const deltas = { video_status: videoStatus };
+
+    // Find affected files to get their paths for the delta update
     const allFiles = this.db.getFileResults(runId);
     const affectedFiles = allFiles.filter((f) => f.video_path === videoPath);
-    const run = this.db.getRun(runId);
 
     affectedFiles.forEach((file) => {
-      this.emit('file:updated', { file, run });
+      this.emitFileUpdate(runId, file.file_path, deltas);
     });
   }
 

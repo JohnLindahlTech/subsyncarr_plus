@@ -133,7 +133,8 @@ class SubsyncarrPlusClient {
     }
 
     if (index >= 0) {
-      this.state.files[index] = fileData;
+      // Delta update: Merge new fields into existing object
+      this.state.files[index] = { ...this.state.files[index], ...fileData };
     } else {
       // Only add to list if it's currently processing or we're on the first page
       if (fileData.status === 'processing' || this.state.pagination.page === 1) {
@@ -316,7 +317,11 @@ class SubsyncarrPlusClient {
     });
 
     document.getElementById('startRunForce').addEventListener('click', () => {
-      if (confirm('Force Full Rerun? This will ignore all existing synced files and re-process everything from scratch. This is CPU intensive.')) {
+      if (
+        confirm(
+          'Force Full Rerun? This will ignore all existing synced files and re-process everything from scratch. This is CPU intensive.',
+        )
+      ) {
         this.startRun(null, true);
       }
     });

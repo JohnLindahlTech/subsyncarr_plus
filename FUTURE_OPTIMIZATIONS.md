@@ -2,31 +2,25 @@
 
 This document outlines recommended optimizations to improve the scalability, maintenance, and user experience of Subsyncarr+, specifically tailored for large libraries (10k+ files).
 
-## 1. WebSocket Delta Updates
-
-- **The Problem:** Currently, the `file:updated` event sends the full file object. While mitigated by pagination, sending 13,000 full objects over the duration of a run still creates unnecessary network traffic.
-- **The Fix:** Modify the event to send only the changed fields (e.g., just the `status` or the latest `engine` result).
-- **Benefit:** Reduces bandwidth usage and lowers CPU overhead on both the server and the client browser.
-
-## 2. File System Watcher (Real-time Sync)
+## 1. File System Watcher (Real-time Sync)
 
 - **The Problem:** Currently, syncing only happens during manual or scheduled "Full Runs." New media stays out of sync until the next scan.
 - **The Fix:** Use a library like `chokidar` to monitor media directories in real-time. Automatically trigger a sync as soon as a new `.srt` or video file is detected.
 - **Benefit:** Provides a "set and forget" experience where media is always synchronized immediately after download.
 
-## 3. Priority Queue
+## 2. Priority Queue
 
 - **The Problem:** During a full run of 13,000 files, a newly added movie might be stuck at the end of a multi-hour queue.
 - **The Fix:** Implement a priority-based queue where real-time detected files or manually "bumped" files move to the front of the worker pool.
 - **Benefit:** Ensures that content the user wants to watch _now_ is processed immediately without waiting for the entire library scan.
 
-## 4. Subtitle Engine "Weighted" Logic
+## 3. Subtitle Engine "Weighted" Logic
 
 - **The Problem:** The system currently tries engines in a fixed order (`ffsubsync` -> `autosubsync` -> `alass`), which may not be the most efficient for every library.
 - **The Fix:** Track success/failure statistics for each engine. Dynamically reorder the attempts to start with the engine that has the highest historical success rate for your specific media type.
 - **Benefit:** Reduces total processing time by succeeding on the first attempt more often.
 
-## 5. Intelligent Parameter Optimization
+## 4. Intelligent Parameter Optimization
 
 - **The Problem:** Subtitle engines have various parameters (thresholds, penalties, window sizes) that are currently hardcoded or left at defaults. Some files might only sync if these are tuned.
 - **The Fix:** Implement an auto-tuning loop using an optimization framework (like Optuna).
@@ -37,7 +31,7 @@ This document outlines recommended optimizations to improve the scalability, mai
 
 - **Benefit:** Increases the overall "Match Rate" of the application by automatically finding the settings that work for edge-case media.
 
-## 6. Automated Benchmarking & Visualization
+## 5. Automated Benchmarking & Visualization
 
 - **The Problem:** It is difficult to know if a sync was "high quality" without manually watching the movie, and comparing engine performance is purely anecdotal.
 - **The Fix:**
@@ -48,13 +42,13 @@ This document outlines recommended optimizations to improve the scalability, mai
 
 - **Benefit:** Provides data-driven insights into the synchronization quality and helps the user identify potentially "shaky" matches.
 
-## 7. Error Grouping & Aggregation
+## 6. Error Grouping & Aggregation
 
 - **The Problem:** Viewing 1,000+ individual error cards is overwhelming and makes it hard to identify systemic issues (like a missing dependency).
 - **The Fix:** Implement an "Error Summary" view that aggregates failures by their root cause using the permanent failure detection regexes.
 - **Benefit:** Allows the user to quickly identify if a large number of failures are due to a single environmental issue or specific media patterns.
 
-## 8. Granular & Adaptive Timeouts
+## 7. Granular & Adaptive Timeouts
 
 - **The Problem:** While a global 30-minute timeout exists, it is often too long for short episodes and may be too short for 4K REMUX movies. A single hung process can still block a worker slot for half an hour.
 - **The Fix:**
@@ -186,4 +180,10 @@ The following items have been successfully implemented and verified:
 
 - **Problem:** Once a file was marked as "Permanently Failed," it was never retried.
 - **Solution:** Added a global reset for "Permanent Failures" and a `forceRerun` flag that bypasses all skip logic and existence checks.
+- **Status:** Done.
+
+## 21. WebSocket Delta Updates
+
+- **Problem:** Sending full file objects for every update created excessive network traffic and browser overhead during large runs.
+- **Solution:** Implemented a "Delta" system that only sends the primary key and changed fields over the socket. The frontend merges these into the existing state.
 - **Status:** Done.
