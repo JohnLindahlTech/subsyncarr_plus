@@ -123,9 +123,10 @@ class SubsyncarrPlusPlusClient {
 
   renderDryRunResults(d) {
     document.getElementById('dryTotal').textContent = d.totalSRTs;
+    document.getElementById('dryDone').textContent = d.alreadyDone;
     document.getElementById('dryMatched').textContent = d.matched.length;
     document.getElementById('dryMissing').textContent = d.missingVideo.length;
-    document.getElementById('dryEstimate').textContent = Math.round(d.estimatedMs / 60000) + 'm';
+    document.getElementById('dryEstimate').textContent = this.ui.formatDuration(d.estimatedMs);
     document.getElementById('dryRunModal').classList.remove('hidden');
   }
 
