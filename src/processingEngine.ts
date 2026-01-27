@@ -347,12 +347,21 @@ export class ProcessingEngine extends EventEmitter {
             }
           } catch (error) {
             const duration = Date.now() - startTime;
+            const errorMsg = error instanceof Error ? error.message : String(error);
             this.log(
               `[${new Date().toISOString()}] ✗ ${engine} (${profile.name}) trial failed (${(duration / 1000).toFixed(1)}s): ${fileName}`,
             );
-            this.log(
-              `[${new Date().toISOString()}]   Error: ${error instanceof Error ? error.message : String(error)}`,
-            );
+            this.log(`[${new Date().toISOString()}]   Error: ${errorMsg}`);
+
+            // Even if it failed, record the error result so we have details
+            if (!bestTrialResult) {
+              bestTrialResult = {
+                success: false,
+                duration,
+                message: errorMsg,
+                stderr: errorMsg,
+              };
+            }
           }
         }
 
@@ -368,14 +377,16 @@ export class ProcessingEngine extends EventEmitter {
         }
       }
 
+      // Always reconcile at the end of processing a file, so we have best_engine/status
+      if (this.stateManager) {
+        const runId = this.stateManager.getCurrentRun()?.id;
+        if (runId) {
+          this.stateManager.reconcileFileResults(runId, srtPath);
+        }
+      }
+
       if (anyEngineSucceeded) {
         this.log(`[${new Date().toISOString()}] ✓ Completed successfully for: ${fileName}`);
-        if (this.stateManager) {
-          const runId = this.stateManager.getCurrentRun()?.id;
-          if (runId) {
-            this.stateManager.reconcileFileResults(runId, srtPath);
-          }
-        }
         this.emit('file:completed', { srtPath });
       } else if (anyEngineSkipped) {
         this.log(`[${new Date().toISOString()}] ⊘ All attempts skipped for: ${fileName}`);
