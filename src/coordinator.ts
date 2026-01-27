@@ -50,6 +50,7 @@ export class ProcessingCoordinator {
       }) => {
         const totalFiles = processing.length + skipped.length;
         const runId = this.stateManager.startRun(totalFiles, totalVideos, this.enabledEngines);
+        this.currentRunId = runId;
 
         // Bulk add pending files
         const pendingFiles = processing.map((filePath) => {
