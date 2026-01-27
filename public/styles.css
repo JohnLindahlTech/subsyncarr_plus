@@ -140,13 +140,76 @@ body {
 
 .top-bar {
   background: var(--card-bg);
-  padding: 16px 32px;
+  padding: 0 32px;
   height: 72px;
   border-bottom: 1px solid var(--border);
   display: flex;
   justify-content: space-between;
   align-items: center;
   flex-shrink: 0;
+}
+
+.header-left {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.top-info-area {
+  display: flex;
+  gap: 20px;
+  padding-left: 24px;
+  border-left: 1px solid var(--border);
+}
+
+.top-info-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 300px;
+}
+
+.top-info-icon {
+  font-size: 14px;
+}
+
+.top-info-text {
+  font-size: 12px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 500;
+}
+
+.status-light-sm {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.status-light-sm.active {
+  background: var(--success);
+  box-shadow: 0 0 6px var(--success);
+}
+.status-light-sm.inactive {
+  background: var(--warning);
+}
+
+.no-data-msg {
+  text-align: center;
+  padding: 40px;
+  color: var(--text-secondary);
+  background: var(--background);
+  border-radius: 12px;
+  border: 2px dashed var(--border);
+  font-style: italic;
+}
+
+.config-line {
+  margin-bottom: 8px;
+  font-size: 13px;
 }
 
 .view-container {

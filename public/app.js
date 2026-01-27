@@ -28,7 +28,6 @@ class SubsyncarrPlusPlusClient {
 
   setupRouter() {
     window.addEventListener('hashchange', () => this.handleRoute());
-    // Initial route
     this.handleRoute();
   }
 
@@ -41,26 +40,18 @@ class SubsyncarrPlusPlusClient {
       '#/history': 'history',
       '#/system': 'system',
     };
-
     const view = viewMap[hash] || 'live';
     this.switchView(view);
   }
 
   switchView(viewId) {
-    console.log(`Switching to view: ${viewId}`);
     this.state.activeView = viewId;
-
-    // 1. Update Navigation UI
     document.querySelectorAll('.nav-item').forEach((nav) => {
       nav.classList.toggle('active', nav.getAttribute('data-view') === viewId);
     });
-
-    // 2. Toggle Sections
     document.querySelectorAll('.view').forEach((section) => {
       section.classList.toggle('hidden', section.id !== `view-${viewId}`);
     });
-
-    // 3. Update Title
     const titles = {
       live: 'Live Run',
       explorer: 'Library Explorer',
@@ -70,34 +61,22 @@ class SubsyncarrPlusPlusClient {
     };
     document.getElementById('viewTitle').textContent = titles[viewId];
 
-    // 4. View-specific data fetching
     if (viewId === 'dashboard') this.fetchDashboardData();
     if (viewId === 'history') this.fetchHistory();
-    if (viewId === 'explorer' && this.state.files.length === 0) this.fetchInitialState();
+    this.render(); // Ensure the active view is rendered
   }
 
   // --- UI INITIALIZATION ---
 
   initTheme() {
     const savedTheme = localStorage.getItem('theme');
-    const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-
-    if (savedTheme) {
-      document.documentElement.setAttribute('data-theme', savedTheme);
-    } else if (systemPrefersDark) {
+    if (savedTheme) document.documentElement.setAttribute('data-theme', savedTheme);
+    else if (window.matchMedia('(prefers-color-scheme: dark)').matches)
       document.documentElement.setAttribute('data-theme', 'dark');
-    }
-
-    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
-      if (!localStorage.getItem('theme')) {
-        document.documentElement.setAttribute('data-theme', e.matches ? 'dark' : 'light');
-      }
-    });
   }
 
   toggleTheme() {
-    const currentTheme = document.documentElement.getAttribute('data-theme') || 'light';
-    const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+    const newTheme = document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
     document.documentElement.setAttribute('data-theme', newTheme);
     localStorage.setItem('theme', newTheme);
   }
@@ -105,21 +84,9 @@ class SubsyncarrPlusPlusClient {
   initWebSocket() {
     const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
     this.ws = new WebSocket(`${protocol}//${location.host}/ws`);
-
-    this.ws.onopen = () => {
-      console.log('WebSocket connected');
-      this.reconcileState();
-    };
-
-    this.ws.onmessage = (event) => {
-      const msg = JSON.parse(event.data);
-      this.handleMessage(msg);
-    };
-
-    this.ws.onclose = () => {
-      console.log('WebSocket disconnected, reconnecting...');
-      setTimeout(() => this.initWebSocket(), this.reconnectInterval);
-    };
+    this.ws.onopen = () => this.reconcileState();
+    this.ws.onmessage = (event) => this.handleMessage(JSON.parse(event.data));
+    this.ws.onclose = () => setTimeout(() => this.initWebSocket(), this.reconnectInterval);
   }
 
   handleMessage(msg) {
@@ -133,7 +100,6 @@ class SubsyncarrPlusPlusClient {
         this.state.currentRun = msg.data;
         this.state.isRunning = true;
         this.state.files = [];
-        this.state.pagination.page = 1;
         this.render();
         break;
       case 'run:progress':
@@ -166,10 +132,10 @@ class SubsyncarrPlusPlusClient {
   // --- DATA FETCHING ---
 
   async fetchInitialState() {
-    const searchParam = this.state.searchQuery ? `&search=${encodeURIComponent(this.state.searchQuery)}` : '';
-    const filterParam = this.state.agreementFilter ? `&filter=${this.state.agreementFilter}` : '';
-    const response = await fetch(`/api/status?page=1&limit=50${searchParam}${filterParam}`);
-    const data = await response.json();
+    const search = this.state.searchQuery ? `&search=${encodeURIComponent(this.state.searchQuery)}` : '';
+    const filter = this.state.agreementFilter ? `&filter=${this.state.agreementFilter}` : '';
+    const res = await fetch(`/api/status?page=1&limit=50${search}${filter}`);
+    const data = await res.json();
     this.state.currentRun = data.currentRun;
     this.state.files = data.files;
     this.state.pagination = data.pagination;
@@ -179,81 +145,84 @@ class SubsyncarrPlusPlusClient {
 
   async fetchConfigStatus() {
     try {
-      const response = await fetch('/api/config');
-      const config = await response.json();
+      const res = await fetch('/api/config');
+      const config = await res.json();
       this.renderConfigStatus(config);
-    } catch (error) {
-      console.error('Failed to fetch config status:', error);
+    } catch (e) {
+      console.error('Config fetch failed', e);
     }
   }
 
   async fetchDashboardData() {
     try {
-      const [statsRes, errorRes] = await Promise.all([fetch('/api/stats/global'), fetch('/api/stats/errors')]);
-      const stats = await statsRes.json();
-      const errors = await errorRes.json();
-      this.renderDashboard(stats, errors);
-    } catch (e) {
-      console.error('Dashboard load failed', e);
+      const [s, e] = await Promise.all([fetch('/api/stats/global'), fetch('/api/stats/errors')]);
+      this.renderDashboard(await s.json(), await e.json());
+    } catch (err) {
+      console.error('Dashboard failed', err);
     }
   }
 
   async fetchHistory() {
-    const response = await fetch('/api/history');
-    const history = await response.json();
-    this.renderHistory(history);
+    const res = await fetch('/api/history');
+    this.renderHistory(await res.json());
   }
 
   // --- RENDERERS ---
 
   render() {
     this.renderProgress();
-    this.renderLiveList();
-    this.renderExplorerList();
+    if (this.state.activeView === 'live') this.renderLiveList();
+    if (this.state.activeView === 'explorer') this.renderExplorerList();
     this.updateButtonVisibility();
   }
 
   renderProgress() {
     const { currentRun, isRunning } = this.state;
-    const section = document.getElementById('currentRun');
+    const el = document.getElementById('currentRun');
     if (!isRunning && (!currentRun || currentRun.status === 'completed')) {
-      section.classList.add('hidden');
+      el.classList.add('hidden');
       return;
     }
-    section.classList.remove('hidden');
-
-    const progressFill = document.getElementById('progressFill');
-    const progressText = document.getElementById('progressText');
-    const currentTaskStatus = document.getElementById('currentTaskStatus');
+    el.classList.remove('hidden');
+    const fill = document.getElementById('progressFill');
+    const text = document.getElementById('progressText');
+    const status = document.getElementById('currentTaskStatus');
 
     if (isRunning && !currentRun) {
-      progressFill.style.width = '0%';
-      currentTaskStatus.textContent = this.state.initMessage || 'Initializing...';
+      fill.style.width = '0%';
+      text.textContent = '0%';
+      status.textContent = this.state.initMessage || 'Scanning...';
       return;
     }
-
     if (currentRun) {
-      const percent =
-        currentRun.total_engines > 0 ? (currentRun.completed_engines / currentRun.total_engines) * 100 : 0;
-      progressFill.style.width = `${percent}%`;
-      progressText.textContent = `${Math.round(percent)}%`;
-      currentTaskStatus.textContent = currentRun.current_video || '';
+      const p = currentRun.total_engines > 0 ? (currentRun.completed_engines / currentRun.total_engines) * 100 : 0;
+      fill.style.width = `${p}%`;
+      text.textContent = `${Math.round(p)}%`;
+      status.textContent = currentRun.current_video || '';
     }
   }
 
   renderLiveList() {
-    const processing = this.state.files.filter((f) => f.status === 'processing');
-    const completed = this.state.files.filter((f) => ['completed', 'skipped', 'error'].includes(f.status)).slice(0, 10);
+    const proc = this.state.files.filter((f) => f.status === 'processing');
+    const comp = this.state.files.filter((f) => ['completed', 'skipped', 'error'].includes(f.status)).slice(0, 10);
 
-    document.getElementById('filesInProgress').innerHTML = processing.map((f) => this.renderFileCard(f)).join('');
-    document.getElementById('completedList').innerHTML = completed.map((f) => this.renderFileCard(f)).join('');
-    this.attachDynamicFileEvents();
+    const procEl = document.getElementById('filesInProgress');
+    const compEl = document.getElementById('completedList');
+
+    if (proc.length > 0) procEl.innerHTML = proc.map((f) => this.renderFileCard(f)).join('');
+    else procEl.innerHTML = '<p class="no-data-msg">No active tasks.</p>';
+
+    if (comp.length > 0) compEl.innerHTML = comp.map((f) => this.renderFileCard(f)).join('');
+    else compEl.innerHTML = '<p class="no-data-msg">No recent completions.</p>';
   }
 
   renderExplorerList() {
     const body = document.getElementById('explorerBody');
     if (!body) return;
-
+    if (this.state.files.length === 0) {
+      body.innerHTML = '<tr><td colspan="5" class="no-data">No files found matching your search.</td></tr>';
+      return;
+    }
     body.innerHTML = this.state.files
       .map(
         (f) => `
@@ -264,6 +233,7 @@ class SubsyncarrPlusPlusClient {
         <td>${f.best_score ? f.best_score + '%' : '-'}</td>
         <td>
           <button class="btn-link" onclick="client.viewDebugInfo('${f.file_path.replace(/'/g, "'")}', '${f.best_engine}')">🔍 Details</button>
+          ${f.agreement_status !== 'verified' ? `<button class="btn-link" onclick="client.manuallyVerifyFile('${f.file_path.replace(/'/g, "'")}')">✅ Verify</button>` : ''}
         </td>
       </tr>
     `,
@@ -271,29 +241,22 @@ class SubsyncarrPlusPlusClient {
       .join('');
   }
 
-  renderFileCard(file) {
-    const engines = JSON.parse(file.engines || '{}');
-    const statusBadge = file.agreement_status
-      ? `<span class="agreement-badge status-${file.agreement_status}">${file.agreement_status.toUpperCase()}</span>`
+  renderFileCard(f) {
+    const engines = JSON.parse(f.engines || '{}');
+    const badge = f.agreement_status
+      ? `<span class="agreement-badge status-${f.agreement_status}">${f.agreement_status.toUpperCase()}</span>`
       : '';
-
     return `
-      <div class="file-card ${file.status}" data-file-path="${file.file_path}">
+      <div class="file-card">
         <div class="file-header">
-          <div class="file-name">${this.basename(file.file_path)}</div>
-          ${statusBadge}
-        </div>
-        <div class="engine-status">
-          ${file.best_engine ? `<small>Best: 🏆 ${file.best_engine}</small>` : ''}
+          <div class="file-name">${this.basename(f.file_path)}</div>
+          ${badge}
         </div>
         <div class="engine-results-grid">
           ${Object.entries(engines)
             .map(
-              ([name, res]) => `
-            <div class="engine-tag ${res.success ? 'success' : 'error'}">
-              ${name}: ${res.score ? res.score + '%' : res.success ? '✓' : '✗'}
-            </div>
-          `,
+              ([n, r]) =>
+                `<div class="engine-tag ${r.success ? 'success' : 'error'}">${n}: ${r.score ? r.score + '%' : r.success ? '✓' : '✗'}</div>`,
             )
             .join('')}
         </div>
@@ -302,32 +265,20 @@ class SubsyncarrPlusPlusClient {
   }
 
   renderDashboard(stats, errors) {
-    const globalHtml = `
+    document.getElementById('globalStatsGrid').innerHTML = `
       <div class="summary-card"><label>Total</label><div class="summary-value">${stats.total_files}</div></div>
       <div class="summary-card success"><label>Success</label><div class="summary-value">${stats.success_count}</div></div>
       <div class="summary-card danger"><label>Errors</label><div class="summary-value">${stats.error_count}</div></div>
     `;
-    document.getElementById('globalStatsGrid').innerHTML = globalHtml;
-
     document.getElementById('engineStatsGrid').innerHTML = stats.engines
       .map(
         (e) => `
-      <div class="summary-card">
-        <label>${e.engine}</label>
-        <div class="summary-value">${e.total > 0 ? Math.round((e.success / e.total) * 100) : 0}%</div>
-      </div>
+      <div class="summary-card"><label>${e.engine}</label><div class="summary-value">${e.total > 0 ? Math.round((e.success / e.total) * 100) : 0}%</div></div>
     `,
       )
       .join('');
-
     document.getElementById('errorSummaryList').innerHTML = errors
-      .map(
-        (g) => `
-      <div class="error-group-item">
-        <strong>${g.count} files:</strong> ${g.message}
-      </div>
-    `,
-      )
+      .map((g) => `<div class="error-group-item"><strong>${g.count} files:</strong> ${g.message}</div>`)
       .join('');
   }
 
@@ -336,13 +287,12 @@ class SubsyncarrPlusPlusClient {
       .map(
         (r) => `
       <tr>
-        <td>${new Date(r.start_time).toLocaleDateString()}</td>
-        <td>${r.status}</td>
+        <td>${new Date(r.start_time).toLocaleString()}</td>
+        <td><span class="status-badge ${r.status}">${r.status}</span></td>
         <td>${r.total_files}</td>
         <td>${r.completed}</td>
         <td>${r.failed}</td>
-        <td>${r.completed_engines}</td>
-        <td>-</td><td>-</td>
+        <td>${r.completed_engines}/${r.total_engines}</td>
         <td>${r.end_time ? Math.round((r.end_time - r.start_time) / 1000) + 's' : '...'}</td>
         <td><button class="btn-link" onclick="client.viewLogs('${r.id}')">📄 Logs</button></td>
       </tr>
@@ -351,12 +301,21 @@ class SubsyncarrPlusPlusClient {
       .join('');
   }
 
-  renderConfigStatus(config) {
+  renderConfigStatus(c) {
     const light = document.getElementById('statusLight');
-    light.className = `status-light ${config.isConfigured ? 'active' : 'inactive'}`;
-    document.getElementById('statusLabel').textContent = config.isConfigured ? 'Folders Active' : 'Default Mode';
-    document.getElementById('statusPaths').textContent = config.paths.join(', ');
-    document.getElementById('scheduleTime').textContent = config.schedule.description || 'Manual only';
+    light.className = `status-light-sm ${c.isConfigured ? 'active' : 'inactive'}`;
+    document.getElementById('statusPaths').textContent = c.isConfigured ? c.paths.join(', ') : 'Default (/scan_dir)';
+    document.getElementById('scheduleTime').textContent = c.schedule.description || 'Manual only';
+
+    // System Page detailed config
+    const configEl = document.getElementById('systemConfigInfo');
+    if (configEl) {
+      configEl.innerHTML = `
+        <div class="config-line"><strong>Scan Paths:</strong> ${c.paths.join(', ')}</div>
+        <div class="config-line"><strong>Exclusions:</strong> ${c.excludePaths.join(', ') || 'None'}</div>
+        <div class="config-line"><strong>Schedule:</strong> ${c.schedule.cron} (${c.schedule.description})</div>
+      `;
+    }
   }
 
   renderHealthStatus() {
@@ -366,7 +325,7 @@ class SubsyncarrPlusPlusClient {
       .map(
         (d) => `
       <div class="health-item ${d.found ? 'ok' : 'error'}">
-        <span>${d.name}</span>
+        <span>${d.name} ${d.version || ''}</span>
         <span>${d.found ? '✅' : '❌'}</span>
       </div>
     `,
@@ -387,27 +346,51 @@ class SubsyncarrPlusPlusClient {
   }
 
   async stopRun() {
-    if (confirm('Stop processing?')) await fetch('/api/run/stop', { method: 'POST' });
+    if (confirm('Stop?')) await fetch('/api/run/stop', { method: 'POST' });
   }
-
   async runDryRun() {
-    const btn = document.getElementById('dryRun');
-    btn.disabled = true;
+    document.getElementById('dryRun').disabled = true;
     const res = await fetch('/api/run/dry-run', { method: 'POST' });
-    const data = await res.json();
-    btn.disabled = false;
-    this.renderDryRunResults(data);
+    this.renderDryRunResults(await res.json());
+    document.getElementById('dryRun').disabled = false;
   }
 
-  renderDryRunResults(data) {
-    document.getElementById('dryTotal').textContent = data.totalSRTs;
-    document.getElementById('dryMatched').textContent = data.matched.length;
-    document.getElementById('dryMissing').textContent = data.missingVideo.length;
-    document.getElementById('dryEstimate').textContent = Math.round(data.estimatedMs / 60000) + 'm';
+  renderDryRunResults(d) {
+    document.getElementById('dryTotal').textContent = d.totalSRTs;
+    document.getElementById('dryMatched').textContent = d.matched.length;
+    document.getElementById('dryMissing').textContent = d.missingVideo.length;
+    document.getElementById('dryEstimate').textContent = Math.round(d.estimatedMs / 60000) + 'm';
     document.getElementById('dryRunModal').classList.remove('hidden');
   }
 
-  // --- HELPERS ---
+  async manuallyVerifyFile(filePath) {
+    const runId = this.state.currentRun?.id;
+    if (!runId) return;
+    await fetch('/api/file/verify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ runId, filePath }),
+    });
+    this.reconcileState();
+  }
+
+  async viewLogs(id) {
+    const res = await fetch(`/api/runs/${id}/logs`);
+    const data = await res.json();
+    document.getElementById('logsContent').textContent = data.logs || 'No logs';
+    document.getElementById('logsModal').classList.remove('hidden');
+  }
+
+  async viewDebugInfo(filePath, engine) {
+    const f = this.state.files.find((x) => x.file_path === filePath);
+    if (!f) return;
+    const e = JSON.parse(f.engines)[engine];
+    if (!e) return;
+    document.getElementById('debugCommand').textContent = e.command || '-';
+    document.getElementById('debugStderr').textContent = e.stderr || '-';
+    document.getElementById('debugStdout').textContent = e.stdout || '-';
+    document.getElementById('debugModal').classList.remove('hidden');
+  }
 
   setupEventHandlers() {
     document.getElementById('themeToggle').onclick = () => this.toggleTheme();
@@ -416,12 +399,32 @@ class SubsyncarrPlusPlusClient {
     document.getElementById('stopRun').onclick = () => this.stopRun();
     document.getElementById('dryRun').onclick = () => this.runDryRun();
     document.getElementById('clearCompleted').onclick = () => fetch('/api/files/clear', { method: 'POST' });
-
-    // Modals
     document.getElementById('closeDryRunModal').onclick = () =>
       document.getElementById('dryRunModal').classList.add('hidden');
     document.getElementById('closeDryRunButton').onclick = () =>
       document.getElementById('dryRunModal').classList.add('hidden');
+    document.getElementById('closeDebugModal').onclick = () =>
+      document.getElementById('debugModal').classList.add('hidden');
+    document.getElementById('closeDebugButton').onclick = () =>
+      document.getElementById('debugModal').classList.add('hidden');
+    document.getElementById('closeLogsModal').onclick = () =>
+      document.getElementById('logsModal').classList.add('hidden');
+    document.getElementById('closeLogsButton').onclick = () =>
+      document.getElementById('logsModal').classList.add('hidden');
+    document.getElementById('copyLogs').onclick = () =>
+      navigator.clipboard.writeText(document.getElementById('logsContent').textContent);
+
+    document.getElementById('fileSearch').oninput = (e) => {
+      clearTimeout(this.searchTimeout);
+      this.searchTimeout = setTimeout(() => {
+        this.state.searchQuery = e.target.value;
+        this.fetchInitialState();
+      }, 300);
+    };
+    document.getElementById('agreementFilter').onchange = (e) => {
+      this.state.agreementFilter = e.target.value;
+      this.fetchInitialState();
+    };
 
     window.onclick = (e) => {
       if (e.target.classList.contains('modal')) e.target.classList.add('hidden');
@@ -433,30 +436,27 @@ class SubsyncarrPlusPlusClient {
       if (this.state.isRunning || document.visibilityState === 'visible') this.reconcileState();
     }, 30000);
   }
-
   async reconcileState() {
-    const searchParam = this.state.searchQuery ? `&search=${encodeURIComponent(this.state.searchQuery)}` : '';
-    const filterParam = this.state.agreementFilter ? `&filter=${this.state.agreementFilter}` : '';
-    const response = await fetch(`/api/status?page=1&limit=50${searchParam}${filterParam}`);
-    const data = await response.json();
+    const s = this.state.searchQuery ? `&search=${encodeURIComponent(this.state.searchQuery)}` : '';
+    const f = this.state.agreementFilter ? `&filter=${this.state.agreementFilter}` : '';
+    const res = await fetch(`/api/status?page=1&limit=50${s}${f}`);
+    const data = await res.json();
     this.state.currentRun = data.currentRun;
     this.state.isRunning = data.isRunning;
-    data.files.forEach((f) => this.updateFile(f));
+    data.files.forEach((x) => this.updateFile(x));
     this.render();
   }
 
   setupInfiniteScroll() {
-    const observer = new IntersectionObserver((entries) => {
-      if (entries[0].isIntersecting && this.state.pagination.page < this.state.pagination.totalPages) {
-        this.loadMoreFiles();
-      }
+    const obs = new IntersectionObserver((e) => {
+      if (e[0].isIntersecting && this.state.pagination.page < this.state.pagination.totalPages) this.loadMoreFiles();
     });
-    observer.observe(document.getElementById('scrollSentinel'));
+    obs.observe(document.getElementById('scrollSentinel'));
   }
 
   async loadMoreFiles() {
-    const nextPage = this.state.pagination.page + 1;
-    const res = await fetch(`/api/status?page=${nextPage}&limit=50`);
+    const p = this.state.pagination.page + 1;
+    const res = await fetch(`/api/status?page=${p}&limit=50`);
     const data = await res.json();
     this.state.files = [...this.state.files, ...data.files];
     this.state.pagination = data.pagination;
@@ -464,21 +464,17 @@ class SubsyncarrPlusPlusClient {
   }
 
   updateButtonVisibility() {
-    const isRunning = this.state.isRunning;
-    document.getElementById('stopRun').classList.toggle('hidden', !isRunning);
-    document.getElementById('startRun').classList.toggle('hidden', isRunning);
-    document.getElementById('startRunForce').classList.toggle('hidden', isRunning);
-    document.getElementById('dryRun').classList.toggle('hidden', isRunning);
+    const r = this.state.isRunning;
+    document.getElementById('stopRun').classList.toggle('hidden', !r);
+    document.getElementById('startRun').classList.toggle('hidden', r);
+    document.getElementById('startRunForce').classList.toggle('hidden', r);
+    document.getElementById('dryRun').classList.toggle('hidden', r);
   }
 
   basename(p) {
     return p.split('/').pop();
   }
-
-  attachDynamicFileEvents() {
-    // Logic for skip/debug/verify using event delegation if needed,
-    // or keep simple for now as we transition.
-  }
+  attachDynamicFileEvents() {}
 }
 
 const client = new SubsyncarrPlusPlusClient();

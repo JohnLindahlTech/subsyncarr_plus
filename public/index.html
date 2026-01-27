@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Subsyncarr+</title>
+    <title>Subsyncarr++</title>
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
@@ -52,10 +52,19 @@
         <header class="top-bar">
           <div class="header-left">
             <h2 id="viewTitle">Live Run</h2>
+            <div class="top-info-area">
+              <div class="top-info-item">
+                <div id="statusLight" class="status-light-sm"></div>
+                <span id="statusPaths" class="top-info-text">Loading folders...</span>
+              </div>
+              <div class="top-info-item">
+                <span class="top-info-icon">⏰</span>
+                <span id="scheduleTime" class="top-info-text">Loading schedule...</span>
+              </div>
+            </div>
           </div>
           <div class="header-right">
             <div id="globalControls" class="controls">
-              <!-- Controls are injected/managed here -->
               <button id="dryRun" class="btn btn-secondary">🔍 Dry Run</button>
               <div class="btn-group">
                 <button id="startRun" class="btn btn-primary">▶ Start Run</button>
@@ -88,15 +97,21 @@
 
             <div class="live-grid">
               <div class="live-active">
-                <h3>Processing</h3>
-                <div id="filesInProgress" class="file-list"></div>
+                <div class="section-header">
+                  <h3>Active Processing</h3>
+                </div>
+                <div id="filesInProgress" class="file-list">
+                  <p class="no-data-msg">No files currently processing.</p>
+                </div>
               </div>
               <div class="live-recent">
                 <div class="section-header">
                   <h3>Recently Completed</h3>
-                  <button id="clearCompleted" class="btn-link">Clear List</button>
+                  <button id="clearCompleted" class="btn-link">Clear</button>
                 </div>
-                <div id="completedList" class="file-list"></div>
+                <div id="completedList" class="file-list">
+                  <p class="no-data-msg">No recently completed files.</p>
+                </div>
               </div>
             </div>
           </section>
@@ -137,11 +152,11 @@
           <section id="view-dashboard" class="view hidden">
             <div class="dashboard-grid">
               <div class="card">
-                <h4>Library Success Rate</h4>
+                <h4>Library Statistics</h4>
                 <div class="summary-grid" id="globalStatsGrid"></div>
               </div>
               <div class="card">
-                <h4>Engine Win-Rates</h4>
+                <h4>Engine Performance</h4>
                 <div class="summary-grid" id="engineStatsGrid"></div>
               </div>
               <div class="card full-width">
@@ -158,14 +173,12 @@
                 <tr>
                   <th>Date</th>
                   <th>Status</th>
-                  <th>Total</th>
+                  <th>Total Files</th>
                   <th>Success</th>
                   <th>Failed</th>
-                  <th>FF</th>
-                  <th>AS</th>
-                  <th>AL</th>
+                  <th>Engines Run</th>
                   <th>Time</th>
-                  <th>Logs</th>
+                  <th>Action</th>
                 </tr>
               </thead>
               <tbody id="historyBody"></tbody>
@@ -181,21 +194,8 @@
               </div>
               <div class="card">
                 <h4>Media Configuration</h4>
-                <div class="status-indicators">
-                  <div class="status-indicator">
-                    <div id="statusLight" class="status-light"></div>
-                    <div class="status-text">
-                      <span id="statusLabel" class="status-label">Checking configuration...</span>
-                      <span id="statusPaths" class="status-paths"></span>
-                    </div>
-                  </div>
-                  <div class="schedule-indicator">
-                    <span class="schedule-icon">⏰</span>
-                    <div class="status-text">
-                      <span id="scheduleLabel" class="status-label">Auto-scan</span>
-                      <span id="scheduleTime" class="status-paths"></span>
-                    </div>
-                  </div>
+                <div id="systemConfigInfo" class="detail-list">
+                  <!-- Detailed config info here -->
                 </div>
               </div>
             </div>
@@ -204,7 +204,7 @@
       </main>
     </div>
 
-    <!-- Modals (Simplified for Route-based navigation where possible, but kept for details) -->
+    <!-- Modals -->
     <div id="debugModal" class="modal hidden">
       <div class="modal-content">
         <div class="modal-header">
@@ -271,7 +271,7 @@
             </div>
           </div>
           <div class="debug-section">
-            <label>Est. Run Time:</label>
+            <label>Est. Real Run Time:</label>
             <div id="dryEstimate" class="estimate-value">-</div>
           </div>
           <div id="dryMissingList" class="detail-list"></div>
