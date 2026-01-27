@@ -695,13 +695,18 @@ export class SubsyncarrPlusPlusDatabase {
           const genericMsg = rawMsg
             // 1. Strip timestamps like [23:39:21]
             .replace(/\[\d{2}:\d{2}:\d{2}\]/g, '[timestamp]')
-            // 2. Strip quoted paths/files (double or single quotes)
+            // 2. Strip quoted absolute paths (handles spaces correctly)
             .replace(/["']\/[^"']+\.(srt|mkv|mp4|avi|m4v|ts|mp3|wav|srt)["']/gi, '"<path>"')
-            // 3. Strip absolute paths without quotes
-            .replace(/\/[^:\s][^\n]+?\.(srt|mkv|mp4|avi|m4v|ts|mp3|wav|srt)/gi, '<path>')
-            // 4. Clean up standard prefixes
+            // 3. Strip unquoted absolute paths (allowing spaces, stopping at extension + boundary)
+            // This matches from / to the extension, including spaces, as long as it doesn't hit a ; or "
+            .replace(/\/[\/a-z0-9\s\(\)\[\]\.\!\-\_\$]+?\.(srt|mkv|mp4|avi|m4v|ts|mp3|wav|srt)/gi, '<path>')
+            // 4. Strip any leftover standalone filenames
+            .replace(/[^\s\/\n]+?\.(srt|mkv|mp4|avi|m4v|ts|mp3|wav|srt)/gi, '<file>')
+            // 5. Clean up standard prefixes and boilerplate
             .replace(/Error processing .*?:/i, 'Error processing <item>:')
+            .replace(/Command failed: ffsubsync .*? -i/i, 'Command failed: ffsubsync <path> -i')
             .replace(/parsing subtitle file .*? failed/i, 'parsing subtitle file <item> failed')
+            .replace(/ffsubsync\.py:\d+/g, 'ffsubsync.py:<line>')
             .trim();
 
           if (!groups[genericMsg]) {
