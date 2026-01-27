@@ -655,3 +655,7 @@ header {
   background: var(--background);
   border-radius: 8px;
 }
+
+.hidden {
+  display: none !important;
+}
