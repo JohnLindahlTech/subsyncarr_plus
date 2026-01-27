@@ -636,8 +636,6 @@ export class SubsyncarrPlusPlusDatabase {
    * Aggregates errors by their message to identify systemic issues
    */
   getErrorGroups(limit: number = 10) {
-    // This is a complex query because engine results are nested JSON
-    // We'll simplify by looking at the last engine that failed for each errored file
     const engines = ['ffsubsync', 'autosubsync', 'alass'];
     const groups: Record<string, { message: string; count: number; examples: string[] }> = {};
 
@@ -654,16 +652,23 @@ export class SubsyncarrPlusPlusDatabase {
 
     erroredFiles.forEach((file) => {
       const engineData = JSON.parse(file.engines);
-      // Find the message from the first failed engine we find
       for (const e of engines) {
         if (engineData[e] && !engineData[e].success && engineData[e].message) {
-          const msg = engineData[e].message;
-          if (!groups[msg]) {
-            groups[msg] = { message: msg, count: 0, examples: [] };
+          const rawMsg = engineData[e].message;
+
+          // Normalization: Strip paths and filenames to allow grouping.
+          // Replaces /path/to/file.srt or just file.srt with <item>
+          const genericMsg = rawMsg
+            .replace(/\/[^:\s]+\.(srt|mkv|mp4|avi|m4v)/gi, '<path>')
+            .replace(/[^\/\s]+\.(srt|mkv|mp4|avi|m4v)/gi, '<file>')
+            .trim();
+
+          if (!groups[genericMsg]) {
+            groups[genericMsg] = { message: genericMsg, count: 0, examples: [] };
           }
-          groups[msg].count++;
-          if (groups[msg].examples.length < 3) {
-            groups[msg].examples.push(file.file_path.split('/').pop() || '');
+          groups[genericMsg].count++;
+          if (groups[genericMsg].examples.length < 3) {
+            groups[genericMsg].examples.push(file.file_path.split('/').pop() || '');
           }
           break;
         }

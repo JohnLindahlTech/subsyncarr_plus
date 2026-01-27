@@ -181,7 +181,6 @@ class SubsyncarrPlusPlusClient {
     get('closeLogsOverlay').onclick = () => get('logsOverlay').classList.add('hidden');
     get('copyLogsOverlay').onclick = () => navigator.clipboard.writeText(get('logsOverlayContent').textContent);
 
-    get('closeDryRunModal').onclick = () => get('dryRunModal').classList.add('hidden');
     get('closeDryRunButton').onclick = () => get('dryRunModal').classList.add('hidden');
 
     get('fileSearch').oninput = (e) => {
