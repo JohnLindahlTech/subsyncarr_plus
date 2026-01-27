@@ -36,8 +36,12 @@
 }
 
 @keyframes slideInUp {
-  from { transform: translateY(100%); }
-  to { transform: translateY(0); }
+  from {
+    transform: translateY(100%);
+  }
+  to {
+    transform: translateY(0);
+  }
 }
 
 .overlay-content {
@@ -128,8 +132,14 @@
   font-size: 14px;
 }
 
-.status-indicator-large.success { background: #d1fae5; color: #065f46; }
-.status-indicator-large.error { background: #fee2e2; color: #991b1b; }
+.status-indicator-large.success {
+  background: #d1fae5;
+  color: #065f46;
+}
+.status-indicator-large.error {
+  background: #fee2e2;
+  color: #991b1b;
+}
 
 .debug-section {
   margin-bottom: 32px;
@@ -217,4 +227,6 @@
   margin-bottom: 16px;
 }
 
-.hidden { display: none !important; }
+.hidden {
+  display: none !important;
+}
