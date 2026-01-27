@@ -105,7 +105,12 @@ class SubsyncarrPlusPlusClient {
   }
 
   async startRun(paths = null, force = false) {
-    this.stateManager.update({ isRunning: true });
+    this.stateManager.update({
+      isRunning: true,
+      currentRun: null,
+      files: [],
+      initMessage: 'Initializing scan...',
+    });
     await API.startRun(paths, force);
   }
 

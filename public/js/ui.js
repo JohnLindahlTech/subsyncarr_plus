@@ -40,7 +40,7 @@ export class UIManager {
     if (state.activeView === 'live') this.renderLiveList(state);
     if (state.activeView === 'explorer') this.renderExplorerList(state);
 
-    this.updateButtonVisibility(state.isRunning, state.isDryRunning);
+    this.updateButtonVisibility(state.isRunning, state.isDryRunning, state.currentRun);
     if (state.health) this.renderHealthStatus(state.health);
   }
 
@@ -63,7 +63,7 @@ export class UIManager {
   }
 
   renderHeader(state) {
-    const isScanning = (state.isRunning && !state.currentRun) || state.isDryRunning;
+    const isScanning = (state.isRunning && (!state.currentRun || state.currentRun.status === 'completed')) || state.isDryRunning;
     const indicator = document.getElementById('scanningIndicator');
     if (indicator) {
       indicator.classList.toggle('hidden', !isScanning);
@@ -307,15 +307,25 @@ export class UIManager {
       </div>`;
   }
 
-  updateButtonVisibility(isRunning, isDryRunning = false) {
+  updateButtonVisibility(isRunning, isDryRunning = false, currentRun = null) {
     const stop = document.getElementById('stopRun');
     const start = document.getElementById('startRun');
     const force = document.getElementById('startRunForce');
     const dry = document.getElementById('dryRun');
 
+    // We are "really" running only after the scan is done and currentRun is created
+    const isActuallySyncing = isRunning && currentRun && currentRun.status === 'running';
+    const isInitialScanning = isRunning && (!currentRun || currentRun.status === 'completed');
+
     if (stop) stop.classList.toggle('hidden', !isRunning);
-    if (start) start.classList.toggle('hidden', isRunning || isDryRunning);
-    if (force) force.classList.toggle('hidden', isRunning || isDryRunning);
+    
+    if (start) {
+      start.classList.toggle('hidden', isActuallySyncing || isDryRunning);
+      start.disabled = isInitialScanning;
+      start.innerHTML = isInitialScanning ? '<span class="spinner-sm"></span> Scanning...' : '▶ Start Run';
+    }
+
+    if (force) force.classList.toggle('hidden', isActuallySyncing || isDryRunning);
     
     if (dry) {
       dry.classList.toggle('hidden', isRunning);
