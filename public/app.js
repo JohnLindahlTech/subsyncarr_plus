@@ -119,12 +119,28 @@ class SubsyncarrPlusPlusClient {
   }
 
   updateFile(fileData) {
+    // Check if file matches current filters
+    const matchesFilter = !this.state.agreementFilter || fileData.agreement_status === this.state.agreementFilter;
+    const matchesSearch =
+      !this.state.searchQuery || fileData.file_path.toLowerCase().includes(this.state.searchQuery.toLowerCase());
+
     const index = this.state.files.findIndex((f) => f.file_path === fileData.file_path);
-    if (index >= 0) {
-      this.state.files[index] = { ...this.state.files[index], ...fileData };
+
+    if (matchesFilter && matchesSearch) {
+      // It matches, so add or update it
+      if (index >= 0) {
+        this.state.files[index] = { ...this.state.files[index], ...fileData };
+      } else {
+        // Only add new files if we are on the first page or it's a processing status
+        // (to avoid messing up pagination for older completed items)
+        if (fileData.status === 'processing' || this.state.pagination.page === 1) {
+          this.state.files.unshift(fileData);
+        }
+      }
     } else {
-      if (fileData.status === 'processing' || this.state.pagination.page === 1) {
-        this.state.files.unshift(fileData);
+      // It does not match. If it's currently in the list, remove it.
+      if (index >= 0) {
+        this.state.files.splice(index, 1);
       }
     }
   }
@@ -224,26 +240,34 @@ class SubsyncarrPlusPlusClient {
       return;
     }
     body.innerHTML = this.state.files
-      .map(
-        (f) => `
+      .map((f) => {
+        const status = f.status || 'unknown';
+        const isFinished = ['completed', 'error', 'skipped'].includes(status);
+        const canVerify = status === 'completed' && f.agreement_status !== 'verified';
+
+        return `
       <tr>
         <td>${this.escapeHtml(this.basename(f.file_path))}</td>
-        <td><span class="status-badge ${f.status}">${f.status}</span></td>
+        <td><span class="status-badge ${this.escapeHtml(status)}">${this.escapeHtml(status)}</span></td>
         <td>${this.escapeHtml(f.best_engine || '-')}</td>
         <td>${f.best_score ? f.best_score + '%' : '-'}</td>
         <td>
-          <button class="btn-link js-action-details" 
-            data-file-path="${this.escapeHtml(f.file_path)}" 
-            data-engine="${this.escapeHtml(f.best_engine || '')}">🔍 Details</button>
           ${
-            f.agreement_status !== 'verified'
+            isFinished
+              ? `<button class="btn-link js-action-details" 
+            data-file-path="${this.escapeHtml(f.file_path)}" 
+            data-engine="${this.escapeHtml(f.best_engine || '')}">🔍 Details</button>`
+              : ''
+          }
+          ${
+            canVerify
               ? `<button class="btn-link js-action-verify" data-file-path="${this.escapeHtml(f.file_path)}">✅ Verify</button>`
               : ''
           }
         </td>
       </tr>
-    `,
-      )
+    `;
+      })
       .join('');
   }
 
@@ -392,8 +416,29 @@ class SubsyncarrPlusPlusClient {
   async viewDebugInfo(filePath, engine) {
     const f = this.state.files.find((x) => x.file_path === filePath);
     if (!f) return;
-    const e = JSON.parse(f.engines)[engine];
-    if (!e) return;
+
+    const enginesMap = JSON.parse(f.engines || '{}');
+    let targetEngine = engine;
+
+    // Smart selection if no engine specified or found
+    if (!targetEngine || !enginesMap[targetEngine]) {
+      if (f.best_engine && enginesMap[f.best_engine]) {
+        targetEngine = f.best_engine;
+      } else {
+        const keys = Object.keys(enginesMap);
+        if (keys.length > 0) targetEngine = keys[0];
+      }
+    }
+
+    const e = enginesMap[targetEngine];
+    if (!e) {
+      alert('No execution details available for this file yet.');
+      return;
+    }
+
+    const titleEl = document.querySelector('#debugModal .modal-header h3');
+    if (titleEl) titleEl.textContent = `Engine Debug Info: ${targetEngine}`;
+
     document.getElementById('debugCommand').textContent = e.command || '-';
     document.getElementById('debugStderr').textContent = e.stderr || '-';
     document.getElementById('debugStdout').textContent = e.stdout || '-';
@@ -466,7 +511,7 @@ class SubsyncarrPlusPlusClient {
     if (btn.classList.contains('js-action-details')) {
       const path = btn.dataset.filePath;
       const engine = btn.dataset.engine;
-      if (path && engine) this.viewDebugInfo(path, engine);
+      if (path) this.viewDebugInfo(path, engine);
     }
 
     if (btn.classList.contains('js-action-logs')) {
