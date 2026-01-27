@@ -11,7 +11,26 @@ export interface ProcessingResult {
   command?: string;
   isPermanent?: boolean;
   score?: number; // 0-100 confidence score
+  duration?: number;
 }
+
+export interface EngineProfile {
+  name: string;
+  args: string[];
+}
+
+export const ENGINE_PROFILES: Record<string, EngineProfile[]> = {
+  ffsubsync: [
+    { name: 'default', args: [] },
+    { name: 'deep_search', args: ['--max-offset-seconds', '300'] },
+    { name: 'vlc_mode', args: ['--vlc-mode'] },
+  ],
+  autosubsync: [{ name: 'default', args: [] }],
+  alass: [
+    { name: 'default', args: [] },
+    { name: 'aggressive', args: ['--split-penalty', '10'] },
+  ],
+};
 
 /**
  * Check if a system dependency is installed and working

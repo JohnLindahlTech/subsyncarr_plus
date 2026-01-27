@@ -2,27 +2,11 @@
 
 This document outlines recommended optimizations to improve the scalability, maintenance, and user experience of Subsyncarr+, specifically tailored for large libraries (10k+ files).
 
-## 1. Intelligent Parameter Optimization
+## 1. Error Grouping & Aggregation
 
-- **The Problem:** Subtitle engines have various parameters (thresholds, penalties, window sizes) that are currently hardcoded or left at defaults. Some files might only sync if these are tuned.
-- **The Fix:** Implement an auto-tuning loop using an optimization framework (like Optuna).
-
-* Define categorical and numerical search spaces for engine parameters.
-* Optimize for multiple metrics simultaneously: synchronization quality, processing speed, and resource usage.
-* Store "studies" in a persistent SQLite database to learn optimal settings over time.
-
-- **Benefit:** Increases the overall "Match Rate" of the application by automatically finding the settings that work for edge-case media.
-
-## 2. Automated Benchmarking & Visualization
-
-- **The Problem:** It is difficult to know if a sync was "high quality" without manually watching the movie, and comparing engine performance is purely anecdotal.
-- **The Fix:**
-
-* Implement a `BenchmarkEvaluator` that calculates a composite score for every synchronization attempt.
-* Provide a UI dashboard to visualize optimization results using contour plots, slice plots, and parameter evolution charts.
-* Aggregate performance data to identify which engines/parameters are most effective for specific media codecs or genres.
-
-- **Benefit:** Provides data-driven insights into the synchronization quality and helps the user identify potentially "shaky" matches.
+- **The Problem:** Viewing 1,000+ individual error cards is overwhelming and makes it hard to identify systemic issues (like a missing dependency).
+- **The Fix:** Implement an "Error Summary" view that aggregates failures by their root cause using the permanent failure detection regexes.
+- **Benefit:** Allows the user to quickly identify if a large number of failures are due to a single environmental issue or specific media patterns.
 
 # Completed Optimizations
 
@@ -114,7 +98,7 @@ The following items have been successfully implemented and verified:
 ## 15. Dependency Health Checks
 
 - **Problem:** Missing system tools caused silent failures.
-- **Solution:** Added startup verification for ffmpeg and all engines.
+- **Solution:** Added startup verification for ffmpeg, ffprobe, and all engines.
 - **Status:** Done.
 
 ## 16. Forced Re-Optimization
@@ -135,14 +119,32 @@ The following items have been successfully implemented and verified:
 - **Solution:** Implemented periodic 30s background sync, Tab-Visibility refresh, and reconnection catch-up.
 - **Status:** Done.
 
-## 19. Error Grouping & Aggregation (Library Dashboard)
+## 19. Library Dashboard & Global Stats
 
-- **Problem:** Analyzing 1,000+ failures was overwhelming.
-- **Solution:** Implemented a global Statistics Dashboard that groups errors by their root cause and shows engine success rates across all runs.
+- **Problem:** Analyzing overall library health across thousands of files was difficult.
+- **Solution:** Added a 📊 Library Dashboard with lifetime stats and engine success rates.
 - **Status:** Done.
 
 ## 20. Granular & Adaptive Timeouts
 
 - **Problem:** Global 30m timeout was too long for short clips and too short for 4K REMUXes.
 - **Solution:** Implemented adaptive timeouts based on video duration (`10% duration + 60s`).
+- **Status:** Done.
+
+## 21. Automated Benchmarking (Confidence Scoring)
+
+- **Problem:** Impossible to verify 13k syncs manually.
+- **Solution:** Engines now parse and store mathematical confidence scores (0-100%) for every synchronization.
+- **Status:** Done.
+
+## 22. Cross-Engine Agreement Detection
+
+- **Problem:** Low-quality syncs could go unnoticed.
+- **Solution:** Added logic to compare results across engines. Files are now marked as "VERIFIED" (consensus found) or "SUSPICIOUS" (engines disagreed).
+- **Status:** Done.
+
+## 23. Intelligent Parameter Optimization (IPO)
+
+- **Problem:** Default settings fail on complex audio or large time-shifts.
+- **Solution:** Implemented a multi-trial loop that automatically tries deeper search profiles if initial confidence is low.
 - **Status:** Done.

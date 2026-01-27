@@ -6,7 +6,7 @@ import { generateFfsubsyncSubtitles } from './generateFfsubsyncSubtitles';
 import { generateAutosubsyncSubtitles } from './generateAutosubsyncSubtitles';
 import { generateAlassSubtitles } from './generateAlassSubtitles';
 import { StateManager } from './stateManager';
-import { extractAudio, getVideoDuration } from './helpers';
+import { extractAudio, getVideoDuration, ENGINE_PROFILES, ProcessingResult } from './helpers';
 import { existsSync, unlinkSync } from 'fs';
 import * as path from 'path';
 import { randomUUID } from 'crypto';
@@ -282,62 +282,88 @@ export class ProcessingEngine extends EventEmitter {
           continue; // Skip to next engine
         }
 
-        this.log(`[${new Date().toISOString()}] Starting ${engine} for: ${fileName}`);
         this.emit('file:engine_started', { srtPath, engine });
 
-        const startTime = Date.now();
-        let result;
+        const profiles = ENGINE_PROFILES[engine] || [{ name: 'default', args: [] }];
+        let bestTrialResult: ProcessingResult | null = null;
 
-        try {
-          switch (engine) {
-            case 'ffsubsync':
-              result = await generateFfsubsyncSubtitles(srtPath, videoPath, controller.signal, audioPath, timeoutMs);
-              break;
-            case 'autosubsync':
-              result = await generateAutosubsyncSubtitles(srtPath, videoPath, controller.signal, audioPath, timeoutMs);
-              break;
-            case 'alass':
-              result = await generateAlassSubtitles(srtPath, videoPath, controller.signal, audioPath, timeoutMs);
-              break;
-            default:
-              continue;
-          }
+        for (const profile of profiles) {
+          this.log(`[${new Date().toISOString()}] Trial: ${engine} (${profile.name}) for: ${fileName}`);
+          const startTime = Date.now();
+          let currentTrialResult: ProcessingResult;
 
-          const duration = Date.now() - startTime;
-          const status = result.success ? '✓' : '✗';
-          this.log(
-            `[${new Date().toISOString()}] ${status} ${engine} completed (${(duration / 1000).toFixed(1)}s): ${fileName}`,
-          );
-          if (!result.success) {
-            this.log(`[${new Date().toISOString()}]   Error: ${result.message}`);
-            // Log stderr if available for debugging
-            if (result.stderr) {
-              this.log(`[${new Date().toISOString()}]   Stderr: ${result.stderr.substring(0, 500)}`);
+          try {
+            switch (engine) {
+              case 'ffsubsync':
+                currentTrialResult = await generateFfsubsyncSubtitles(
+                  srtPath,
+                  videoPath,
+                  controller.signal,
+                  audioPath,
+                  timeoutMs,
+                  profile,
+                );
+                break;
+              case 'autosubsync':
+                currentTrialResult = await generateAutosubsyncSubtitles(
+                  srtPath,
+                  videoPath,
+                  controller.signal,
+                  audioPath,
+                  timeoutMs,
+                );
+                break;
+              case 'alass':
+                currentTrialResult = await generateAlassSubtitles(
+                  srtPath,
+                  videoPath,
+                  controller.signal,
+                  audioPath,
+                  timeoutMs,
+                  profile,
+                );
+                break;
+              default:
+                continue;
             }
-          }
 
-          if (result.success) {
+            const duration = Date.now() - startTime;
+            const status = currentTrialResult.success ? '✓' : '✗';
+            this.log(
+              `[${new Date().toISOString()}] ${status} ${engine} (${profile.name}) trial completed (${(duration / 1000).toFixed(1)}s): ${fileName}`,
+            );
+
+            // IPO Logic: Keep the best score
+            if (!bestTrialResult || (currentTrialResult.score || 0) > (bestTrialResult.score || 0)) {
+              bestTrialResult = { ...currentTrialResult, duration };
+            }
+
+            // Optimization: If score is high enough, don't try other profiles
+            if (currentTrialResult.success && (currentTrialResult.score || 0) >= 85) {
+              this.log(
+                `[${new Date().toISOString()}] Confidence high (${currentTrialResult.score}%). Skipping other profiles.`,
+              );
+              break;
+            }
+          } catch (error) {
+            const duration = Date.now() - startTime;
+            this.log(
+              `[${new Date().toISOString()}] ✗ ${engine} (${profile.name}) trial failed (${(duration / 1000).toFixed(1)}s): ${fileName}`,
+            );
+            this.log(
+              `[${new Date().toISOString()}]   Error: ${error instanceof Error ? error.message : String(error)}`,
+            );
+          }
+        }
+
+        if (bestTrialResult) {
+          if (bestTrialResult.success) {
             anyEngineSucceeded = true;
           }
-
           this.emit('file:engine_completed', {
             srtPath,
             engine,
-            result: { ...result, duration },
-          });
-        } catch (error) {
-          const duration = Date.now() - startTime;
-          this.log(`[${new Date().toISOString()}] ✗ ${engine} failed (${(duration / 1000).toFixed(1)}s): ${fileName}`);
-          this.log(`[${new Date().toISOString()}]   Error: ${error instanceof Error ? error.message : String(error)}`);
-
-          this.emit('file:engine_completed', {
-            srtPath,
-            engine,
-            result: {
-              success: false,
-              message: error instanceof Error ? error.message : String(error),
-              duration,
-            },
+            result: bestTrialResult,
           });
         }
       }

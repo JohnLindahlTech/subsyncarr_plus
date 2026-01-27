@@ -1,5 +1,5 @@
 import { basename, dirname, join } from 'path';
-import { execPromise, ProcessingResult } from './helpers';
+import { execPromise, ProcessingResult, EngineProfile } from './helpers';
 import { existsSync } from 'fs';
 
 export async function generateFfsubsyncSubtitles(
@@ -8,10 +8,12 @@ export async function generateFfsubsyncSubtitles(
   signal?: AbortSignal,
   audioPath?: string,
   timeoutMs?: number,
+  profile?: EngineProfile,
 ): Promise<ProcessingResult> {
   const directory = dirname(srtPath);
   const srtBaseName = basename(srtPath, '.srt');
-  const outputPath = join(directory, `${srtBaseName}.ffsubsync.srt`);
+  const suffix = profile && profile.name !== 'default' ? `.${profile.name}` : '';
+  const outputPath = join(directory, `${srtBaseName}.ffsubsync${suffix}.srt`);
 
   // Check if synced subtitle already exists
   const exists = existsSync(outputPath);
@@ -24,7 +26,8 @@ export async function generateFfsubsyncSubtitles(
 
   try {
     const reference = audioPath || videoPath;
-    const command = `ffsubsync "${reference}" -i "${srtPath}" -o "${outputPath}"`;
+    const profileArgs = profile ? profile.args.join(' ') : '';
+    const command = `ffsubsync "${reference}" -i "${srtPath}" -o "${outputPath}" ${profileArgs}`;
     console.log(`${new Date().toLocaleString()} Processing: ${command}`);
     const { stdout, stderr } = await execPromise(command, timeoutMs, signal);
 

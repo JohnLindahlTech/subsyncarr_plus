@@ -1,5 +1,5 @@
 import { basename, dirname, join } from 'path';
-import { execPromise, ProcessingResult } from './helpers';
+import { execPromise, ProcessingResult, EngineProfile } from './helpers';
 import { existsSync } from 'fs';
 
 export async function generateAlassSubtitles(
@@ -8,11 +8,14 @@ export async function generateAlassSubtitles(
   signal?: AbortSignal,
   audioPath?: string,
   timeoutMs?: number,
+  profile?: EngineProfile,
 ): Promise<ProcessingResult> {
   const directory = dirname(srtPath);
   const srtBaseName = basename(srtPath, '.srt');
-  const outputPath = join(directory, `${srtBaseName}.alass.srt`);
+  const suffix = profile && profile.name !== 'default' ? `.${profile.name}` : '';
+  const outputPath = join(directory, `${srtBaseName}.alass${suffix}.srt`);
 
+  // Check if synced subtitle already exists
   const exists = existsSync(outputPath);
   if (exists) {
     return {
@@ -23,7 +26,8 @@ export async function generateAlassSubtitles(
 
   try {
     const reference = audioPath || videoPath;
-    const command = `alass "${reference}" "${srtPath}" "${outputPath}"`;
+    const profileArgs = profile ? profile.args.join(' ') : '';
+    const command = `alass "${reference}" "${srtPath}" "${outputPath}" ${profileArgs}`;
     console.log(`${new Date().toLocaleString()} Processing: ${command}`);
     const { stdout, stderr } = await execPromise(command, timeoutMs, signal);
 

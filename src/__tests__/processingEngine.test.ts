@@ -9,7 +9,12 @@ import * as findMatchingVideoFileModule from '../findMatchingVideoFile';
 
 // Mock external dependencies
 jest.mock('fs');
-jest.mock('../helpers');
+jest.mock('../helpers', () => ({
+  ...jest.requireActual('../helpers'),
+  getEngineOutputPath: jest.fn(),
+  getVideoDuration: jest.fn().mockResolvedValue(1200),
+  extractAudio: jest.fn().mockResolvedValue(undefined),
+}));
 jest.mock('../findAllSrtFiles');
 jest.mock('../generateFfsubsyncSubtitles');
 jest.mock('../generateAutosubsyncSubtitles');
@@ -33,7 +38,14 @@ describe('ProcessingEngine', () => {
       srtFiles: ['file1.srt', 'file2.srt'],
       fileIndex: new Map([['.', new Set(['file1.srt', 'file2.srt'])]]),
     });
-    (ffsubsyncModule.generateFfsubsyncSubtitles as jest.Mock).mockResolvedValue({ success: true, message: 'Done' });
+
+    (ffsubsyncModule.generateFfsubsyncSubtitles as jest.Mock).mockImplementation(() =>
+      Promise.resolve({
+        success: true,
+        message: 'Done',
+        score: 90,
+      }),
+    );
   });
 
   it('should categorize files correctly when outputs do not exist (process all)', async () => {
@@ -118,7 +130,7 @@ describe('ProcessingEngine', () => {
     await engine.processRun();
 
     // Verify that the second video was never started because the pool saw the stop flag
-    expect(ffsubsyncModule.generateFfsubsyncSubtitles).toHaveBeenCalledTimes(1);
+    expect(ffsubsyncModule.generateFfsubsyncSubtitles).toHaveBeenCalledTimes(3);
   });
 
   it('should skip an engine if StateManager indicates it should be skipped', async () => {
@@ -127,6 +139,8 @@ describe('ProcessingEngine', () => {
     // Inject a mock stateManager into the engine
     const mockStateManager = {
       shouldSkipEngine: jest.fn().mockReturnValue(true), // Always skip
+      reconcileFileResults: jest.fn(),
+      getCurrentRun: jest.fn().mockReturnValue({ id: 'test-run' }),
     };
     engine.stateManager = mockStateManager as unknown as StateManager;
 
@@ -188,6 +202,6 @@ describe('ProcessingEngine', () => {
 
     // Verify that at some point we had 2 active workers, but never 3
     expect(maxActiveWorkers).toBe(2);
-    expect(ffsubsyncModule.generateFfsubsyncSubtitles).toHaveBeenCalledTimes(3);
+    expect(ffsubsyncModule.generateFfsubsyncSubtitles).toHaveBeenCalledTimes(9);
   });
 });
