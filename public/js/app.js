@@ -116,9 +116,14 @@ class SubsyncarrPlusPlusClient {
   async runDryRun() {
     const btn = document.getElementById('dryRun');
     if (btn) btn.disabled = true;
-    const data = await API.dryRun();
-    this.renderDryRunResults(data);
-    if (btn) btn.disabled = false;
+    this.stateManager.update({ isDryRunning: true });
+    try {
+      const data = await API.dryRun();
+      this.renderDryRunResults(data);
+    } finally {
+      this.stateManager.update({ isDryRunning: false });
+      if (btn) btn.disabled = false;
+    }
   }
 
   renderDryRunResults(d) {

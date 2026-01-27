@@ -16,6 +16,7 @@ export class StateManager {
       activeDebugFile: null,
       activeDebugEngine: null,
       initMessage: '',
+      isDryRunning: false,
     };
     this.updateCallback = updateCallback;
     this.reconnectInterval = 3000;

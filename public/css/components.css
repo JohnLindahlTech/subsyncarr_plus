@@ -293,12 +293,20 @@ select.search-input {
   border: 1px solid var(--border);
   width: 100%;
 }
-.progress-fill {
-  height: 100%;
-  background: var(--primary);
-  border-radius: 9999px;
-  transition: width 0.3s ease;
-  min-width: 2px;
+.progress-fill { height: 100%; background: var(--primary); border-radius: 9999px; transition: width 0.3s ease; min-width: 2px; }
+
+/* Spinner Component */
+.spinner-sm {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--border);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
 .theme-toggle {
