@@ -48,7 +48,7 @@ export class ProcessingCoordinator {
         totalVideos: number;
         config: ScanConfig;
       }) => {
-        this.stateManager.startRun(processing.length, totalVideos, this.enabledEngines);
+        const runId = this.stateManager.startRun(processing.length, totalVideos, this.enabledEngines);
 
         // Bulk add pending files
         const pendingFiles = processing.map((filePath) => {
@@ -59,7 +59,7 @@ export class ProcessingCoordinator {
             status: 'pending' as const,
           };
         });
-        this.stateManager.addFilesBulk(this.currentRunId!, pendingFiles);
+        this.stateManager.addFilesBulk(runId, pendingFiles);
 
         // Bulk add skipped files
         const skippedFiles = skipped.map((filePath) => {
@@ -70,11 +70,11 @@ export class ProcessingCoordinator {
             status: 'skipped' as const,
           };
         });
-        this.stateManager.addFilesBulk(this.currentRunId!, skippedFiles);
+        this.stateManager.addFilesBulk(runId, skippedFiles);
 
         // Update run stats in bulk for skipped files
         if (skipped.length > 0) {
-          this.stateManager.incrementRunCountersBulk(this.currentRunId!, {
+          this.stateManager.incrementRunCountersBulk(runId, {
             skipped: skipped.length,
             completed_engines: skipped.length * this.enabledEngines.length,
           });

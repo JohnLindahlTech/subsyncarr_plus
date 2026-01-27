@@ -21,6 +21,7 @@ class MockStateManager extends EventEmitter {
   updateFileStatus = jest.fn();
   updateFileEngine = jest.fn();
   incrementCompletedEngines = jest.fn();
+  incrementCompletedVideos = jest.fn();
   incrementRunCounter = jest.fn();
   incrementRunCountersBulk = jest.fn();
   setCurrentVideo = jest.fn();
