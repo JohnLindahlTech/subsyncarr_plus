@@ -8,37 +8,31 @@ This document outlines recommended optimizations to improve the scalability, mai
 - **The Fix:** Modify the event to send only the changed fields (e.g., just the `status` or the latest `engine` result).
 - **Benefit:** Reduces bandwidth usage and lowers CPU overhead on both the server and the client browser.
 
-## 2. "Dry Run" Mode
-
-- **The Problem:** Committing to a full run on 13,000 files is a large time investment. Users don't know the impact until processing starts.
-- **The Fix:** Add a mode that performs the scan and video matching phase only, presenting a summary of expected results (matches found, files missing video, estimated time).
-- **Benefit:** Gives users confidence and transparency before starting a resource-intensive operation.
-
-## 3. Dependency Health Checks
+## 2. Dependency Health Checks
 
 - **The Problem:** If a system dependency like `ffsubsync` is missing from the `$PATH`, the application will start normally but fail every synchronization task.
 - **The Fix:** On server startup, perform a check for all enabled engines and verify they are executable. Show a warning in the UI if any are missing.
 - **Benefit:** Reduces user frustration by proactively identifying environment issues before a run is attempted.
 
-## 4. File System Watcher (Real-time Sync)
+## 3. File System Watcher (Real-time Sync)
 
 - **The Problem:** Currently, syncing only happens during manual or scheduled "Full Runs." New media stays out of sync until the next scan.
 - **The Fix:** Use a library like `chokidar` to monitor media directories in real-time. Automatically trigger a sync as soon as a new `.srt` or video file is detected.
 - **Benefit:** Provides a "set and forget" experience where media is always synchronized immediately after download.
 
-## 5. Priority Queue
+## 4. Priority Queue
 
 - **The Problem:** During a full run of 13,000 files, a newly added movie might be stuck at the end of a multi-hour queue.
 - **The Fix:** Implement a priority-based queue where real-time detected files or manually "bumped" files move to the front of the worker pool.
 - **Benefit:** Ensures that content the user wants to watch _now_ is processed immediately without waiting for the entire library scan.
 
-## 6. Subtitle Engine "Weighted" Logic
+## 5. Subtitle Engine "Weighted" Logic
 
 - **The Problem:** The system currently tries engines in a fixed order (`ffsubsync` -> `autosubsync` -> `alass`), which may not be the most efficient for every library.
 - **The Fix:** Track success/failure statistics for each engine. Dynamically reorder the attempts to start with the engine that has the highest historical success rate for your specific media type.
 - **Benefit:** Reduces total processing time by succeeding on the first attempt more often.
 
-## 7. Intelligent Parameter Optimization
+## 6. Intelligent Parameter Optimization
 
 - **The Problem:** Subtitle engines have various parameters (thresholds, penalties, window sizes) that are currently hardcoded or left at defaults. Some files might only sync if these are tuned.
 - **The Fix:** Implement an auto-tuning loop using an optimization framework (like Optuna).
@@ -49,7 +43,7 @@ This document outlines recommended optimizations to improve the scalability, mai
 
 - **Benefit:** Increases the overall "Match Rate" of the application by automatically finding the settings that work for edge-case media.
 
-## 8. Automated Benchmarking & Visualization
+## 7. Automated Benchmarking & Visualization
 
 - **The Problem:** It is difficult to know if a sync was "high quality" without manually watching the movie, and comparing engine performance is purely anecdotal.
 - **The Fix:**
@@ -60,13 +54,13 @@ This document outlines recommended optimizations to improve the scalability, mai
 
 - **Benefit:** Provides data-driven insights into the synchronization quality and helps the user identify potentially "shaky" matches.
 
-## 9. Error Grouping & Aggregation
+## 8. Error Grouping & Aggregation
 
 - **The Problem:** Viewing 1,000+ individual error cards is overwhelming and makes it hard to identify systemic issues (like a missing dependency).
 - **The Fix:** Implement an "Error Summary" view that aggregates failures by their root cause using the permanent failure detection regexes.
 - **Benefit:** Allows the user to quickly identify if a large number of failures are due to a single environmental issue or specific media patterns.
 
-## 10. Granular & Adaptive Timeouts
+## 9. Granular & Adaptive Timeouts
 
 - **The Problem:** While a global 30-minute timeout exists, it is often too long for short episodes and may be too short for 4K REMUX movies. A single hung process can still block a worker slot for half an hour.
 - **The Fix:**
@@ -75,6 +69,18 @@ This document outlines recommended optimizations to improve the scalability, mai
 2. Implement adaptive timeouts based on video duration (e.g., `Timeout = VideoDuration * 0.1 + 60s`).
 
 - **Benefit:** Prevents individual files from stalling the entire queue while ensuring complex matches have enough time to succeed.
+
+## 10. Forced Re-Optimization
+
+- **The Problem:** Once a file is marked as "Permanently Failed," it will never be retried, even if engine improvements or parameter optimizations could now succeed.
+- **The Fix:** Add a "Re-Optimize Permanently Failed Files" button that resets their status and places them back into the queue for processing with the latest engine versions and parameters.
+- **Benefit:** Allows users to recover from past failures and benefit from ongoing improvements in the application.
+
+## 11. Full forced rerun option
+
+- **The Problem:** There is currently no way to force a full re-run of all files without deleting the database.
+- **The Fix:** Add a "Force Full Rerun" option that resets all file statuses and reprocesses everything from scratch, including ignoring existing optimized files.
+- **Benefit:** Provides a simple way to reprocess the entire library without manual database intervention.
 
 # Completed Optimizations
 
@@ -180,4 +186,10 @@ The following items have been successfully implemented and verified:
 
 - **Problem:** Lightmode UI was harsh for nighttime viewing.
 - **Solution:** Implemented a full theme system that respects OS preferences by default and provides a manual toggle with persistence.
+- **Status:** Done.
+
+## 18. "Dry Run" Mode
+
+- **Problem:** Committing to a full run on 13,000 files is a large time investment without knowing the impact.
+- **Solution:** Added a mode that performs scan and matching only, presenting a summary of expected results and real-world time estimates.
 - **Status:** Done.

@@ -715,3 +715,87 @@ td {
 .theme-toggle:hover {
   background: var(--border);
 }
+
+/* Dry Run Summary Styles */
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.summary-card {
+  background: var(--background);
+  padding: 16px;
+  border-radius: 8px;
+  text-align: center;
+  border: 1px solid var(--border);
+}
+
+.summary-card label {
+  display: block;
+  font-size: 12px;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+  font-weight: 600;
+}
+
+.summary-value {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.summary-card.success .summary-value {
+  color: var(--success);
+}
+.summary-card.primary .summary-value {
+  color: var(--primary);
+}
+.summary-card.danger .summary-value {
+  color: var(--error);
+}
+
+.estimate-value {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--primary);
+  background: var(--background);
+  padding: 12px;
+  border-radius: 6px;
+  display: inline-block;
+}
+
+.detail-list {
+  max-height: 200px;
+  overflow-y: auto;
+  background: var(--background);
+  border-radius: 6px;
+  padding: 12px;
+  border: 1px solid var(--border);
+}
+
+.missing-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+
+.missing-item:last-child {
+  border-bottom: none;
+}
+
+.missing-file {
+  font-weight: 500;
+  word-break: break-all;
+  padding-right: 12px;
+}
+
+.missing-reason {
+  color: var(--error);
+  flex-shrink: 0;
+  font-style: italic;
+}

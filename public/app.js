@@ -358,14 +358,6 @@ class SubsyncarrPlusClient {
       this.startRun(paths);
     });
 
-    // Close modal when clicking outside
-    document.getElementById('customPathModal').addEventListener('click', (e) => {
-      if (e.target.id === 'customPathModal') {
-        document.getElementById('customPathModal').classList.add('hidden');
-        document.getElementById('customPaths').value = '';
-      }
-    });
-
     // Logs modal handlers
     document.getElementById('closeLogsModal').addEventListener('click', () => {
       document.getElementById('logsModal').classList.add('hidden');
@@ -383,10 +375,28 @@ class SubsyncarrPlusClient {
       document.getElementById('debugModal').classList.add('hidden');
     });
 
-    // Close debug modal when clicking outside
-    document.getElementById('debugModal').addEventListener('click', (e) => {
+    document.getElementById('closeDryRunModal').addEventListener('click', () => {
+      document.getElementById('dryRunModal').classList.add('hidden');
+    });
+
+    document.getElementById('closeDryRunButton').addEventListener('click', () => {
+      document.getElementById('dryRunModal').classList.add('hidden');
+    });
+
+    // Close modals when clicking outside
+    window.addEventListener('click', (e) => {
+      if (e.target.id === 'customPathModal') {
+        document.getElementById('customPathModal').classList.add('hidden');
+        document.getElementById('customPaths').value = '';
+      }
       if (e.target.id === 'debugModal') {
         document.getElementById('debugModal').classList.add('hidden');
+      }
+      if (e.target.id === 'logsModal') {
+        document.getElementById('logsModal').classList.add('hidden');
+      }
+      if (e.target.id === 'dryRunModal') {
+        document.getElementById('dryRunModal').classList.add('hidden');
       }
     });
 
@@ -422,13 +432,6 @@ class SubsyncarrPlusClient {
           alert('Failed to copy logs to clipboard');
         }
         document.body.removeChild(textArea);
-      }
-    });
-
-    // Close logs modal when clicking outside
-    document.getElementById('logsModal').addEventListener('click', (e) => {
-      if (e.target.id === 'logsModal') {
-        document.getElementById('logsModal').classList.add('hidden');
       }
     });
 
