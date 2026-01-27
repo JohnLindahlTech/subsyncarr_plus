@@ -238,6 +238,14 @@ export class StateManager extends EventEmitter {
     const file = this.db.getFileResults(runId).find((f) => f.file_path === filePath);
     if (!file) return;
 
+    // Record success/failure for strike-tracking logic
+    if (result.success) {
+      this.db.recordEngineSuccess(filePath, engine);
+    } else if (!result.skipped) {
+      // Only record failure if it wasn't already skipped by the strike-tracking logic
+      this.db.recordEngineFailure(filePath, engine, !!result.isPermanent);
+    }
+
     const engines = JSON.parse(file.engines || '{}');
     engines[engine] = result;
 
