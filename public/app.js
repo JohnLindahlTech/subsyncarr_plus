@@ -227,13 +227,19 @@ class SubsyncarrPlusPlusClient {
       .map(
         (f) => `
       <tr>
-        <td>${this.basename(f.file_path)}</td>
+        <td>${this.escapeHtml(this.basename(f.file_path))}</td>
         <td><span class="status-badge ${f.status}">${f.status}</span></td>
-        <td>${f.best_engine || '-'}</td>
+        <td>${this.escapeHtml(f.best_engine || '-')}</td>
         <td>${f.best_score ? f.best_score + '%' : '-'}</td>
         <td>
-          <button class="btn-link" onclick="client.viewDebugInfo('${f.file_path.replace(/'/g, "'")}', '${f.best_engine}')">🔍 Details</button>
-          ${f.agreement_status !== 'verified' ? `<button class="btn-link" onclick="client.manuallyVerifyFile('${f.file_path.replace(/'/g, "'")}')">✅ Verify</button>` : ''}
+          <button class="btn-link js-action-details" 
+            data-file-path="${this.escapeHtml(f.file_path)}" 
+            data-engine="${this.escapeHtml(f.best_engine || '')}">🔍 Details</button>
+          ${
+            f.agreement_status !== 'verified'
+              ? `<button class="btn-link js-action-verify" data-file-path="${this.escapeHtml(f.file_path)}">✅ Verify</button>`
+              : ''
+          }
         </td>
       </tr>
     `,
@@ -244,19 +250,19 @@ class SubsyncarrPlusPlusClient {
   renderFileCard(f) {
     const engines = JSON.parse(f.engines || '{}');
     const badge = f.agreement_status
-      ? `<span class="agreement-badge status-${f.agreement_status}">${f.agreement_status.toUpperCase()}</span>`
+      ? `<span class="agreement-badge status-${this.escapeHtml(f.agreement_status)}">${this.escapeHtml(f.agreement_status.toUpperCase())}</span>`
       : '';
     return `
       <div class="file-card">
         <div class="file-header">
-          <div class="file-name">${this.basename(f.file_path)}</div>
+          <div class="file-name">${this.escapeHtml(this.basename(f.file_path))}</div>
           ${badge}
         </div>
         <div class="engine-results-grid">
           ${Object.entries(engines)
             .map(
               ([n, r]) =>
-                `<div class="engine-tag ${r.success ? 'success' : 'error'}">${n}: ${r.score ? r.score + '%' : r.success ? '✓' : '✗'}</div>`,
+                `<div class="engine-tag ${r.success ? 'success' : 'error'}">${this.escapeHtml(n)}: ${r.score ? r.score + '%' : r.success ? '✓' : '✗'}</div>`,
             )
             .join('')}
         </div>
@@ -273,12 +279,14 @@ class SubsyncarrPlusPlusClient {
     document.getElementById('engineStatsGrid').innerHTML = stats.engines
       .map(
         (e) => `
-      <div class="summary-card"><label>${e.engine}</label><div class="summary-value">${e.total > 0 ? Math.round((e.success / e.total) * 100) : 0}%</div></div>
+      <div class="summary-card"><label>${this.escapeHtml(e.engine)}</label><div class="summary-value">${e.total > 0 ? Math.round((e.success / e.total) * 100) : 0}%</div></div>
     `,
       )
       .join('');
     document.getElementById('errorSummaryList').innerHTML = errors
-      .map((g) => `<div class="error-group-item"><strong>${g.count} files:</strong> ${g.message}</div>`)
+      .map(
+        (g) => `<div class="error-group-item"><strong>${g.count} files:</strong> ${this.escapeHtml(g.message)}</div>`,
+      )
       .join('');
   }
 
@@ -288,13 +296,13 @@ class SubsyncarrPlusPlusClient {
         (r) => `
       <tr>
         <td>${new Date(r.start_time).toLocaleString()}</td>
-        <td><span class="status-badge ${r.status}">${r.status}</span></td>
+        <td><span class="status-badge ${this.escapeHtml(r.status)}">${this.escapeHtml(r.status)}</span></td>
         <td>${r.total_files}</td>
         <td>${r.completed}</td>
         <td>${r.failed}</td>
         <td>${r.completed_engines}/${r.total_engines}</td>
         <td>${r.end_time ? Math.round((r.end_time - r.start_time) / 1000) + 's' : '...'}</td>
-        <td><button class="btn-link" onclick="client.viewLogs('${r.id}')">📄 Logs</button></td>
+        <td><button class="btn-link js-action-logs" data-run-id="${this.escapeHtml(r.id)}">📄 Logs</button></td>
       </tr>
     `,
       )
