@@ -182,9 +182,21 @@ export class StateManager extends EventEmitter {
 
   private emitFileUpdate(runId: string, filePath: string, deltas: Partial<FileResult>): void {
     const run = this.db.getRun(runId);
-    // Send the absolute minimum: filePath (ID) and the changed fields
+    const file = this.db.getFileResults(runId).find((f) => f.file_path === filePath);
+
+    if (!file) return;
+
+    // Always include status and agreement_status in updates so frontend filters work
+    const updatedFile = {
+      file_path: filePath,
+      status: file.status,
+      agreement_status: file.agreement_status,
+      video_path: file.video_path,
+      ...deltas,
+    };
+
     this.emit('file:updated', {
-      file: { file_path: filePath, ...deltas },
+      file: updatedFile,
       run,
     });
   }

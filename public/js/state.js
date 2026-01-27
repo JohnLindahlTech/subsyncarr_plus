@@ -32,28 +32,36 @@ export class StateManager {
   updateFile(fileData) {
     const { searchQuery, agreementFilter, statusFilter, files, pagination } = this.state;
 
+    // Is it a file we are interested in for the Explorer?
     const matchesAgreement = !agreementFilter || fileData.agreement_status === agreementFilter;
     const matchesStatus = !statusFilter || fileData.status === statusFilter;
     const matchesSearch = !searchQuery || fileData.file_path.toLowerCase().includes(searchQuery.toLowerCase());
 
+    const isProcessing = fileData.status === 'processing';
     const index = files.findIndex((f) => f.file_path === fileData.file_path);
 
     let newFiles = [...files];
-    let extractions = [...this.state.activeExtractions];
 
-    // Inferred cleanup: if an SRT is processing, the movie is no longer extracting
-    if (fileData.video_path && extractions.includes(fileData.video_path)) {
-      extractions = extractions.filter((p) => p !== fileData.video_path);
-    }
-
-    if (matchesAgreement && matchesStatus && matchesSearch) {
+    // Priority: If it's processing, we ALWAYS want it in the state for the Live view
+    // Otherwise, it must match the filters.
+    if (isProcessing || (matchesAgreement && matchesStatus && matchesSearch)) {
       if (index >= 0) {
         newFiles[index] = { ...newFiles[index], ...fileData };
-      } else if (fileData.status === 'processing' || pagination.page === 1) {
-        newFiles.unshift(fileData);
+      } else {
+        // Only add non-processing files if we are on the first page
+        if (isProcessing || pagination.page === 1) {
+          newFiles.unshift(fileData);
+        }
       }
     } else if (index >= 0) {
+      // It no longer matches filters and isn't processing, remove it
       newFiles.splice(index, 1);
+    }
+
+    // Inferred extraction cleanup: if an SRT is processing, the movie is no longer extracting
+    let extractions = [...this.state.activeExtractions];
+    if (fileData.video_path && extractions.includes(fileData.video_path)) {
+      extractions = extractions.filter((p) => p !== fileData.video_path);
     }
 
     this.update({ files: newFiles, activeExtractions: extractions });
