@@ -4,14 +4,23 @@ import { randomUUID } from 'crypto';
 import { LogFileManager } from './logFileManager';
 import * as path from 'path';
 
+interface MaintenanceResult {
+  success: boolean;
+  deletedRunIds?: string[];
+  reclaimedBytes?: number;
+  error?: string;
+}
+
 export class StateManager extends EventEmitter {
   private db: SubsyncarrPlusPlusDatabase;
   private currentRunId: string | null = null;
   private logFileManager: LogFileManager;
   private activeExtractions: Set<string> = new Set();
+  private dbPath: string;
 
   constructor(dbPath: string) {
     super();
+    this.dbPath = dbPath;
     this.db = new SubsyncarrPlusPlusDatabase(dbPath);
 
     // Create log file manager in same directory as database
@@ -388,38 +397,45 @@ export class StateManager extends EventEmitter {
   }
 
   /**
-   * Performs database maintenance tasks
+   * Performs database maintenance tasks in a separate thread to avoid locking the UI
    */
   performMaintenance(): void {
-    console.log(`[${new Date().toISOString()}] Starting database maintenance...`);
-    const statsBefore = this.db.getDatabaseStats();
+    console.log(`[${new Date().toISOString()}] Starting off-thread database maintenance...`);
 
-    // 1. Delete runs older than 30 days
-    const deletedRunIds = this.db.deleteOldRuns(30);
+    // We point to the JS file in dist because that's where the compiled code lives
+    const workerPath = path.join(__dirname, 'maintenanceWorker.js');
 
-    // 2. Delete corresponding log files
-    deletedRunIds.forEach((id) => {
-      this.logFileManager.deleteLog(id);
+    const { Worker } = require('worker_threads');
+    const worker = new Worker(workerPath, {
+      workerData: {
+        dbPath: this.dbPath,
+        olderThanDays: 30,
+        trimLogsOlderThanDays: 7,
+      },
     });
 
-    // 3. Trim database logs for runs older than 7 days
-    const trimmedLogs = this.db.trimOldLogs(7);
+    worker.on('message', (result: MaintenanceResult) => {
+      if (result.success && result.deletedRunIds && result.reclaimedBytes !== undefined) {
+        // Main thread cleans up the log files based on what worker deleted from DB
+        result.deletedRunIds.forEach((id: string) => {
+          this.logFileManager.deleteLog(id);
+        });
 
-    // 4. Also clean up any "orphan" log files that might have been missed
-    const orphanLogs = this.logFileManager.deleteOldLogs(30);
+        // Also clean orphan logs
+        const orphanLogs = this.logFileManager.deleteOldLogs(30);
 
-    // 5. Reclaim space
-    this.db.vacuum();
+        console.log(`[${new Date().toISOString()}] Off-thread maintenance complete:`);
+        console.log(`  - Deleted runs: ${result.deletedRunIds.length}`);
+        console.log(`  - Space reclaimed: ${(result.reclaimedBytes / 1024 / 1024).toFixed(2)} MB`);
+        console.log(`  - Orphan logs cleaned: ${orphanLogs}`);
+      } else {
+        console.error(`[${new Date().toISOString()}] Maintenance worker failed: ${result.error}`);
+      }
+    });
 
-    const statsAfter = this.db.getDatabaseStats();
-    const savedBytes = statsBefore.sizeBytes - statsAfter.sizeBytes;
-
-    console.log(`[${new Date().toISOString()}] Maintenance complete:`);
-    console.log(`  - Deleted runs: ${deletedRunIds.length}`);
-    console.log(`  - Deleted run log files: ${deletedRunIds.length}`);
-    console.log(`  - Cleaned orphan log files: ${orphanLogs}`);
-    console.log(`  - Trimmed database logs: ${trimmedLogs}`);
-    console.log(`  - Space reclaimed: ${(savedBytes / 1024 / 1024).toFixed(2)} MB`);
+    worker.on('error', (err: Error) => {
+      console.error(`[${new Date().toISOString()}] Maintenance worker thread error:`, err);
+    });
   }
   close() {
     this.logFileManager.close();

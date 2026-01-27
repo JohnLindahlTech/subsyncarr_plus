@@ -244,8 +244,12 @@ class SubsyncarrPlusPlusClient {
   async reconcileState() {
     const s = this.stateManager.state;
     const data = await API.fetchStatus(1, 50, s.searchQuery, s.agreementFilter, s.statusFilter);
-    this.stateManager.update({ currentRun: data.currentRun, isRunning: data.isRunning });
-    data.files.forEach((x) => this.stateManager.updateFile(x));
+    this.stateManager.update({
+      currentRun: data.currentRun,
+      isRunning: data.isRunning,
+      files: data.files,
+      pagination: data.pagination,
+    });
   }
 
   setupInfiniteScroll() {
