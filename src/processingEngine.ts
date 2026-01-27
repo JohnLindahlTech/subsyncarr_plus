@@ -179,6 +179,7 @@ export class ProcessingEngine extends EventEmitter {
     try {
       // Extract audio once for the entire group
       this.log(`[${new Date().toISOString()}] Extracting audio for group: ${path.basename(videoPath)}`);
+      if (this.stateManager) this.stateManager.startExtraction(videoPath);
 
       // Use a controller just for the extraction part
       const extractionController = new AbortController();
@@ -193,6 +194,8 @@ export class ProcessingEngine extends EventEmitter {
           `[${new Date().toISOString()}] Audio extraction failed: ${err instanceof Error ? err.message : String(err)}`,
         );
         // Fall back to direct video processing if extraction fails
+      } finally {
+        if (this.stateManager) this.stateManager.stopExtraction(videoPath);
       }
 
       this.emit('video:phase_changed', { videoPath, phase: 'syncing' });

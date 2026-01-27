@@ -142,6 +142,8 @@ describe('ProcessingEngine', () => {
       reconcileFileResults: jest.fn(),
       getCurrentRun: jest.fn().mockReturnValue({ id: 'test-run' }),
       incrementCompletedVideos: jest.fn(),
+      startExtraction: jest.fn(),
+      stopExtraction: jest.fn(),
     };
     engine.stateManager = mockStateManager as unknown as StateManager;
 

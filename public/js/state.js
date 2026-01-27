@@ -17,6 +17,7 @@ export class StateManager {
       activeDebugEngine: null,
       initMessage: '',
       isDryRunning: false,
+      activeExtractions: [],
     };
     this.updateCallback = updateCallback;
     this.reconnectInterval = 3000;
@@ -38,6 +39,12 @@ export class StateManager {
     const index = files.findIndex((f) => f.file_path === fileData.file_path);
 
     let newFiles = [...files];
+    let extractions = [...this.state.activeExtractions];
+
+    // Inferred cleanup: if an SRT is processing, the movie is no longer extracting
+    if (fileData.video_path && extractions.includes(fileData.video_path)) {
+      extractions = extractions.filter((p) => p !== fileData.video_path);
+    }
 
     if (matchesAgreement && matchesStatus && matchesSearch) {
       if (index >= 0) {
@@ -49,7 +56,7 @@ export class StateManager {
       newFiles.splice(index, 1);
     }
 
-    this.update({ files: newFiles });
+    this.update({ files: newFiles, activeExtractions: extractions });
   }
   initWebSocket() {
     const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -68,6 +75,12 @@ export class StateManager {
           break;
         case 'run:progress':
           this.update({ initMessage: msg.data.message });
+          break;
+        case 'extraction:started':
+          this.update({ activeExtractions: [...this.state.activeExtractions, msg.data] });
+          break;
+        case 'extraction:stopped':
+          this.update({ activeExtractions: this.state.activeExtractions.filter((p) => p !== msg.data) });
           break;
         case 'run:updated':
         case 'run:completed':

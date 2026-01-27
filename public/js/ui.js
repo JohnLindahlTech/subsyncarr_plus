@@ -63,7 +63,8 @@ export class UIManager {
   }
 
   renderHeader(state) {
-    const isScanning = (state.isRunning && (!state.currentRun || state.currentRun.status === 'completed')) || state.isDryRunning;
+    const isScanning =
+      (state.isRunning && (!state.currentRun || state.currentRun.status === 'completed')) || state.isDryRunning;
     const indicator = document.getElementById('scanningIndicator');
     if (indicator) {
       indicator.classList.toggle('hidden', !isScanning);
@@ -116,10 +117,24 @@ export class UIManager {
     const compEl = document.getElementById('completedList');
 
     if (procEl) {
+      const extractionHtml = (state.activeExtractions || [])
+        .map(
+          (path) => `
+        <div class="file-card extraction-card">
+          <div class="file-header">
+            <div class="file-name">🎬 ${this.escapeHtml(this.basename(path))}</div>
+            <span class="status-badge processing">Extracting Audio</span>
+          </div>
+          <div class="current-task-status">Preparing reference audio via FFmpeg...</div>
+        </div>
+      `,
+        )
+        .join('');
+
+      const procHtml = proc.map((f) => this.renderFileCard(f)).join('');
+
       procEl.innerHTML =
-        proc.length > 0
-          ? proc.map((f) => this.renderFileCard(f)).join('')
-          : '<p class="no-data-msg">No active tasks.</p>';
+        extractionHtml || procHtml ? extractionHtml + procHtml : '<p class="no-data-msg">No active tasks.</p>';
     }
     if (compEl) {
       compEl.innerHTML =
@@ -318,7 +333,7 @@ export class UIManager {
     const isInitialScanning = isRunning && (!currentRun || currentRun.status === 'completed');
 
     if (stop) stop.classList.toggle('hidden', !isRunning);
-    
+
     if (start) {
       start.classList.toggle('hidden', isActuallySyncing || isDryRunning);
       start.disabled = isInitialScanning;
@@ -326,7 +341,7 @@ export class UIManager {
     }
 
     if (force) force.classList.toggle('hidden', isActuallySyncing || isDryRunning);
-    
+
     if (dry) {
       dry.classList.toggle('hidden', isRunning);
       dry.disabled = isDryRunning;

@@ -169,6 +169,7 @@ export class SubsyncarrPlusPlusServer {
           totalPages: Math.ceil(totalFiles / limit),
         },
         isRunning: this.coordinator.isRunning(),
+        activeExtractions: this.stateManager.getActiveExtractions(),
       });
     });
 
@@ -374,6 +375,7 @@ export class SubsyncarrPlusPlusServer {
             },
             isRunning: this.coordinator.isRunning(),
             health: this.healthStatus,
+            activeExtractions: this.stateManager.getActiveExtractions(),
           },
         }),
       );
@@ -382,6 +384,14 @@ export class SubsyncarrPlusPlusServer {
         this.clients.delete(ws);
         console.log(`[${new Date().toISOString()}] WebSocket client disconnected (total: ${this.clients.size})`);
       });
+    });
+
+    this.stateManager.on('extraction:started', (videoPath) => {
+      this.broadcast({ type: 'extraction:started', data: videoPath });
+    });
+
+    this.stateManager.on('extraction:stopped', (videoPath) => {
+      this.broadcast({ type: 'extraction:stopped', data: videoPath });
     });
 
     this.stateManager.on('run:started', (run) => {

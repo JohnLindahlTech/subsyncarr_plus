@@ -8,6 +8,7 @@ export class StateManager extends EventEmitter {
   private db: SubsyncarrPlusPlusDatabase;
   private currentRunId: string | null = null;
   private logFileManager: LogFileManager;
+  private activeExtractions: Set<string> = new Set();
 
   constructor(dbPath: string) {
     super();
@@ -117,6 +118,20 @@ export class StateManager extends EventEmitter {
     this.db.updateRun(runId, {
       completed_videos: run.completed_videos + 1,
     });
+  }
+
+  startExtraction(videoPath: string): void {
+    this.activeExtractions.add(videoPath);
+    this.emit('extraction:started', videoPath);
+  }
+
+  stopExtraction(videoPath: string): void {
+    this.activeExtractions.delete(videoPath);
+    this.emit('extraction:stopped', videoPath);
+  }
+
+  getActiveExtractions(): string[] {
+    return Array.from(this.activeExtractions);
   }
 
   incrementRunCountersBulk(
