@@ -392,6 +392,18 @@ class SubsyncarrPlusPlusClient {
     document.getElementById('debugModal').classList.remove('hidden');
   }
 
+  // --- HELPERS ---
+
+  escapeHtml(str) {
+    if (!str) return '';
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
   setupEventHandlers() {
     document.getElementById('themeToggle').onclick = () => this.toggleTheme();
     document.getElementById('startRun').onclick = () => this.startRun();
@@ -426,9 +438,33 @@ class SubsyncarrPlusPlusClient {
       this.fetchInitialState();
     };
 
-    window.onclick = (e) => {
-      if (e.target.classList.contains('modal')) e.target.classList.add('hidden');
-    };
+    window.onclick = (e) => this.handleGlobalClick(e);
+  }
+
+  handleGlobalClick(e) {
+    if (e.target.classList.contains('modal')) {
+      e.target.classList.add('hidden');
+      return;
+    }
+
+    const btn = e.target.closest('button');
+    if (!btn) return;
+
+    if (btn.classList.contains('js-action-verify')) {
+      const path = btn.dataset.filePath;
+      if (path) this.manuallyVerifyFile(path);
+    }
+
+    if (btn.classList.contains('js-action-details')) {
+      const path = btn.dataset.filePath;
+      const engine = btn.dataset.engine;
+      if (path && engine) this.viewDebugInfo(path, engine);
+    }
+
+    if (btn.classList.contains('js-action-logs')) {
+      const id = btn.dataset.runId;
+      if (id) this.viewLogs(id);
+    }
   }
 
   setupStateReconciliation() {
@@ -474,7 +510,7 @@ class SubsyncarrPlusPlusClient {
   basename(p) {
     return p.split('/').pop();
   }
-  attachDynamicFileEvents() {}
+  attachDynamicFileEvents() {} // Deprecated by handleGlobalClick
 }
 
 const client = new SubsyncarrPlusPlusClient();
