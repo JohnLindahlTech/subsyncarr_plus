@@ -48,7 +48,8 @@ export class ProcessingCoordinator {
         totalVideos: number;
         config: ScanConfig;
       }) => {
-        const runId = this.stateManager.startRun(processing.length, totalVideos, this.enabledEngines);
+        const totalFiles = processing.length + skipped.length;
+        const runId = this.stateManager.startRun(totalFiles, totalVideos, this.enabledEngines);
 
         // Bulk add pending files
         const pendingFiles = processing.map((filePath) => {
