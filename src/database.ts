@@ -421,6 +421,28 @@ export class SubsyncarrPlusPlusDatabase {
     return result.count;
   }
 
+  /**
+   * Gets a specialized set of files for the Live View:
+   * 1. All currently processing files
+   * 2. The N most recently completed/failed/skipped files
+   */
+  getLiveFileResults(runId: string, recentLimit: number = 10): FileResult[] {
+    const processing = this.db
+      .prepare('SELECT * FROM file_results WHERE run_id = ? AND status = ? ORDER BY updated_at DESC')
+      .all(runId, 'processing') as FileResult[];
+
+    const recentFinished = this.db
+      .prepare(
+        `SELECT * FROM file_results 
+         WHERE run_id = ? AND status IN ('completed', 'error', 'skipped') 
+         ORDER BY updated_at DESC LIMIT ?`,
+      )
+      .all(runId, recentLimit) as FileResult[];
+
+    // Combine and remove duplicates (though there shouldn't be any based on status)
+    return [...processing, ...recentFinished];
+  }
+
   updateAllFileResults(runId: string, updates: Partial<FileResult>, whereStatusIn: string[]): void {
     if (whereStatusIn.length === 0) {
       return;

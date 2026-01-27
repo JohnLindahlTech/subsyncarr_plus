@@ -24,11 +24,47 @@ export class StateManager {
     this.ws = null;
   }
 
-  update(deltas) {
-    this.state = { ...this.state, ...deltas };
+    update(deltas) {
 
-    this.updateCallback(this.state);
-  }
+      // Quality Fix: Intelligent File Merging
+
+      // When we get a list of files from the server (e.g. the "Live" set), 
+
+      // we want to merge them into our local state so we don't lose 
+
+      // track of files the user might be looking at in the Explorer.
+
+      if (deltas.files) {
+
+        const mergedFiles = [...this.state.files];
+
+        deltas.files.forEach(newFile => {
+
+          const idx = mergedFiles.findIndex(f => f.file_path === newFile.file_path);
+
+          if (idx >= 0) {
+
+            mergedFiles[idx] = { ...mergedFiles[idx], ...newFile };
+
+          } else {
+
+            mergedFiles.unshift(newFile);
+
+          }
+
+        });
+
+        deltas.files = mergedFiles;
+
+      }
+
+  
+
+      this.state = { ...this.state, ...deltas };
+
+      this.updateCallback(this.state);
+
+    }
 
   initWebSocket() {
     const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';

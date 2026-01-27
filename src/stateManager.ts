@@ -184,9 +184,9 @@ export class StateManager extends EventEmitter {
     const run = this.db.getRun(runId);
     if (!run) return;
 
-    // To ensure the UI is always perfectly synced, we send the "Current Status"
-    // which includes the run stats and the most recent 50 files.
-    const files = this.db.getFileResults(runId, 50, 0);
+    // Quality Fix: Send only active and recently finished files for the Live View
+    // to prevent network saturation while keeping the UI perfectly reactive.
+    const files = this.db.getLiveFileResults(runId, 10);
     const totalFiles = this.db.getFileCount(runId);
 
     this.emit('state:full_update', {
