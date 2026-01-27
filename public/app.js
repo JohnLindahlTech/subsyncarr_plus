@@ -15,8 +15,56 @@ class SubsyncarrPlusClient {
     this.initWebSocket();
     this.setupEventHandlers();
     this.setupInfiniteScroll();
+    this.setupStateReconciliation();
     this.fetchInitialState();
     this.fetchConfigStatus();
+  }
+
+  setupStateReconciliation() {
+    // 1. Background sync every 30 seconds to catch missed WebSocket messages
+    setInterval(() => {
+      if (this.state.isRunning || document.visibilityState === 'visible') {
+        this.reconcileState();
+      }
+    }, 30000);
+
+    // 2. Re-sync immediately when tab becomes visible
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') {
+        this.reconcileState();
+      }
+    });
+  }
+
+  async reconcileState() {
+    try {
+      const searchParam = this.state.searchQuery ? `&search=${encodeURIComponent(this.state.searchQuery)}` : '';
+      // We only reconcile the first page to keep it fast; infinite scroll handles the rest
+      const response = await fetch(`/api/status?page=1&limit=50${searchParam}`);
+      if (!response.ok) return;
+
+      const data = await response.json();
+
+      // Update global run state
+      this.state.currentRun = data.currentRun;
+      this.state.isRunning = data.isRunning;
+      this.state.pagination.total = data.pagination.total;
+      this.state.pagination.totalPages = data.pagination.totalPages;
+
+      // Merge files: update existing, add new processing ones
+      data.files.forEach((newFile) => {
+        const index = this.state.files.findIndex((f) => f.file_path === newFile.file_path);
+        if (index >= 0) {
+          this.state.files[index] = { ...this.state.files[index], ...newFile };
+        } else if (newFile.status === 'processing') {
+          this.state.files.unshift(newFile);
+        }
+      });
+
+      this.render();
+    } catch (error) {
+      console.error('State reconciliation failed:', error);
+    }
   }
 
   initTheme() {
@@ -51,6 +99,7 @@ class SubsyncarrPlusClient {
 
     this.ws.onopen = () => {
       console.log('WebSocket connected');
+      this.reconcileState(); // Catch up on anything missed while disconnected
     };
 
     this.ws.onmessage = (event) => {
