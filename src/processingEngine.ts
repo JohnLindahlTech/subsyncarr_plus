@@ -96,6 +96,7 @@ export class ProcessingEngine extends EventEmitter {
       `[${new Date().toISOString()}] Pre-check results: ${filesToProcess.length} to process, ${filesToSkip.length} already done`,
     );
 
+    this.emit('run:init_progress', 'Analyzing video matches...');
     // Group files by video path
     const groups = new Map<string, string[]>();
     for (const srtPath of filesToProcess) {
@@ -112,6 +113,7 @@ export class ProcessingEngine extends EventEmitter {
       }
     }
 
+    this.emit('run:init_progress', `Preparing ${groups.size} movie groups...`);
     // Emit the split results so Coordinator can bulk-insert
     this.emit('run:files_found', {
       processing: filesToProcess,
