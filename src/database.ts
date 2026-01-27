@@ -691,11 +691,17 @@ export class SubsyncarrPlusPlusDatabase {
         if (engineData[e] && !engineData[e].success && engineData[e].message) {
           const rawMsg = engineData[e].message;
 
-          // Normalization: Strip paths and filenames to allow grouping.
-          // Replaces /path/to/file.srt or just file.srt with <item>
+          // Normalization: Strip specific details to allow grouping.
           const genericMsg = rawMsg
-            .replace(/\/[^:\s]+\.(srt|mkv|mp4|avi|m4v)/gi, '<path>')
-            .replace(/[^\/\s]+\.(srt|mkv|mp4|avi|m4v)/gi, '<file>')
+            // 1. Strip timestamps like [23:39:21]
+            .replace(/\[\d{2}:\d{2}:\d{2}\]/g, '[timestamp]')
+            // 2. Strip quoted paths/files (double or single quotes)
+            .replace(/["']\/[^"']+\.(srt|mkv|mp4|avi|m4v|ts|mp3|wav|srt)["']/gi, '"<path>"')
+            // 3. Strip absolute paths without quotes
+            .replace(/\/[^:\s][^\n]+?\.(srt|mkv|mp4|avi|m4v|ts|mp3|wav|srt)/gi, '<path>')
+            // 4. Clean up standard prefixes
+            .replace(/Error processing .*?:/i, 'Error processing <item>:')
+            .replace(/parsing subtitle file .*? failed/i, 'parsing subtitle file <item> failed')
             .trim();
 
           if (!groups[genericMsg]) {

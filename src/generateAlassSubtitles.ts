@@ -90,7 +90,9 @@ export async function generateAlassSubtitles(
         errorMessage.toLowerCase().includes('too few subtitle entries') ||
         stderr.toLowerCase().includes('too few subtitle entries') ||
         errorMessage.toLowerCase().includes('alignment failed') ||
-        stderr.toLowerCase().includes('alignment failed'),
+        stderr.toLowerCase().includes('alignment failed') ||
+        errorMessage.toLowerCase().includes('wrong charset encoding') ||
+        stderr.toLowerCase().includes('wrong charset encoding'),
     };
   }
 }
