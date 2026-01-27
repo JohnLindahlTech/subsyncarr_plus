@@ -1,7 +1,4 @@
 import { exec } from 'child_process';
-import { promisify } from 'util';
-
-const execAsync = promisify(exec);
 
 export interface ProcessingResult {
   success: boolean;
@@ -40,13 +37,28 @@ export async function checkDependency(
   args: string[] = ['--version'],
 ): Promise<{ name: string; found: boolean; version?: string; error?: string }> {
   try {
-    const { stdout } = await execAsync(`${command} ${args.join(' ')}`);
+    const { stdout, stderr } = await execPromise(`${command} ${args.join(' ')}`, 5000);
+    const output = stdout.trim() || stderr.trim();
     return {
       name: command,
       found: true,
-      version: stdout.split('\n')[0].trim(),
+      version: output.split('\n')[0].trim(),
     };
   } catch (error) {
+    // Fallback: try --help just to check existence if --version failed
+    if (args.includes('--version')) {
+      try {
+        await execPromise(`${command} --help`, 5000);
+        return {
+          name: command,
+          found: true,
+          version: 'Detected (version unknown)',
+        };
+      } catch (e) {
+        // Ignore fallback error
+      }
+    }
+
     return {
       name: command,
       found: false,
@@ -60,8 +72,9 @@ export async function checkDependency(
  */
 export async function getVideoDuration(videoPath: string): Promise<number> {
   try {
-    const { stdout } = await execAsync(
+    const { stdout } = await execPromise(
       `ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "${videoPath}"`,
+      5000,
     );
     return parseFloat(stdout.trim()) || 0;
   } catch (error) {
