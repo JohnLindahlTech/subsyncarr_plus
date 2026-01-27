@@ -413,36 +413,91 @@ class SubsyncarrPlusPlusClient {
     document.getElementById('logsModal').classList.remove('hidden');
   }
 
-  async viewDebugInfo(filePath, engine) {
+  async viewDebugInfo(filePath) {
     const f = this.state.files.find((x) => x.file_path === filePath);
     if (!f) return;
 
     const enginesMap = JSON.parse(f.engines || '{}');
-    let targetEngine = engine;
-
-    // Smart selection if no engine specified or found
-    if (!targetEngine || !enginesMap[targetEngine]) {
-      if (f.best_engine && enginesMap[f.best_engine]) {
-        targetEngine = f.best_engine;
-      } else {
-        const keys = Object.keys(enginesMap);
-        if (keys.length > 0) targetEngine = keys[0];
-      }
-    }
-
-    const e = enginesMap[targetEngine];
-    if (!e) {
+    const engineEntries = Object.entries(enginesMap);
+    if (engineEntries.length === 0) {
       alert('No execution details available for this file yet.');
       return;
     }
 
-    const titleEl = document.querySelector('#debugModal .modal-header h3');
-    if (titleEl) titleEl.textContent = `Engine Debug Info: ${targetEngine}`;
+    this.state.activeDebugFile = f;
+    this.state.activeDebugEngine = engineEntries[0][0];
 
-    document.getElementById('debugCommand').textContent = e.command || '-';
-    document.getElementById('debugStderr').textContent = e.stderr || '-';
-    document.getElementById('debugStdout').textContent = e.stdout || '-';
-    document.getElementById('debugModal').classList.remove('hidden');
+    this.renderDebugOverlay();
+    document.getElementById('detailsOverlay').classList.remove('hidden');
+  }
+
+  renderDebugOverlay() {
+    const f = this.state.activeDebugFile;
+    const activeEngine = this.state.activeDebugEngine;
+    const enginesMap = JSON.parse(f.engines || '{}');
+
+    document.getElementById('overlayTitle').textContent = `Processing: ${this.basename(f.file_path)}`;
+
+    // Render Tabs
+    const tabsContainer = document.getElementById('engineTabs');
+    tabsContainer.innerHTML = Object.keys(enginesMap)
+      .map(
+        (name) => `
+      <button class="tab-item ${name === activeEngine ? 'active' : ''}" 
+        onclick="client.switchDebugTab('${name}')">${this.escapeHtml(name)}</button>
+    `,
+      )
+      .join('');
+
+    // Render Active Content
+    const body = document.getElementById('overlayBody');
+    const e = enginesMap[activeEngine];
+
+    if (!e) {
+      body.innerHTML = '<p class="no-data-msg">Engine data not found.</p>';
+      return;
+    }
+
+    const statusClass = e.success ? 'success' : 'error';
+    const statusText = e.success ? '✓ Successfully Synced' : '✗ Sync Failed';
+    const scoreInfo = e.score !== undefined ? `Confidence: ${e.score}%` : '';
+
+    body.innerHTML = `
+      <div class="engine-detail-pane">
+        <div class="pane-header">
+          <div class="status-indicator-large ${statusClass}">
+            <span>${statusText}</span>
+            <span>${scoreInfo}</span>
+          </div>
+          <div class="top-info-text">Duration: ${(e.duration / 1000).toFixed(1)}s</div>
+        </div>
+
+        <div class="debug-section">
+          <label>Executed Command</label>
+          <pre class="code-block">${this.escapeHtml(e.command || '-')}</pre>
+        </div>
+
+        ${
+          e.stderr
+            ? `
+        <div class="debug-section">
+          <label>Error Output (stderr)</label>
+          <pre class="code-block error-text">${this.escapeHtml(e.stderr)}</pre>
+        </div>`
+            : ''
+        }
+
+        <div class="debug-section">
+          <label>Standard Output (stdout)</label>
+          <pre class="code-block">${this.escapeHtml(e.stdout || '-')}</pre>
+        </div>
+      </div>
+    `;
+  }
+
+  switchDebugTab(engineName) {
+    this.state.activeDebugEngine = engineName;
+    this.renderDebugOverlay();
   }
 
   // --- HELPERS ---
@@ -464,6 +519,8 @@ class SubsyncarrPlusPlusClient {
     document.getElementById('stopRun').onclick = () => this.stopRun();
     document.getElementById('dryRun').onclick = () => this.runDryRun();
     document.getElementById('clearCompleted').onclick = () => fetch('/api/files/clear', { method: 'POST' });
+    document.getElementById('closeOverlay').onclick = () =>
+      document.getElementById('detailsOverlay').classList.add('hidden');
     document.getElementById('closeDryRunModal').onclick = () =>
       document.getElementById('dryRunModal').classList.add('hidden');
     document.getElementById('closeDryRunButton').onclick = () =>
@@ -495,7 +552,7 @@ class SubsyncarrPlusPlusClient {
   }
 
   handleGlobalClick(e) {
-    if (e.target.classList.contains('modal')) {
+    if (e.target.classList.contains('modal') || e.target.classList.contains('details-overlay')) {
       e.target.classList.add('hidden');
       return;
     }
