@@ -23,7 +23,7 @@ export class UIManager {
   render(state) {
     this.renderNavigation(state.activeView);
     this.renderProgress(state);
-    this.renderHeader(state);
+    this.renderHeader();
 
     if (state.activeView === 'live') this.renderLiveList(state);
     if (state.activeView === 'explorer') this.renderExplorerList(state);
@@ -50,8 +50,7 @@ export class UIManager {
     if (titleEl) titleEl.textContent = titles[activeView];
   }
 
-  renderHeader(state) {
-    const { currentRun } = state;
+  renderHeader() {
     // Header info items like statusPaths, scheduleTime are handled by fetchConfig callbacks
   }
 

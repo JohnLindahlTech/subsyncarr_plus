@@ -138,7 +138,8 @@ export class SubsyncarrPlusPlusServer {
       const page = parseInt(req.query.page as string, 10) || 1;
       const limit = parseInt(req.query.limit as string, 10) || 50;
       const search = (req.query.search as string) || undefined;
-      const filter = (req.query.filter as string) || undefined;
+      const agreementFilter = (req.query.filter as string) || undefined;
+      const statusFilter = (req.query.status as string) || undefined;
       const offset = (page - 1) * limit;
 
       let currentRun = this.stateManager.getCurrentRun();
@@ -151,8 +152,12 @@ export class SubsyncarrPlusPlusServer {
         }
       }
 
-      const totalFiles = currentRun ? this.stateManager.getFileCount(currentRun.id, search, filter) : 0;
-      const files = currentRun ? this.stateManager.getFileResults(currentRun.id, limit, offset, search, filter) : [];
+      const totalFiles = currentRun
+        ? this.stateManager.getFileCount(currentRun.id, search, agreementFilter, statusFilter)
+        : 0;
+      const files = currentRun
+        ? this.stateManager.getFileResults(currentRun.id, limit, offset, search, agreementFilter, statusFilter)
+        : [];
 
       res.json({
         currentRun, // This might be a completed run now

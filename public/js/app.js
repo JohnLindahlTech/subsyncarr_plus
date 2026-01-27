@@ -77,7 +77,7 @@ class SubsyncarrPlusPlusClient {
 
   async fetchInitialState() {
     const s = this.stateManager.state;
-    const data = await API.fetchStatus(1, 50, s.searchQuery, s.agreementFilter);
+    const data = await API.fetchStatus(1, 50, s.searchQuery, s.agreementFilter, s.statusFilter);
     this.stateManager.update({ ...data });
   }
 
@@ -196,6 +196,11 @@ class SubsyncarrPlusPlusClient {
       this.fetchInitialState();
     };
 
+    get('statusFilter').onchange = (e) => {
+      this.stateManager.update({ statusFilter: e.target.value });
+      this.fetchInitialState();
+    };
+
     window.onclick = (e) => this.handleGlobalClick(e);
   }
 
@@ -232,7 +237,7 @@ class SubsyncarrPlusPlusClient {
 
   async reconcileState() {
     const s = this.stateManager.state;
-    const data = await API.fetchStatus(1, 50, s.searchQuery, s.agreementFilter);
+    const data = await API.fetchStatus(1, 50, s.searchQuery, s.agreementFilter, s.statusFilter);
     this.stateManager.update({ currentRun: data.currentRun, isRunning: data.isRunning });
     data.files.forEach((x) => this.stateManager.updateFile(x));
   }
@@ -253,7 +258,7 @@ class SubsyncarrPlusPlusClient {
   async loadMoreFiles() {
     const s = this.stateManager.state;
     const next = s.pagination.page + 1;
-    const data = await API.fetchStatus(next, 50, s.searchQuery, s.agreementFilter);
+    const data = await API.fetchStatus(next, 50, s.searchQuery, s.agreementFilter, s.statusFilter);
     this.stateManager.update({
       files: [...s.files, ...data.files],
       pagination: data.pagination,

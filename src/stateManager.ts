@@ -283,12 +283,19 @@ export class StateManager extends EventEmitter {
     this.emit('files:cleared', { currentRun: run, files: [] });
   }
 
-  getFileResults(runId: string, limit?: number, offset?: number, search?: string, agreementFilter?: string) {
-    return this.db.getFileResults(runId, limit, offset, search, agreementFilter);
+  getFileResults(
+    runId: string,
+    limit?: number,
+    offset?: number,
+    search?: string,
+    agreementFilter?: string,
+    statusFilter?: string,
+  ) {
+    return this.db.getFileResults(runId, limit, offset, search, agreementFilter, statusFilter);
   }
 
-  getFileCount(runId: string, search?: string, agreementFilter?: string) {
-    return this.db.getFileCount(runId, search, agreementFilter);
+  getFileCount(runId: string, search?: string, agreementFilter?: string, statusFilter?: string) {
+    return this.db.getFileCount(runId, search, agreementFilter, statusFilter);
   }
 
   manuallyVerifyFile(runId: string, filePath: string): void {

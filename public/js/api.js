@@ -2,10 +2,11 @@
  * api.js - All network requests and external communication
  */
 export const API = {
-  async fetchStatus(page = 1, limit = 50, search = '', filter = '') {
+  async fetchStatus(page = 1, limit = 50, search = '', agreementFilter = '', statusFilter = '') {
     const s = search ? `&search=${encodeURIComponent(search)}` : '';
-    const f = filter ? `&filter=${filter}` : '';
-    const res = await fetch(`/api/status?page=${page}&limit=${limit}${s}${f}`);
+    const f = agreementFilter ? `&filter=${agreementFilter}` : '';
+    const st = statusFilter ? `&status=${statusFilter}` : '';
+    const res = await fetch(`/api/status?page=${page}&limit=${limit}${s}${f}${st}`);
     return res.json();
   },
 

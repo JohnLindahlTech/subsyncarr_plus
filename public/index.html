@@ -124,6 +124,14 @@
           <section id="view-explorer" class="view hidden">
             <div class="filter-bar">
               <input type="text" id="fileSearch" placeholder="Search library..." class="search-input" />
+              <select id="statusFilter" class="search-input select-filter">
+                <option value="">All Statuses</option>
+                <option value="completed">✅ Completed</option>
+                <option value="processing">⚡ Processing</option>
+                <option value="pending">⏳ Pending</option>
+                <option value="error">❌ Error</option>
+                <option value="skipped">⏭ Skipped</option>
+              </select>
               <select id="agreementFilter" class="search-input select-filter">
                 <option value="">All Confidence Levels</option>
                 <option value="verified">✅ Verified Only</option>

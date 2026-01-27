@@ -352,6 +352,7 @@ export class SubsyncarrPlusPlusDatabase {
     offset?: number,
     search?: string,
     agreementFilter?: string,
+    statusFilter?: string,
   ): FileResult[] {
     let sql = `
       SELECT * FROM file_results
@@ -369,6 +370,11 @@ export class SubsyncarrPlusPlusDatabase {
       params.push(agreementFilter);
     }
 
+    if (statusFilter) {
+      sql += ' AND status = ?';
+      params.push(statusFilter);
+    }
+
     sql += ' ORDER BY created_at ASC';
 
     if (limit !== undefined && offset !== undefined) {
@@ -379,7 +385,7 @@ export class SubsyncarrPlusPlusDatabase {
     return this.db.prepare(sql).all(...params) as FileResult[];
   }
 
-  getFileCount(runId: string, search?: string, agreementFilter?: string): number {
+  getFileCount(runId: string, search?: string, agreementFilter?: string, statusFilter?: string): number {
     let sql = 'SELECT COUNT(*) as count FROM file_results WHERE run_id = ?';
     const params: unknown[] = [runId];
 
@@ -391,6 +397,11 @@ export class SubsyncarrPlusPlusDatabase {
     if (agreementFilter) {
       sql += ' AND agreement_status = ?';
       params.push(agreementFilter);
+    }
+
+    if (statusFilter) {
+      sql += ' AND status = ?';
+      params.push(statusFilter);
     }
 
     const result = this.db.prepare(sql).get(...params) as { count: number };

@@ -10,6 +10,7 @@ export class StateManager {
       pagination: { page: 1, limit: 50, total: 0, totalPages: 0 },
       searchQuery: '',
       agreementFilter: '',
+      statusFilter: '',
       health: null,
       activeView: 'live',
       activeDebugFile: null,
@@ -27,16 +28,17 @@ export class StateManager {
   }
 
   updateFile(fileData) {
-    const { searchQuery, agreementFilter, files, pagination } = this.state;
+    const { searchQuery, agreementFilter, statusFilter, files, pagination } = this.state;
 
-    const matchesFilter = !agreementFilter || fileData.agreement_status === agreementFilter;
+    const matchesAgreement = !agreementFilter || fileData.agreement_status === agreementFilter;
+    const matchesStatus = !statusFilter || fileData.status === statusFilter;
     const matchesSearch = !searchQuery || fileData.file_path.toLowerCase().includes(searchQuery.toLowerCase());
 
     const index = files.findIndex((f) => f.file_path === fileData.file_path);
 
     let newFiles = [...files];
 
-    if (matchesFilter && matchesSearch) {
+    if (matchesAgreement && matchesStatus && matchesSearch) {
       if (index >= 0) {
         newFiles[index] = { ...newFiles[index], ...fileData };
       } else if (fileData.status === 'processing' || pagination.page === 1) {
@@ -48,7 +50,6 @@ export class StateManager {
 
     this.update({ files: newFiles });
   }
-
   initWebSocket() {
     const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
     this.ws = new WebSocket(`${protocol}//${location.host}/ws`);
