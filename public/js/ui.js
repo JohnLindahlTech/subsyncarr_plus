@@ -79,19 +79,28 @@ export class UIManager {
 
     const fill = document.getElementById('progressFill');
     const text = document.getElementById('progressText');
-    const status = document.getElementById('currentTaskStatus');
+    const movieStat = document.getElementById('movieProgress');
+    const subtitleStat = document.getElementById('subtitleProgress');
 
     if (isRunning && !currentRun) {
       if (fill) fill.style.width = '0%';
       if (text) text.textContent = '0%';
-      if (status) status.textContent = initMessage || 'Scanning...';
+      if (movieStat) movieStat.textContent = 'Scanning...';
+      if (subtitleStat) subtitleStat.textContent = initMessage || 'Searching files...';
       return;
     }
     if (currentRun) {
       const p = currentRun.total_engines > 0 ? (currentRun.completed_engines / currentRun.total_engines) * 100 : 0;
       if (fill) fill.style.width = `${p}%`;
       if (text) text.textContent = `${Math.round(p)}%`;
-      if (status) status.textContent = currentRun.current_video || '';
+
+      if (movieStat) {
+        movieStat.textContent = `Movies: ${currentRun.completed_videos} / ${currentRun.total_videos}`;
+      }
+      if (subtitleStat) {
+        const processedFiles = currentRun.completed + currentRun.skipped + currentRun.failed;
+        subtitleStat.textContent = `Subtitles: ${processedFiles} / ${currentRun.total_files}`;
+      }
     }
   }
 

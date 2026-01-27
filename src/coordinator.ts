@@ -37,18 +37,18 @@ export class ProcessingCoordinator {
 
     this.engine.on(
       'run:files_found',
-      ({
+      async ({
         processing,
         skipped,
-        totalCount,
+        totalVideos,
         config,
       }: {
         processing: string[];
         skipped: string[];
-        totalCount: number;
+        totalVideos: number;
         config: ScanConfig;
       }) => {
-        this.currentRunId = this.stateManager.startRun(totalCount, this.enabledEngines);
+        this.stateManager.startRun(processing.length, totalVideos, this.enabledEngines);
 
         // Bulk add pending files
         const pendingFiles = processing.map((filePath) => {

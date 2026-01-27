@@ -96,15 +96,6 @@ export class ProcessingEngine extends EventEmitter {
       `[${new Date().toISOString()}] Pre-check results: ${filesToProcess.length} to process, ${filesToSkip.length} already done`,
     );
 
-    // Emit the split results so Coordinator can bulk-insert
-    this.emit('run:files_found', {
-      processing: filesToProcess,
-      skipped: filesToSkip,
-      totalCount: srtFiles.length,
-      config: scanConfig,
-      fileIndex, // Pass the index through for matching
-    });
-
     // Group files by video path
     const groups = new Map<string, string[]>();
     for (const srtPath of filesToProcess) {
@@ -120,6 +111,16 @@ export class ProcessingEngine extends EventEmitter {
         groups.set('no_video', list);
       }
     }
+
+    // Emit the split results so Coordinator can bulk-insert
+    this.emit('run:files_found', {
+      processing: filesToProcess,
+      skipped: filesToSkip,
+      totalCount: srtFiles.length,
+      totalVideos: groups.size,
+      config: scanConfig,
+      fileIndex, // Pass the index through for matching
+    });
 
     const groupList = Array.from(groups.entries());
 
@@ -207,6 +208,12 @@ export class ProcessingEngine extends EventEmitter {
           unlinkSync(tempAudioPath);
         } catch (e) {
           // Ignore cleanup errors
+        }
+      }
+      if (this.stateManager) {
+        const runId = this.stateManager.getCurrentRun()?.id;
+        if (runId) {
+          this.stateManager.incrementCompletedVideos(runId);
         }
       }
       this.emit('video:completed', { videoPath });

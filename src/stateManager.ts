@@ -36,13 +36,20 @@ export class StateManager extends EventEmitter {
   }
 
   // Run management
-  startRun(totalFiles: number, enabledEngines: string[] = ['ffsubsync', 'autosubsync', 'alass']): string {
+  startRun(
+    totalFiles: number,
+    totalVideos: number,
+    enabledEngines: string[] = ['ffsubsync', 'autosubsync', 'alass'],
+  ): string {
     const runId = randomUUID();
     this.db.createRun(runId, totalFiles);
 
     // Set the total number of engines that will run (total_files * enabled_engines)
     const totalEngines = totalFiles * enabledEngines.length;
-    this.db.updateRun(runId, { total_engines: totalEngines });
+    this.db.updateRun(runId, {
+      total_engines: totalEngines,
+      total_videos: totalVideos,
+    });
 
     this.currentRunId = runId;
 
@@ -102,6 +109,13 @@ export class StateManager extends EventEmitter {
     const run = this.db.getRun(runId)!;
     this.db.updateRun(runId, {
       completed_engines: run.completed_engines + 1,
+    });
+  }
+
+  incrementCompletedVideos(runId: string): void {
+    const run = this.db.getRun(runId)!;
+    this.db.updateRun(runId, {
+      completed_videos: run.completed_videos + 1,
     });
   }
 

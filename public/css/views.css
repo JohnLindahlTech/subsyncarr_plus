@@ -49,6 +49,22 @@
   min-width: 40px;
 }
 
+.progress-details {
+  display: flex;
+  gap: 24px;
+  margin-top: 12px;
+}
+
+.progress-stat {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  background: var(--background-alt);
+  padding: 4px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+}
+
 .current-task-status {
   font-size: 13px;
   color: var(--text-secondary);

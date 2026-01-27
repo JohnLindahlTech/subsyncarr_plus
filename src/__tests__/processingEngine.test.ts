@@ -141,6 +141,7 @@ describe('ProcessingEngine', () => {
       shouldSkipEngine: jest.fn().mockReturnValue(true), // Always skip
       reconcileFileResults: jest.fn(),
       getCurrentRun: jest.fn().mockReturnValue({ id: 'test-run' }),
+      incrementCompletedVideos: jest.fn(),
     };
     engine.stateManager = mockStateManager as unknown as StateManager;
 

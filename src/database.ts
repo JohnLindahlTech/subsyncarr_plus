@@ -10,6 +10,8 @@ export interface Run {
   failed: number;
   total_engines: number;
   completed_engines: number;
+  total_videos: number;
+  completed_videos: number;
   status: 'running' | 'completed' | 'cancelled';
   logs: string;
   current_video: string | null;
@@ -71,6 +73,8 @@ export class SubsyncarrPlusPlusDatabase {
         failed INTEGER DEFAULT 0,
         total_engines INTEGER DEFAULT 0,
         completed_engines INTEGER DEFAULT 0,
+        total_videos INTEGER DEFAULT 0,
+        completed_videos INTEGER DEFAULT 0,
         status TEXT NOT NULL,
         logs TEXT DEFAULT '',
         current_video TEXT
@@ -111,6 +115,15 @@ export class SubsyncarrPlusPlusDatabase {
     const hasCompletedEnginesColumn = columns.some((col) => col.name === 'completed_engines');
     if (!hasCompletedEnginesColumn) {
       this.db.exec(`ALTER TABLE runs ADD COLUMN completed_engines INTEGER DEFAULT 0`);
+    }
+
+    const hasTotalVideosColumn = columns.some((col) => col.name === 'total_videos');
+    if (!hasTotalVideosColumn) {
+      this.db.exec(`ALTER TABLE runs ADD COLUMN total_videos INTEGER DEFAULT 0`);
+    }
+    const hasCompletedVideosColumn = columns.some((col) => col.name === 'completed_videos');
+    if (!hasCompletedVideosColumn) {
+      this.db.exec(`ALTER TABLE runs ADD COLUMN completed_videos INTEGER DEFAULT 0`);
     }
 
     // Migration: Add current_video column if it doesn't exist
