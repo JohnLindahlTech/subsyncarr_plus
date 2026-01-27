@@ -83,9 +83,13 @@ export class SubsyncarrPlusServer {
     this.app.get('/api/config', (req, res) => {
       console.log(`[${new Date().toISOString()}] GET /api/config`);
       const config = getScanConfig();
-      const isDefaultPath = config.includePaths.length === 1 && config.includePaths[0] === '/scan_dir';
+      // Check if paths actually contain something other than default
+      const isDefaultPath =
+        config.includePaths.length === 0 ||
+        (config.includePaths.length === 1 && config.includePaths[0] === '/scan_dir');
 
       // Get cron schedule info
+
       const cronSchedule = process.env.CRON_SCHEDULE || '0 0 * * *';
       let scheduleDescription = '';
       let nextRun = null;
@@ -131,7 +135,6 @@ export class SubsyncarrPlusServer {
 
     // Get current status
     this.app.get('/api/status', (req, res) => {
-      console.log(`[${new Date().toISOString()}] GET /api/status`);
       const page = parseInt(req.query.page as string, 10) || 1;
       const limit = parseInt(req.query.limit as string, 10) || 50;
       const search = (req.query.search as string) || undefined;
@@ -158,13 +161,11 @@ export class SubsyncarrPlusServer {
     // Get run history
     this.app.get('/api/history', (req, res) => {
       const limit = parseInt(req.query.limit as string, 10) || 50;
-      console.log(`[${new Date().toISOString()}] GET /api/history (limit: ${limit})`);
       res.json(this.stateManager.getRunHistory(limit));
     });
 
     // Get specific run details
     this.app.get('/api/runs/:id', (req, res) => {
-      console.log(`[${new Date().toISOString()}] GET /api/runs/${req.params.id}`);
       const page = parseInt(req.query.page as string, 10) || 1;
       const limit = parseInt(req.query.limit as string, 10) || 50;
       const search = (req.query.search as string) || undefined;
@@ -174,7 +175,6 @@ export class SubsyncarrPlusServer {
       const currentRun = this.stateManager.getCurrentRun();
       const requestedId = req.params.id;
 
-      // Check current run first
       if (currentRun && currentRun.id === requestedId) {
         const totalFiles = this.stateManager.getFileCount(currentRun.id, search, filter);
         return res.json({
@@ -189,7 +189,6 @@ export class SubsyncarrPlusServer {
         });
       }
 
-      // Check history
       const history = this.stateManager.getRunHistory(1000);
       const run = history.find((r) => r.id === requestedId);
 
@@ -212,10 +211,7 @@ export class SubsyncarrPlusServer {
 
     // Get logs for a specific run
     this.app.get('/api/runs/:id/logs', (req, res) => {
-      console.log(`[${new Date().toISOString()}] GET /api/runs/${req.params.id}/logs`);
       const requestedId = req.params.id;
-
-      // Check if run exists (current or historical)
       const currentRun = this.stateManager.getCurrentRun();
       const history = this.stateManager.getRunHistory(1000);
       const run = currentRun?.id === requestedId ? currentRun : history.find((r) => r.id === requestedId);
@@ -224,7 +220,6 @@ export class SubsyncarrPlusServer {
         return res.status(404).json({ error: 'Run not found' });
       }
 
-      // Read logs from file
       const logs = this.stateManager.getRunLogs(requestedId);
       res.json({ logs });
     });
@@ -232,13 +227,8 @@ export class SubsyncarrPlusServer {
     // Start a new run
     this.app.post('/api/run/start', async (req, res) => {
       const { paths, force } = req.body;
-      console.log(
-        `[${new Date().toISOString()}] POST /api/run/start${paths ? ` (custom paths: ${paths.join(', ')})` : ' (default paths)'}${force ? ' [FORCE RERUN]' : ''}`,
-      );
-
       try {
         if (this.coordinator.isRunning()) {
-          console.log(`[${new Date().toISOString()}] Request rejected: Run already in progress`);
           return res.status(409).json({ error: 'A run is already in progress' });
         }
 
@@ -252,9 +242,6 @@ export class SubsyncarrPlusServer {
         const runId = await this.coordinator.startRun(config);
         res.json({ runId });
       } catch (error) {
-        console.log(
-          `[${new Date().toISOString()}] Error starting run: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        );
         res.status(500).json({
           error: error instanceof Error ? error.message : 'Unknown error',
         });
@@ -263,7 +250,6 @@ export class SubsyncarrPlusServer {
 
     // Dry Run
     this.app.post('/api/run/dry-run', async (req, res) => {
-      console.log(`[${new Date().toISOString()}] POST /api/run/dry-run`);
       try {
         const results = await this.coordinator.dryRun();
         res.json(results);
@@ -276,14 +262,10 @@ export class SubsyncarrPlusServer {
 
     // Stop current run
     this.app.post('/api/run/stop', (_req, res) => {
-      console.log(`[${new Date().toISOString()}] POST /api/run/stop`);
       try {
         this.coordinator.stopRun();
         res.json({ success: true });
       } catch (error) {
-        console.log(
-          `[${new Date().toISOString()}] Error stopping run: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        );
         res.status(500).json({
           error: error instanceof Error ? error.message : 'Unknown error',
         });
@@ -293,23 +275,16 @@ export class SubsyncarrPlusServer {
     // Skip a file
     this.app.post('/api/file/skip', (req, res) => {
       const { filePath } = req.body;
-
       if (!filePath) {
-        console.log(`[${new Date().toISOString()}] POST /api/file/skip - Missing filePath`);
         return res.status(400).json({ error: 'filePath required' });
       }
-
-      console.log(`[${new Date().toISOString()}] POST /api/file/skip - ${filePath.split('/').pop()}`);
       this.coordinator.skipFile(filePath);
       res.json({ success: true });
     });
 
     // Clear completed files
     this.app.post('/api/files/clear', (req, res) => {
-      console.log(`[${new Date().toISOString()}] POST /api/files/clear`);
       this.stateManager.clearCompletedFiles();
-
-      // Broadcast updated state to all clients
       const currentRun = this.stateManager.getCurrentRun();
       this.broadcast({
         type: 'files:cleared',
@@ -320,22 +295,17 @@ export class SubsyncarrPlusServer {
             : [],
         },
       });
-
       res.json({ success: true });
     });
 
     // Get skip status statistics
     this.app.get('/api/skip-status', (_req, res) => {
-      console.log(`[${new Date().toISOString()}] GET /api/skip-status`);
-      const stats = this.stateManager.getFailureStats();
-      res.json(stats);
+      res.json(this.stateManager.getFailureStats());
     });
 
     // Get skip status for specific file
     this.app.get('/api/skip-status/:filePath(*)', (req, res) => {
       const filePath = decodeURIComponent(req.params.filePath);
-      console.log(`[${new Date().toISOString()}] GET /api/skip-status/${filePath.split('/').pop()}`);
-
       const skippedEngines = this.stateManager.getSkippedEngines(filePath);
       res.json({ filePath, skippedEngines });
     });
@@ -343,22 +313,15 @@ export class SubsyncarrPlusServer {
     // Reset skip status for a file
     this.app.post('/api/skip-status/reset', (req, res) => {
       const { filePath, engine } = req.body;
-
       if (!filePath) {
         return res.status(400).json({ error: 'filePath required' });
       }
-
-      console.log(
-        `[${new Date().toISOString()}] POST /api/skip-status/reset - ${filePath.split('/').pop()}${engine ? ` (${engine})` : ' (all engines)'}`,
-      );
-
       this.stateManager.resetSkipStatus(filePath, engine);
       res.json({ success: true });
     });
 
     // Reset all skip statuses
     this.app.post('/api/skip-status/reset-all', (_req, res) => {
-      console.log(`[${new Date().toISOString()}] POST /api/skip-status/reset-all`);
       this.stateManager.resetAllSkipStatuses();
       res.json({ success: true });
     });
@@ -366,166 +329,10 @@ export class SubsyncarrPlusServer {
     // Verify a file manually
     this.app.post('/api/file/verify', (req, res) => {
       const { runId, filePath } = req.body;
-
       if (!runId || !filePath) {
         return res.status(400).json({ error: 'runId and filePath required' });
       }
-
-      console.log(`[${new Date().toISOString()}] POST /api/file/verify - ${filePath.split('/').pop()}`);
       this.stateManager.manuallyVerifyFile(runId, filePath);
-      res.json({ success: true });
-    });
-
-    // Get logs for a specific run
-    this.app.get('/api/runs/:id/logs', (req, res) => {
-      console.log(`[${new Date().toISOString()}] GET /api/runs/${req.params.id}/logs`);
-      const requestedId = req.params.id;
-
-      // Check if run exists (current or historical)
-      const currentRun = this.stateManager.getCurrentRun();
-      const history = this.stateManager.getRunHistory(1000);
-      const run = currentRun?.id === requestedId ? currentRun : history.find((r) => r.id === requestedId);
-
-      if (!run) {
-        return res.status(404).json({ error: 'Run not found' });
-      }
-
-      // Read logs from file
-      const logs = this.stateManager.getRunLogs(requestedId);
-      res.json({ logs });
-    });
-
-    // Start a new run
-    this.app.post('/api/run/start', async (req, res) => {
-      const { paths, force } = req.body;
-      console.log(
-        `[${new Date().toISOString()}] POST /api/run/start${paths ? ` (custom paths: ${paths.join(', ')})` : ' (default paths)'}${force ? ' [FORCE RERUN]' : ''}`,
-      );
-
-      try {
-        if (this.coordinator.isRunning()) {
-          console.log(`[${new Date().toISOString()}] Request rejected: Run already in progress`);
-          return res.status(409).json({ error: 'A run is already in progress' });
-        }
-
-        const config = {
-          includePaths: paths || getScanConfig().includePaths,
-          excludePaths: [],
-          enableContextAwareMatching: true,
-          forceRerun: !!force,
-        };
-
-        const runId = await this.coordinator.startRun(config);
-        res.json({ runId });
-      } catch (error) {
-        console.log(
-          `[${new Date().toISOString()}] Error starting run: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        );
-        res.status(500).json({
-          error: error instanceof Error ? error.message : 'Unknown error',
-        });
-      }
-    });
-
-    // Dry Run
-    this.app.post('/api/run/dry-run', async (req, res) => {
-      console.log(`[${new Date().toISOString()}] POST /api/run/dry-run`);
-      try {
-        const results = await this.coordinator.dryRun();
-        res.json(results);
-      } catch (error) {
-        res.status(500).json({
-          error: error instanceof Error ? error.message : 'Unknown error',
-        });
-      }
-    });
-
-    // Stop current run
-    this.app.post('/api/run/stop', (_req, res) => {
-      console.log(`[${new Date().toISOString()}] POST /api/run/stop`);
-      try {
-        this.coordinator.stopRun();
-        res.json({ success: true });
-      } catch (error) {
-        console.log(
-          `[${new Date().toISOString()}] Error stopping run: ${error instanceof Error ? error.message : 'Unknown error'}`,
-        );
-        res.status(500).json({
-          error: error instanceof Error ? error.message : 'Unknown error',
-        });
-      }
-    });
-
-    // Skip a file
-    this.app.post('/api/file/skip', (req, res) => {
-      const { filePath } = req.body;
-
-      if (!filePath) {
-        console.log(`[${new Date().toISOString()}] POST /api/file/skip - Missing filePath`);
-        return res.status(400).json({ error: 'filePath required' });
-      }
-
-      console.log(`[${new Date().toISOString()}] POST /api/file/skip - ${filePath.split('/').pop()}`);
-      this.coordinator.skipFile(filePath);
-      res.json({ success: true });
-    });
-
-    // Clear completed files
-    this.app.post('/api/files/clear', (req, res) => {
-      console.log(`[${new Date().toISOString()}] POST /api/files/clear`);
-      this.stateManager.clearCompletedFiles();
-
-      // Broadcast updated state to all clients
-      const currentRun = this.stateManager.getCurrentRun();
-      this.broadcast({
-        type: 'files:cleared',
-        data: {
-          currentRun,
-          files: currentRun
-            ? this.stateManager.getFileResults(currentRun.id).filter((f) => f.status === 'processing')
-            : [],
-        },
-      });
-
-      res.json({ success: true });
-    });
-
-    // Get skip status statistics
-    this.app.get('/api/skip-status', (_req, res) => {
-      console.log(`[${new Date().toISOString()}] GET /api/skip-status`);
-      const stats = this.stateManager.getFailureStats();
-      res.json(stats);
-    });
-
-    // Get skip status for specific file
-    this.app.get('/api/skip-status/:filePath(*)', (req, res) => {
-      const filePath = decodeURIComponent(req.params.filePath);
-      console.log(`[${new Date().toISOString()}] GET /api/skip-status/${filePath.split('/').pop()}`);
-
-      const skippedEngines = this.stateManager.getSkippedEngines(filePath);
-      res.json({ filePath, skippedEngines });
-    });
-
-    // Reset skip status for a file
-    this.app.post('/api/skip-status/reset', (req, res) => {
-      const { filePath, engine } = req.body;
-
-      if (!filePath) {
-        return res.status(400).json({ error: 'filePath required' });
-      }
-
-      console.log(
-        `[${new Date().toISOString()}] POST /api/skip-status/reset - ${filePath.split('/').pop()}${engine ? ` (${engine})` : ' (all engines)'}`,
-      );
-
-      this.stateManager.resetSkipStatus(filePath, engine);
-      res.json({ success: true });
-    });
-
-    // Reset all skip statuses
-    this.app.post('/api/skip-status/reset-all', (_req, res) => {
-      console.log(`[${new Date().toISOString()}] POST /api/skip-status/reset-all`);
-      this.stateManager.resetAllSkipStatuses();
       res.json({ success: true });
     });
   }
@@ -535,7 +342,6 @@ export class SubsyncarrPlusServer {
       console.log(`[${new Date().toISOString()}] WebSocket client connected (total: ${this.clients.size + 1})`);
       this.clients.add(ws);
 
-      // Send initial state
       const currentRun = this.stateManager.getCurrentRun();
       const files = currentRun ? this.stateManager.getFileResults(currentRun.id, 50, 0) : [];
       const totalFiles = currentRun ? this.stateManager.getFileCount(currentRun.id) : 0;
@@ -564,9 +370,7 @@ export class SubsyncarrPlusServer {
       });
     });
 
-    // Broadcast state changes to all clients
     this.stateManager.on('run:started', (run) => {
-      console.log(`[${new Date().toISOString()}] Broadcasting run:started to ${this.clients.size} clients`);
       this.broadcast({ type: 'run:started', data: run });
     });
 
@@ -579,12 +383,10 @@ export class SubsyncarrPlusServer {
     });
 
     this.stateManager.on('run:completed', (run) => {
-      console.log(`[${new Date().toISOString()}] Broadcasting run:completed to ${this.clients.size} clients`);
       this.broadcast({ type: 'run:completed', data: run });
     });
 
     this.stateManager.on('run:cancelled', (run) => {
-      console.log(`[${new Date().toISOString()}] Broadcasting run:cancelled to ${this.clients.size} clients`);
       this.broadcast({ type: 'run:cancelled', data: run });
     });
 

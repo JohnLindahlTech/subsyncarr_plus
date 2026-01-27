@@ -275,8 +275,10 @@ class SubsyncarrPlusClient {
 
   async fetchConfigStatus() {
     try {
+      console.log('Fetching configuration status...');
       const response = await fetch('/api/config');
       const config = await response.json();
+      console.log('Config received:', config);
       this.renderConfigStatus(config);
     } catch (error) {
       console.error('Failed to fetch config status:', error);
