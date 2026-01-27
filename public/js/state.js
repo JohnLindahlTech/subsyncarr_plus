@@ -26,46 +26,10 @@ export class StateManager {
 
   update(deltas) {
     this.state = { ...this.state, ...deltas };
+
     this.updateCallback(this.state);
   }
 
-  updateFile(fileData) {
-    const { searchQuery, agreementFilter, statusFilter, files, pagination } = this.state;
-
-    // Is it a file we are interested in for the Explorer?
-    const matchesAgreement = !agreementFilter || fileData.agreement_status === agreementFilter;
-    const matchesStatus = !statusFilter || fileData.status === statusFilter;
-    const matchesSearch = !searchQuery || fileData.file_path.toLowerCase().includes(searchQuery.toLowerCase());
-
-    const isProcessing = fileData.status === 'processing';
-    const index = files.findIndex((f) => f.file_path === fileData.file_path);
-
-    let newFiles = [...files];
-
-    // Priority: If it's processing, we ALWAYS want it in the state for the Live view
-    // Otherwise, it must match the filters.
-    if (isProcessing || (matchesAgreement && matchesStatus && matchesSearch)) {
-      if (index >= 0) {
-        newFiles[index] = { ...newFiles[index], ...fileData };
-      } else {
-        // Only add non-processing files if we are on the first page
-        if (isProcessing || pagination.page === 1) {
-          newFiles.unshift(fileData);
-        }
-      }
-    } else if (index >= 0) {
-      // It no longer matches filters and isn't processing, remove it
-      newFiles.splice(index, 1);
-    }
-
-    // Inferred extraction cleanup: if an SRT is processing, the movie is no longer extracting
-    let extractions = [...this.state.activeExtractions];
-    if (fileData.video_path && extractions.includes(fileData.video_path)) {
-      extractions = extractions.filter((p) => p !== fileData.video_path);
-    }
-
-    this.update({ files: newFiles, activeExtractions: extractions });
-  }
   initWebSocket() {
     const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
     this.ws = new WebSocket(`${protocol}//${location.host}/ws`);
@@ -97,10 +61,6 @@ export class StateManager {
           break;
         case 'health:updated':
           this.update({ health: msg.data });
-          break;
-        case 'file:updated':
-          this.updateFile(msg.data.file);
-          if (msg.data.run) this.update({ currentRun: msg.data.run });
           break;
       }
     };

@@ -24,12 +24,8 @@ class SubsyncarrPlusPlusClient {
     this.setupStateReconciliation();
   }
 
-  onStateUpdate(state, action) {
-    if (action === 'reconcile') {
-      this.reconcileState();
-    } else {
-      this.ui.render(state);
-    }
+  onStateUpdate(state) {
+    this.ui.render(state);
   }
 
   // --- ROUTING ---

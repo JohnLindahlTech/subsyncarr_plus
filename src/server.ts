@@ -414,8 +414,8 @@ export class SubsyncarrPlusPlusServer {
       this.broadcast({ type: 'run:cancelled', data: run });
     });
 
-    this.stateManager.on('file:updated', ({ file, run }) => {
-      this.broadcast({ type: 'file:updated', data: { file, run } });
+    this.stateManager.on('state:full_update', (data) => {
+      this.broadcast({ type: 'state', data });
     });
   }
 

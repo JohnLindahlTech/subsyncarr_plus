@@ -62,31 +62,22 @@ export class UIManager {
     if (titleEl) titleEl.textContent = titles[activeView];
   }
 
-    renderHeader(state) {
+  renderHeader(state) {
+    const isScanning =
+      (state.isRunning && (!state.currentRun || state.currentRun.status === 'completed')) || state.isDryRunning;
 
-      const isScanning =
+    const indicator = document.getElementById('scanningIndicator');
 
-        (state.isRunning && (!state.currentRun || state.currentRun.status === 'completed')) || state.isDryRunning;
+    const label = indicator ? indicator.querySelector('.top-info-text') : null;
 
-      const indicator = document.getElementById('scanningIndicator');
+    if (indicator) {
+      indicator.classList.toggle('hidden', !isScanning);
 
-      const label = indicator ? indicator.querySelector('.top-info-text') : null;
-
-  
-
-      if (indicator) {
-
-        indicator.classList.toggle('hidden', !isScanning);
-
-        if (label && isScanning) {
-
-          label.textContent = state.initMessage || (state.isDryRunning ? 'Dry Run: Scanning...' : 'Scanning Library...');
-
-        }
-
+      if (label && isScanning) {
+        label.textContent = state.initMessage || (state.isDryRunning ? 'Dry Run: Scanning...' : 'Scanning Library...');
       }
-
     }
+  }
 
   renderProgress(state) {
     const { currentRun, isRunning, initMessage } = state;

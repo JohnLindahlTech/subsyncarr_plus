@@ -169,7 +169,7 @@ export class StateManager extends EventEmitter {
   // File management
   addFile(runId: string, filePath: string, videoPath: string | null): void {
     this.db.createFileResult(runId, filePath, videoPath);
-    this.emitFileUpdate(runId, filePath, {});
+    this.emitFullStateUpdate(runId);
   }
 
   addFilesBulk(
@@ -180,27 +180,27 @@ export class StateManager extends EventEmitter {
     // Don't emit individual updates for bulk inserts to avoid event storm
   }
 
-  private emitFileUpdate(runId: string, filePath: string, deltas: Partial<FileResult>): void {
+  private emitFullStateUpdate(runId: string): void {
     const run = this.db.getRun(runId);
-    const file = this.db.getFileResults(runId).find((f) => f.file_path === filePath);
+    if (!run) return;
 
-    if (!file) return;
+    // To ensure the UI is always perfectly synced, we send the "Current Status"
+    // which includes the run stats and the most recent 50 files.
+    const files = this.db.getFileResults(runId, 50, 0);
+    const totalFiles = this.db.getFileCount(runId);
 
-    // Always include status and agreement_status in updates so frontend filters work
-    const updatedFile = {
-      file_path: filePath,
-      status: file.status,
-      agreement_status: file.agreement_status,
-      video_path: file.video_path,
-      ...deltas,
-    };
-
-    this.emit('file:updated', {
-      file: updatedFile,
-      run,
+    this.emit('state:full_update', {
+      currentRun: run,
+      files,
+      pagination: {
+        page: 1,
+        limit: 50,
+        total: totalFiles,
+        totalPages: Math.ceil(totalFiles / 50),
+      },
+      activeExtractions: this.getActiveExtractions(),
     });
   }
-
   updateFileStatus(runId: string, filePath: string, status: FileResult['status'], currentEngine?: string | null): void {
     const updates: Partial<FileResult> = { status };
     if (currentEngine !== undefined) {
@@ -208,7 +208,7 @@ export class StateManager extends EventEmitter {
     }
 
     this.db.updateFileResult(runId, filePath, updates);
-    this.emitFileUpdate(runId, filePath, updates);
+    this.emitFullStateUpdate(runId);
   }
 
   updateFileEngine(
@@ -234,7 +234,7 @@ export class StateManager extends EventEmitter {
 
     const updates = { engines: JSON.stringify(engines) };
     this.db.updateFileResult(runId, filePath, updates);
-    this.emitFileUpdate(runId, filePath, updates);
+    this.emitFullStateUpdate(runId);
   }
 
   reconcileFileResults(
@@ -288,23 +288,14 @@ export class StateManager extends EventEmitter {
     };
 
     this.db.updateFileResult(runId, filePath, updates);
-    this.emitFileUpdate(runId, filePath, updates);
+    this.emitFullStateUpdate(runId);
 
     return { bestEngine: bestName, status };
   }
 
   updateFilesVideoStatus(runId: string, videoPath: string, videoStatus: string | null): void {
     this.db.updateFilesVideoStatus(runId, videoPath, videoStatus);
-
-    const deltas = { video_status: videoStatus };
-
-    // Find affected files to get their paths for the delta update
-    const allFiles = this.db.getFileResults(runId);
-    const affectedFiles = allFiles.filter((f) => f.video_path === videoPath);
-
-    affectedFiles.forEach((file) => {
-      this.emitFileUpdate(runId, file.file_path, deltas);
-    });
+    this.emitFullStateUpdate(runId);
   }
 
   clearCompletedFiles(): void {
@@ -341,7 +332,7 @@ export class StateManager extends EventEmitter {
 
   manuallyVerifyFile(runId: string, filePath: string): void {
     this.db.manuallyVerifyFile(runId, filePath);
-    this.emitFileUpdate(runId, filePath, { agreement_status: 'verified' });
+    this.emitFullStateUpdate(runId);
   }
 
   appendLog(runId: string, logMessage: string): void {
