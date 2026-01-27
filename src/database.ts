@@ -668,27 +668,29 @@ export class SubsyncarrPlusPlusDatabase {
   }
 
   /**
-   * Aggregates errors by their message to identify systemic issues
+   * Aggregates errors by their message to identify systemic issues across all engines
    */
   getErrorGroups(limit: number = 10) {
     const engines = ['ffsubsync', 'autosubsync', 'alass'];
     const groups: Record<string, { message: string; count: number; examples: string[] }> = {};
 
-    const erroredFiles = this.db
+    // Quality Fix: Look for any engine failure, even in files that eventually succeeded
+    const filesWithFailures = this.db
       .prepare(
         `
       SELECT file_path, engines FROM file_results 
-      WHERE status = 'error' 
+      WHERE engines LIKE '%"success":false%'
       ORDER BY updated_at DESC 
-      LIMIT 500
+      LIMIT 1000
     `,
       )
       .all() as Array<{ file_path: string; engines: string }>;
 
-    erroredFiles.forEach((file) => {
-      const engineData = JSON.parse(file.engines);
+    filesWithFailures.forEach((file) => {
+      const engineData = JSON.parse(file.engines || '{}');
       for (const e of engines) {
-        if (engineData[e] && !engineData[e].success && engineData[e].message) {
+        // Report every failure found in the file, not just the first one
+        if (engineData[e] && engineData[e].success === false && engineData[e].message) {
           const rawMsg = engineData[e].message;
 
           // Normalization: Strip specific details to allow grouping.
@@ -698,7 +700,6 @@ export class SubsyncarrPlusPlusDatabase {
             // 2. Strip quoted absolute paths (handles spaces correctly)
             .replace(/["']\/[^"']+\.(srt|mkv|mp4|avi|m4v|ts|mp3|wav|srt)["']/gi, '"<path>"')
             // 3. Strip unquoted absolute paths (allowing spaces, stopping at extension + boundary)
-            // This matches from / to the extension, including spaces, as long as it doesn't hit a ; or "
             .replace(/\/[\/a-z0-9\s\(\)\[\]\.\!\-\_\$]+?\.(srt|mkv|mp4|avi|m4v|ts|mp3|wav|srt)/gi, '<path>')
             // 4. Strip any leftover standalone filenames
             .replace(/[^\s\/\n]+?\.(srt|mkv|mp4|avi|m4v|ts|mp3|wav|srt)/gi, '<file>')
@@ -714,9 +715,8 @@ export class SubsyncarrPlusPlusDatabase {
           }
           groups[genericMsg].count++;
           if (groups[genericMsg].examples.length < 3) {
-            groups[genericMsg].examples.push(file.file_path.split('/').pop() || '');
+            groups[genericMsg].examples.push(`${e}: ${file.file_path.split('/').pop() || ''}`);
           }
-          break;
         }
       }
     });
