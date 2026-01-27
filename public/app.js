@@ -7,6 +7,7 @@ class SubsyncarrPlusClient {
       isRunning: false,
       pagination: { page: 1, limit: 50, total: 0, totalPages: 0 },
       searchQuery: '',
+      agreementFilter: '',
     };
     this.reconnectInterval = 3000;
     this.searchTimeout = null;
@@ -39,8 +40,9 @@ class SubsyncarrPlusClient {
   async reconcileState() {
     try {
       const searchParam = this.state.searchQuery ? `&search=${encodeURIComponent(this.state.searchQuery)}` : '';
+      const filterParam = this.state.agreementFilter ? `&filter=${this.state.agreementFilter}` : '';
       // We only reconcile the first page to keep it fast; infinite scroll handles the rest
-      const response = await fetch(`/api/status?page=1&limit=50${searchParam}`);
+      const response = await fetch(`/api/status?page=1&limit=50${searchParam}${filterParam}`);
       if (!response.ok) return;
 
       const data = await response.json();
@@ -198,7 +200,8 @@ class SubsyncarrPlusClient {
 
   async fetchInitialState() {
     const searchParam = this.state.searchQuery ? `&search=${encodeURIComponent(this.state.searchQuery)}` : '';
-    const response = await fetch(`/api/status?page=1&limit=50${searchParam}`);
+    const filterParam = this.state.agreementFilter ? `&filter=${this.state.agreementFilter}` : '';
+    const response = await fetch(`/api/status?page=1&limit=50${searchParam}${filterParam}`);
     const data = await response.json();
     this.state.currentRun = data.currentRun;
     this.state.files = data.files;
@@ -231,9 +234,10 @@ class SubsyncarrPlusClient {
     this.isLoadingMore = true;
     const nextPage = this.state.pagination.page + 1;
     const searchParam = this.state.searchQuery ? `&search=${encodeURIComponent(this.state.searchQuery)}` : '';
+    const filterParam = this.state.agreementFilter ? `&filter=${this.state.agreementFilter}` : '';
 
     try {
-      const response = await fetch(`/api/status?page=${nextPage}&limit=50${searchParam}`);
+      const response = await fetch(`/api/status?page=${nextPage}&limit=50${searchParam}${filterParam}`);
       const data = await response.json();
 
       // Append new files, avoiding duplicates
@@ -410,6 +414,13 @@ class SubsyncarrPlusClient {
         this.state.files = [];
         this.fetchInitialState();
       }, 300);
+    });
+
+    document.getElementById('agreementFilter').addEventListener('change', (e) => {
+      this.state.agreementFilter = e.target.value;
+      this.state.pagination.page = 1;
+      this.state.files = [];
+      this.fetchInitialState();
     });
 
     document.getElementById('closeModal').addEventListener('click', () => {
@@ -744,11 +755,20 @@ class SubsyncarrPlusClient {
           statusBadge = `<span class="agreement-badge ${statusClass}">${label}</span>`;
         }
 
+        // Manual Verify Button for non-verified files
+        const verifyButton =
+          file.agreement_status !== 'verified'
+            ? `<button class="btn-verify" title="Verify manually" data-action="verify" data-file-path="${file.file_path}">✅ Verify</button>`
+            : '';
+
         return `
         <div class="file-card ${file.status}" data-file-path="${file.file_path}">
           <div class="file-header">
             <div class="file-name">${this.basename(file.file_path)}</div>
-            ${statusBadge}
+            <div class="header-right-badges">
+              ${verifyButton}
+              ${statusBadge}
+            </div>
           </div>
           <div class="engine-status">
             ${file.best_engine ? `<span class="best-engine-label">Best: 🏆 ${file.best_engine}</span>` : ''}
@@ -851,6 +871,10 @@ class SubsyncarrPlusClient {
           e.preventDefault();
           e.stopPropagation();
           this.viewDebugInfo(btn.dataset.filePath, btn.dataset.engineName);
+        }
+        if (btn.classList.contains('btn-verify') && btn.dataset.filePath) {
+          e.preventDefault();
+          this.manuallyVerifyFile(btn.dataset.filePath);
         }
       };
     }
@@ -987,6 +1011,25 @@ class SubsyncarrPlusClient {
       this.renderDryRunResults(data);
     } catch (error) {
       alert(`Dry run failed: ${error.message}`);
+    }
+  }
+
+  async manuallyVerifyFile(filePath) {
+    const runId = this.state.currentRun?.id;
+    if (!runId) return;
+
+    try {
+      const response = await fetch('/api/file/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ runId, filePath }),
+      });
+
+      if (!response.ok) throw new Error('Failed to verify file');
+      // Reconciliation will update the UI
+    } catch (error) {
+      console.error('Manual verification failed:', error);
+      alert('Failed to verify file manually');
     }
   }
 

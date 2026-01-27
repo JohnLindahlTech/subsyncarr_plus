@@ -79,8 +79,13 @@
         <div class="section-header">
           <h2>Completed & Skipped Files</h2>
           <div class="header-actions">
-            <input type="text" id="fileSearch" placeholder="Search by filename..." class="search-input" />
-            <button id="clearCompleted" class="btn btn-secondary btn-sm">Clear Files</button>
+            <select id="agreementFilter" class="search-input select-filter">
+              <option value="">All Results</option>
+              <option value="verified">✅ Verified Only</option>
+              <option value="suspicious">⚠️ Suspicious Only</option>
+              <option value="low_confidence">🔘 Low Confidence Only</option>
+            </select>
+            <input type="text" id="fileSearch" placeholder="Search files..." class="search-input" />
           </div>
         </div>
         <div id="completedList" class="file-list"></div>

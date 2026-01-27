@@ -334,7 +334,25 @@ export class SubsyncarrPlusDatabase {
       .run(videoStatus, Date.now(), runId, videoPath);
   }
 
-  getFileResults(runId: string, limit?: number, offset?: number, search?: string): FileResult[] {
+  manuallyVerifyFile(runId: string, filePath: string): void {
+    this.db
+      .prepare(
+        `
+      UPDATE file_results
+      SET agreement_status = 'verified', updated_at = ?
+      WHERE run_id = ? AND file_path = ?
+    `,
+      )
+      .run(Date.now(), runId, filePath);
+  }
+
+  getFileResults(
+    runId: string,
+    limit?: number,
+    offset?: number,
+    search?: string,
+    agreementFilter?: string,
+  ): FileResult[] {
     let sql = `
       SELECT * FROM file_results
       WHERE run_id = ?
@@ -344,6 +362,11 @@ export class SubsyncarrPlusDatabase {
     if (search) {
       sql += ' AND file_path LIKE ?';
       params.push(`%${search}%`);
+    }
+
+    if (agreementFilter) {
+      sql += ' AND agreement_status = ?';
+      params.push(agreementFilter);
     }
 
     sql += ' ORDER BY created_at ASC';
@@ -356,13 +379,18 @@ export class SubsyncarrPlusDatabase {
     return this.db.prepare(sql).all(...params) as FileResult[];
   }
 
-  getFileCount(runId: string, search?: string): number {
+  getFileCount(runId: string, search?: string, agreementFilter?: string): number {
     let sql = 'SELECT COUNT(*) as count FROM file_results WHERE run_id = ?';
     const params: unknown[] = [runId];
 
     if (search) {
       sql += ' AND file_path LIKE ?';
       params.push(`%${search}%`);
+    }
+
+    if (agreementFilter) {
+      sql += ' AND agreement_status = ?';
+      params.push(agreementFilter);
     }
 
     const result = this.db.prepare(sql).get(...params) as { count: number };
