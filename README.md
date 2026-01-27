@@ -1,8 +1,8 @@
-# Subsyncarr Plus
+# Subsyncarr++
 
 An automated subtitle synchronization tool that runs as a Docker container. It continuously monitors your media directories for video files with out-of-sync subtitles and automatically synchronizes them using three sync engines (ffsubsync, autosubsync, and alass). This is a fork from the software [subsyncarr](https://github.com/johnpc/subsyncarr).
 
-**Docker Hub:** [tomtomw123/subsyncarr-plus](https://hub.docker.com/r/tomtomw123/subsyncarr-plus)
+**Docker Hub:** [tomtomw123/subsyncarr-plus-plus](https://hub.docker.com/r/tomtomw123/subsyncarr-plus-plus)
 
 ## Features
 

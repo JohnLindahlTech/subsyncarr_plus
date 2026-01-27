@@ -43,7 +43,7 @@ export interface EngineFailureTracking {
   updated_at: number;
 }
 
-export class SubsyncarrPlusDatabase {
+export class SubsyncarrPlusPlusDatabase {
   private db: Database.Database;
 
   constructor(dbPath: string) {

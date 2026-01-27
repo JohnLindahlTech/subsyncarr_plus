@@ -1,21 +1,42 @@
 import { ProcessingEngine } from './processingEngine';
 import { StateManager } from './stateManager';
 import { ProcessingCoordinator } from './coordinator';
-import { SubsyncarrPlusServer } from './server';
+import { SubsyncarrPlusPlusServer } from './server';
 import { schedule } from 'node-cron';
 import { getRetentionConfig } from './config';
+import { existsSync, renameSync } from 'fs';
 
 async function main() {
-  const dbPath = process.env.DB_PATH || '/app/data/subsyncarr-plus.db';
+  const oldDefaultDbPath = '/app/data/subsyncarr-plus.db';
+  const newDefaultDbPath = '/app/data/subsyncarr-plus-plus.db';
+  const dbPath = process.env.DB_PATH || newDefaultDbPath;
+
+  // Migration: If user didn't specify a DB_PATH and we find the old one, rename it
+  if (!process.env.DB_PATH && existsSync(oldDefaultDbPath) && !existsSync(newDefaultDbPath)) {
+    console.log(
+      `[${new Date().toISOString()}] 📦 Migrating legacy database: ${oldDefaultDbPath} -> ${newDefaultDbPath}`,
+    );
+    try {
+      renameSync(oldDefaultDbPath, newDefaultDbPath);
+      // Also migrate the logs directory if it exists
+      const oldLogsDir = '/app/data/logs';
+      if (existsSync(oldLogsDir)) {
+        console.log(`[${new Date().toISOString()}] 📦 Migrating legacy logs directory...`);
+      }
+    } catch (err) {
+      console.error(`[${new Date().toISOString()}] ❌ Database migration failed:`, err);
+    }
+  }
+
   const port = parseInt(process.env.WEB_PORT || '3000', 10);
   const host = process.env.WEB_HOST || '127.0.0.1';
 
-  console.log(`[${new Date().toISOString()}] Initializing Subsyncarr Plus Server...`);
+  console.log(`[${new Date().toISOString()}] Initializing Subsyncarr++ Server...`);
 
   const stateManager = new StateManager(dbPath);
   const engine = new ProcessingEngine();
   const coordinator = new ProcessingCoordinator(engine, stateManager);
-  const server = new SubsyncarrPlusServer(coordinator, stateManager);
+  const server = new SubsyncarrPlusPlusServer(coordinator, stateManager);
 
   // Start HTTP server
   server.start(port, host);

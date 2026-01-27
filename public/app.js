@@ -1,4 +1,4 @@
-class SubsyncarrPlusClient {
+class SubsyncarrPlusPlusClient {
   constructor() {
     this.ws = null;
     this.state = {
@@ -481,5 +481,5 @@ class SubsyncarrPlusClient {
   }
 }
 
-const client = new SubsyncarrPlusClient();
+const client = new SubsyncarrPlusPlusClient();
 window.client = client;

@@ -21,7 +21,7 @@ interface HealthStatus {
   allOk: boolean;
 }
 
-export class SubsyncarrPlusServer {
+export class SubsyncarrPlusPlusServer {
   private app = express();
   private httpServer = createServer(this.app);
   private wss = new WebSocketServer({ server: this.httpServer, path: '/ws' });

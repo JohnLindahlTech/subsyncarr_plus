@@ -1,17 +1,17 @@
 import EventEmitter from 'events';
-import { SubsyncarrPlusDatabase, Run, FileResult } from './database';
+import { SubsyncarrPlusPlusDatabase, Run, FileResult } from './database';
 import { randomUUID } from 'crypto';
 import { LogFileManager } from './logFileManager';
 import * as path from 'path';
 
 export class StateManager extends EventEmitter {
-  private db: SubsyncarrPlusDatabase;
+  private db: SubsyncarrPlusPlusDatabase;
   private currentRunId: string | null = null;
   private logFileManager: LogFileManager;
 
   constructor(dbPath: string) {
     super();
-    this.db = new SubsyncarrPlusDatabase(dbPath);
+    this.db = new SubsyncarrPlusPlusDatabase(dbPath);
 
     // Create log file manager in same directory as database
     const logDir = path.join(path.dirname(dbPath), 'logs');
@@ -306,7 +306,7 @@ export class StateManager extends EventEmitter {
     return this.logFileManager.readLog(runId);
   }
 
-  getDatabase(): SubsyncarrPlusDatabase {
+  getDatabase(): SubsyncarrPlusPlusDatabase {
     return this.db;
   }
 
