@@ -182,6 +182,7 @@ export class StateManager extends EventEmitter {
       stderr?: string;
       skipped?: boolean;
       isPermanent?: boolean;
+      score?: number;
     },
   ): void {
     const file = this.db.getFileResults(runId).find((f) => f.file_path === filePath);

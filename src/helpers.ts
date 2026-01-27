@@ -10,6 +10,7 @@ export interface ProcessingResult {
   stderr?: string;
   command?: string;
   isPermanent?: boolean;
+  score?: number; // 0-100 confidence score
 }
 
 /**

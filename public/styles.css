@@ -429,6 +429,43 @@ h2 {
   opacity: 0.7;
 }
 
+.quality-score {
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.1);
+  margin-left: 4px;
+}
+
+.score-high {
+  color: #059669; /* Darker green */
+  background: #ecfdf5;
+}
+
+.score-med {
+  color: #d97706; /* Darker yellow */
+  background: #fffbeb;
+}
+
+.score-low {
+  color: #dc2626; /* Darker red */
+  background: #fef2f2;
+}
+
+[data-theme='dark'] .score-high {
+  background: rgba(16, 185, 129, 0.2);
+  color: #34d399;
+}
+[data-theme='dark'] .score-med {
+  background: rgba(245, 158, 11, 0.2);
+  color: #fbbf24;
+}
+[data-theme='dark'] .score-low {
+  background: rgba(239, 68, 68, 0.2);
+  color: #f87171;
+}
+
 /* Debug Modal Styles */
 .debug-modal {
   max-width: 800px;

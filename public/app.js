@@ -776,6 +776,18 @@ class SubsyncarrPlusClient {
         const className = result.success ? 'success' : 'error';
         const duration = result.duration ? (result.duration / 1000).toFixed(1) : '0.0';
 
+        // Quality Score Logic
+        let scoreHtml = '';
+        if (result.success && result.score !== undefined) {
+          let scoreClass = 'score-low';
+          if (result.score >= 80) scoreClass = 'score-high';
+          else if (result.score >= 50) scoreClass = 'score-med';
+
+          // ffsubsync is 0-100, alass is raw. We'll label them for now.
+          const label = name === 'ffsubsync' ? '%' : '';
+          scoreHtml = `<span class="quality-score ${scoreClass}" title="Confidence Score">${result.score}${label}</span>`;
+        }
+
         // Add debug button for failed engines
         const debugButton = !result.success
           ? `<button class="btn-debug" title="View Debug Info" data-action="debug" data-file-path="${filePath}" data-engine-name="${name}">🔍</button>`
@@ -786,6 +798,7 @@ class SubsyncarrPlusClient {
           <div class="engine-info">
             <span>${icon} ${name}</span>
             <span class="duration">${duration}s</span>
+            ${scoreHtml}
           </div>
           ${debugButton}
         </div>

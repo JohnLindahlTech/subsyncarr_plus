@@ -26,12 +26,22 @@ export async function generateAlassSubtitles(
     const command = `alass "${reference}" "${srtPath}" "${outputPath}"`;
     console.log(`${new Date().toLocaleString()} Processing: ${command}`);
     const { stdout, stderr } = await execPromise(command, timeoutMs, signal);
+
+    // Parse score from stdout: "Score: 12.34"
+    let score: number | undefined;
+    const scoreMatch = stdout.match(/Score:\s*([0-9.]+)/i);
+    if (scoreMatch) {
+      // alass scores vary wildly, but we'll capture it for relative comparison
+      score = parseFloat(scoreMatch[1]);
+    }
+
     return {
       success: true,
       message: `Successfully processed: ${outputPath}`,
       stdout: stdout || undefined,
       stderr: stderr || undefined,
       command,
+      score,
     };
   } catch (error) {
     const reference = audioPath || videoPath;

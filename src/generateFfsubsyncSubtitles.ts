@@ -27,12 +27,21 @@ export async function generateFfsubsyncSubtitles(
     const command = `ffsubsync "${reference}" -i "${srtPath}" -o "${outputPath}"`;
     console.log(`${new Date().toLocaleString()} Processing: ${command}`);
     const { stdout, stderr } = await execPromise(command, timeoutMs, signal);
+
+    // Parse score from stdout: "fit score: 0.85"
+    let score: number | undefined;
+    const scoreMatch = stdout.match(/fit score:\s*([0-9.]+)/i);
+    if (scoreMatch) {
+      score = Math.round(parseFloat(scoreMatch[1]) * 100);
+    }
+
     return {
       success: true,
       message: `Successfully processed: ${outputPath}`,
       stdout: stdout || undefined,
       stderr: stderr || undefined,
       command,
+      score,
     };
   } catch (error) {
     const reference = audioPath || videoPath;
