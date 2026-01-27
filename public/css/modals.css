@@ -1,0 +1,97 @@
+/* modals.css - Modal Layouts and Debugging Views */
+.modal {
+  position: fixed;
+  inset: 0;
+  background: var(--modal-overlay);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(4px);
+  padding: 20px;
+}
+
+.modal-content {
+  background: var(--card-bg);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-md);
+  padding: 32px;
+  max-width: 600px;
+  width: 90%;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.modal-header h3 { font-size: 18px; font-weight: 700; }
+
+.modal-body { margin-bottom: 24px; }
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+}
+
+.btn-close {
+  background: transparent;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: var(--text-secondary);
+  line-height: 1;
+}
+
+.debug-section { margin-bottom: 16px; }
+.debug-section label {
+  display: block;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+}
+
+.code-block {
+  background: var(--background-alt);
+  color: var(--text);
+  padding: 12px;
+  border-radius: var(--radius);
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+  font-size: 12px;
+  overflow: auto;
+  border: 1px solid var(--border);
+  max-height: 200px;
+}
+
+.logs-content {
+  background: #0f172a;
+  color: #e2e8f0;
+  padding: 20px;
+  border-radius: var(--radius);
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  overflow: auto;
+  max-height: 500px;
+  border: 1px solid var(--border);
+  margin-bottom: 20px;
+  white-space: pre-wrap;
+}
+
+.estimate-value {
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--primary);
+  margin-bottom: 16px;
+}
+
+.hidden { display: none !important; }
