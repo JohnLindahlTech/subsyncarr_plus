@@ -69,6 +69,11 @@ export class StateManager {
         case 'run:progress':
           this.update({ initMessage: msg.data.message });
           break;
+        case 'run:updated':
+        case 'run:completed':
+        case 'run:cancelled':
+          this.update({ currentRun: msg.data });
+          break;
         case 'health:updated':
           this.update({ health: msg.data });
           break;
