@@ -509,6 +509,20 @@ export class SubsyncarrPlusDatabase {
     }
   }
 
+  resetAllEngineSkipStatuses(): void {
+    const now = Date.now();
+    this.db
+      .prepare(
+        `
+      UPDATE engine_failure_tracking
+      SET consecutive_failures = 0,
+          is_skipped = 0,
+          updated_at = ?
+    `,
+      )
+      .run(now);
+  }
+
   getFailureTrackingStats(): {
     totalSkipped: number;
     skippedByEngine: Record<string, number>;

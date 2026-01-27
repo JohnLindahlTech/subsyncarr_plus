@@ -2,6 +2,7 @@ export interface ScanConfig {
   includePaths: string[];
   excludePaths: string[];
   enableContextAwareMatching: boolean;
+  forceRerun?: boolean;
 }
 
 export interface RetentionConfig {

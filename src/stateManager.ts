@@ -265,6 +265,10 @@ export class StateManager extends EventEmitter {
     this.db.resetEngineSkipStatus(filePath, engine);
   }
 
+  resetAllSkipStatuses(): void {
+    this.db.resetAllEngineSkipStatuses();
+  }
+
   getFailureStats() {
     return this.db.getFailureTrackingStats();
   }

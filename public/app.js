@@ -307,8 +307,18 @@ class SubsyncarrPlusClient {
       this.toggleTheme();
     });
 
+    document.getElementById('retryAllFailed').addEventListener('click', () => {
+      this.retryAllFailed();
+    });
+
     document.getElementById('startRun').addEventListener('click', () => {
       this.startRun();
+    });
+
+    document.getElementById('startRunForce').addEventListener('click', () => {
+      if (confirm('Force Full Rerun? This will ignore all existing synced files and re-process everything from scratch. This is CPU intensive.')) {
+        this.startRun(null, true);
+      }
     });
 
     document.getElementById('startCustom').addEventListener('click', () => {
@@ -461,7 +471,7 @@ class SubsyncarrPlusClient {
     });
   }
 
-  async startRun(paths = null) {
+  async startRun(paths = null, force = false) {
     try {
       this.state.isRunning = true;
       this.state.initMessage = 'Scanning directories...';
@@ -470,7 +480,7 @@ class SubsyncarrPlusClient {
       const response = await fetch('/api/run/start', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ paths }),
+        body: JSON.stringify({ paths, force }),
       });
 
       if (!response.ok) {
@@ -560,16 +570,22 @@ class SubsyncarrPlusClient {
   updateButtonVisibility() {
     const stopButton = document.getElementById('stopRun');
     const startButton = document.getElementById('startRun');
+    const forceButton = document.getElementById('startRunForce');
     const customButton = document.getElementById('startCustom');
+    const dryRunButton = document.getElementById('dryRun');
 
     if (this.state.isRunning) {
       stopButton.classList.remove('hidden');
       startButton.classList.add('hidden');
+      forceButton.classList.add('hidden');
       customButton.classList.add('hidden');
+      dryRunButton.classList.add('hidden');
     } else {
       stopButton.classList.add('hidden');
       startButton.classList.remove('hidden');
+      forceButton.classList.remove('hidden');
       customButton.classList.remove('hidden');
+      dryRunButton.classList.remove('hidden');
     }
   }
 
@@ -874,6 +890,27 @@ class SubsyncarrPlusClient {
       this.renderDryRunResults(data);
     } catch (error) {
       alert(`Dry run failed: ${error.message}`);
+    }
+  }
+
+  async retryAllFailed() {
+    if (
+      !confirm(
+        'Are you sure you want to reset the "Permanently Failed" status for ALL files? They will be retried in the next run.',
+      )
+    ) {
+      return;
+    }
+
+    try {
+      const response = await fetch('/api/skip-status/reset-all', { method: 'POST' });
+      if (response.ok) {
+        alert('All permanently failed files have been reset. Start a new run to retry them.');
+      } else {
+        throw new Error('Failed to reset status');
+      }
+    } catch (error) {
+      alert(`Error: ${error.message}`);
     }
   }
 

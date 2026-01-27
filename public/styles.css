@@ -180,6 +180,30 @@ h1 {
 .controls {
   display: flex;
   gap: 12px;
+  flex-wrap: wrap;
+}
+
+.btn-group {
+  display: flex;
+  align-items: center;
+}
+
+.btn-group .btn-primary:first-child {
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+  border-right: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.btn-force {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  padding-left: 10px;
+  padding-right: 10px;
+  background: #f97316; /* Orange color for destructive/heavy action */
+}
+
+.btn-force:hover {
+  background: #ea580c;
 }
 
 .btn {

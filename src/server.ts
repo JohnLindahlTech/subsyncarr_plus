@@ -218,9 +218,9 @@ export class SubsyncarrPlusServer {
 
     // Start a new run
     this.app.post('/api/run/start', async (req, res) => {
-      const { paths } = req.body;
+      const { paths, force } = req.body;
       console.log(
-        `[${new Date().toISOString()}] POST /api/run/start${paths ? ` (custom paths: ${paths.join(', ')})` : ' (default paths)'}`,
+        `[${new Date().toISOString()}] POST /api/run/start${paths ? ` (custom paths: ${paths.join(', ')})` : ' (default paths)'}${force ? ' [FORCE RERUN]' : ''}`,
       );
 
       try {
@@ -229,13 +229,12 @@ export class SubsyncarrPlusServer {
           return res.status(409).json({ error: 'A run is already in progress' });
         }
 
-        const config = paths
-          ? {
-              includePaths: paths,
-              excludePaths: [],
-              enableContextAwareMatching: true,
-            }
-          : undefined;
+        const config = {
+          includePaths: paths || getScanConfig().includePaths,
+          excludePaths: [],
+          enableContextAwareMatching: true,
+          forceRerun: !!force,
+        };
 
         const runId = await this.coordinator.startRun(config);
         res.json({ runId });
@@ -341,6 +340,13 @@ export class SubsyncarrPlusServer {
       );
 
       this.stateManager.resetSkipStatus(filePath, engine);
+      res.json({ success: true });
+    });
+
+    // Reset all skip statuses
+    this.app.post('/api/skip-status/reset-all', (_req, res) => {
+      console.log(`[${new Date().toISOString()}] POST /api/skip-status/reset-all`);
+      this.stateManager.resetAllSkipStatuses();
       res.json({ success: true });
     });
   }

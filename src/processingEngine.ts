@@ -68,14 +68,20 @@ export class ProcessingEngine extends EventEmitter {
 
     for (const srtPath of srtFiles) {
       let allEnginesDone = true;
-      const dir = path.dirname(srtPath);
-      const baseName = path.basename(srtPath, '.srt');
 
-      for (const engine of this.enabledEngines) {
-        const outputName = `${baseName}.${engine}.srt`;
-        if (!fileIndex.get(dir)?.has(outputName)) {
-          allEnginesDone = false;
-          break;
+      // Preparation for #10: If forceRerun is true, we don't check for existing output files
+      if (scanConfig.forceRerun) {
+        allEnginesDone = false;
+      } else {
+        const dir = path.dirname(srtPath);
+        const baseName = path.basename(srtPath, '.srt');
+
+        for (const engine of this.enabledEngines) {
+          const outputName = `${baseName}.${engine}.srt`;
+          if (!fileIndex.get(dir)?.has(outputName)) {
+            allEnginesDone = false;
+            break;
+          }
         }
       }
 
@@ -251,7 +257,8 @@ export class ProcessingEngine extends EventEmitter {
         }
 
         // Check if engine should be skipped due to consecutive failures
-        if (this.stateManager?.shouldSkipEngine(srtPath, engine)) {
+        // Preparation for #10: If forceRerun is true, we don't skip engines
+        if (!this.currentScanConfig?.forceRerun && this.stateManager?.shouldSkipEngine(srtPath, engine)) {
           this.log(`[${new Date().toISOString()}] ⊘ Skipping ${engine} (3+ consecutive failures): ${fileName}`);
           anyEngineSkipped = true;
           this.emit('file:engine_completed', {
