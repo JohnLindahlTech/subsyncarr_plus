@@ -1,20 +1,45 @@
 import { exec } from 'child_process';
+import { promisify } from 'util';
+
+const execAsync = promisify(exec);
 
 export interface ProcessingResult {
   success: boolean;
   message: string;
   stdout?: string;
   stderr?: string;
-  skipped?: boolean;
   command?: string;
   isPermanent?: boolean;
 }
 
-export const execPromise = (
+/**
+ * Check if a system dependency is installed and working
+ */
+export async function checkDependency(
+  command: string,
+  args: string[] = ['--version'],
+): Promise<{ name: string; found: boolean; version?: string; error?: string }> {
+  try {
+    const { stdout } = await execAsync(`${command} ${args.join(' ')}`);
+    return {
+      name: command,
+      found: true,
+      version: stdout.split('\n')[0].trim(),
+    };
+  } catch (error) {
+    return {
+      name: command,
+      found: false,
+      error: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
+export async function execPromise(
   command: string,
   timeoutMs?: number,
   signal?: AbortSignal,
-): Promise<{ stdout: string; stderr: string }> => {
+): Promise<{ stdout: string; stderr: string }> {
   // Read from env var with default of 30 minutes (1800000ms)
   const defaultTimeout = process.env.SYNC_ENGINE_TIMEOUT_MS
     ? parseInt(process.env.SYNC_ENGINE_TIMEOUT_MS, 10)
@@ -51,7 +76,7 @@ export const execPromise = (
       );
     }
   });
-};
+}
 
 export const getEngineOutputPath = (srtPath: string, engine: string): string => {
   const parts = srtPath.split('/');

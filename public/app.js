@@ -73,6 +73,7 @@ class SubsyncarrPlusClient {
       case 'state':
         this.state = { ...this.state, ...msg.data };
         this.render();
+        this.renderHealthStatus();
         break;
       case 'run:started':
         this.state.currentRun = msg.data;
@@ -89,6 +90,10 @@ class SubsyncarrPlusClient {
       case 'run:progress':
         this.state.initMessage = msg.data.message;
         this.render();
+        break;
+      case 'health:updated':
+        this.state.health = msg.data;
+        this.renderHealthStatus();
         break;
       case 'run:completed':
         this.state.currentRun = msg.data;
@@ -315,6 +320,10 @@ class SubsyncarrPlusClient {
       this.runDryRun();
     });
 
+    document.getElementById('viewHealthDetails').addEventListener('click', () => {
+      document.getElementById('healthModal').classList.remove('hidden');
+    });
+
     document.getElementById('stopRun').addEventListener('click', () => {
       this.stopRun();
     });
@@ -383,6 +392,14 @@ class SubsyncarrPlusClient {
       document.getElementById('dryRunModal').classList.add('hidden');
     });
 
+    document.getElementById('closeHealthModal').addEventListener('click', () => {
+      document.getElementById('healthModal').classList.add('hidden');
+    });
+
+    document.getElementById('closeHealthButton').addEventListener('click', () => {
+      document.getElementById('healthModal').classList.add('hidden');
+    });
+
     // Close modals when clicking outside
     window.addEventListener('click', (e) => {
       if (e.target.id === 'customPathModal') {
@@ -397,6 +414,9 @@ class SubsyncarrPlusClient {
       }
       if (e.target.id === 'dryRunModal') {
         document.getElementById('dryRunModal').classList.add('hidden');
+      }
+      if (e.target.id === 'healthModal') {
+        document.getElementById('healthModal').classList.add('hidden');
       }
     });
 
@@ -883,6 +903,33 @@ class SubsyncarrPlusClient {
     document.getElementById('dryMissingList').innerHTML =
       missingHtml || '<p>No missing videos found! Everything matched.</p>';
     document.getElementById('dryRunModal').classList.remove('hidden');
+  }
+
+  renderHealthStatus() {
+    const health = this.state.health;
+    if (!health) return;
+
+    const warningEl = document.getElementById('healthWarning');
+    if (!health.allOk) {
+      warningEl.classList.remove('hidden');
+    } else {
+      warningEl.classList.add('hidden');
+    }
+
+    const listEl = document.getElementById('healthList');
+    listEl.innerHTML = health.dependencies
+      .map(
+        (dep) => `
+      <div class="health-item ${dep.found ? 'ok' : 'error'}">
+        <div class="health-info">
+          <div class="health-name">${dep.name}</div>
+          <div class="health-version">${dep.found ? dep.version : 'Not found'}</div>
+        </div>
+        <div class="health-status-icon">${dep.found ? '✅' : '❌'}</div>
+      </div>
+    `,
+      )
+      .join('');
   }
 
   basename(path) {

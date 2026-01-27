@@ -8,12 +8,25 @@ import { getScanConfig } from './config';
 import cronstrue from 'cronstrue';
 import parseExpression from 'cron-parser';
 import cron from 'node-cron';
+import { checkDependency } from './helpers';
+
+interface HealthStatus {
+  timestamp: number;
+  dependencies: Array<{
+    name: string;
+    found: boolean;
+    version?: string;
+    error?: string;
+  }>;
+  allOk: boolean;
+}
 
 export class SubsyncarrPlusServer {
   private app = express();
   private httpServer = createServer(this.app);
   private wss = new WebSocketServer({ server: this.httpServer, path: '/ws' });
   private clients: Set<WebSocket> = new Set();
+  private healthStatus: HealthStatus | null = null;
 
   constructor(
     private coordinator: ProcessingCoordinator,
@@ -23,6 +36,28 @@ export class SubsyncarrPlusServer {
     this.setupRoutes();
     this.setupWebSocket();
     this.setupMaintenanceSchedule();
+    this.performHealthCheck();
+  }
+
+  private async performHealthCheck() {
+    console.log(`[${new Date().toISOString()}] Performing system health check...`);
+    const engines = process.env.INCLUDE_ENGINES?.split(',') || ['ffsubsync', 'autosubsync', 'alass'];
+
+    const dependencies = [
+      { cmd: 'ffmpeg', args: ['-version'] },
+      ...engines.map((engine) => ({ cmd: engine, args: ['--version'] })),
+    ];
+
+    const results = await Promise.all(dependencies.map((dep) => checkDependency(dep.cmd, dep.args)));
+
+    this.healthStatus = {
+      timestamp: Date.now(),
+      dependencies: results,
+      allOk: results.every((r) => r.found),
+    };
+
+    console.log(`[${new Date().toISOString()}] Health check complete. All OK: ${this.healthStatus.allOk}`);
+    this.broadcast({ type: 'health:updated', data: this.healthStatus });
   }
 
   private setupMaintenanceSchedule() {
@@ -76,6 +111,11 @@ export class SubsyncarrPlusServer {
           nextRun: nextRun,
         },
       });
+    });
+
+    // Get health status
+    this.app.get('/api/health', (_req, res) => {
+      res.json(this.healthStatus);
     });
 
     // Get current status
@@ -328,6 +368,7 @@ export class SubsyncarrPlusServer {
               totalPages: Math.ceil(totalFiles / 50),
             },
             isRunning: this.coordinator.isRunning(),
+            health: this.healthStatus,
           },
         }),
       );
