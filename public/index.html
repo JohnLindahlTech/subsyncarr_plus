@@ -1,181 +1,227 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="light">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Subsyncarr+</title>
-    <link
-      rel="icon"
-      href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🧬</text></svg>"
-    />
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
-    <div class="container">
-      <header>
-        <div id="healthWarning" class="health-warning hidden">
-          <span class="warning-icon">⚠️</span>
-          <span id="healthMessage">Some system dependencies are missing! Some features may not work.</span>
-          <button id="viewHealthDetails" class="btn-link">View Details</button>
-        </div>
-        <div class="header-top">
-          <div>
-            <h1>🧬 Subsyncarr+</h1>
-            <p class="subtitle">Subtitle Synchronization</p>
-          </div>
-          <div class="status-indicators">
-            <div class="status-indicator" id="statusIndicator">
-              <div class="status-light" id="statusLight"></div>
-              <div class="status-text">
-                <div class="status-label" id="statusLabel">Loading...</div>
-                <div class="status-paths" id="statusPaths"></div>
-              </div>
-            </div>
-            <div class="schedule-indicator" id="scheduleIndicator">
-              <div class="schedule-icon">⏰</div>
-              <div class="status-text">
-                <div class="status-label" id="scheduleLabel">Loading...</div>
-                <div class="status-paths" id="scheduleTime"></div>
-              </div>
-            </div>
+    <div class="app-layout">
+      <!-- Sidebar Navigation -->
+      <aside class="sidebar">
+        <div class="sidebar-header">
+          <div class="logo">
+            <span class="logo-icon">🎬</span>
+            <span class="logo-text">Subsyncarr+</span>
           </div>
         </div>
-        <div class="controls">
-          <button id="themeToggle" class="theme-toggle" title="Toggle Dark/Light Mode">
+        <nav class="sidebar-nav">
+          <a href="#/" class="nav-item active" data-view="live">
+            <span class="nav-icon">⚡</span>
+            <span class="nav-label">Live Run</span>
+          </a>
+          <a href="#/explorer" class="nav-item" data-view="explorer">
+            <span class="nav-icon">📂</span>
+            <span class="nav-label">Library Explorer</span>
+          </a>
+          <a href="#/dashboard" class="nav-item" data-view="dashboard">
+            <span class="nav-icon">📊</span>
+            <span class="nav-label">Dashboard</span>
+          </a>
+          <a href="#/history" class="nav-item" data-view="history">
+            <span class="nav-icon">📜</span>
+            <span class="nav-label">Run History</span>
+          </a>
+          <a href="#/system" class="nav-item" data-view="system">
+            <span class="nav-icon">⚙️</span>
+            <span class="nav-label">System Health</span>
+          </a>
+        </nav>
+        <div class="sidebar-footer">
+          <button id="themeToggle" class="theme-toggle">
             <span id="themeIcon">🌓</span>
             <span id="themeLabel">Theme</span>
           </button>
-          <button id="viewDashboard" class="btn btn-secondary">📊 Library Dashboard</button>
-          <button id="dryRun" class="btn btn-secondary">🔍 Dry Run Scan</button>
-          <div class="btn-group">
-            <button id="startRun" class="btn btn-primary">▶ Start Full Run</button>
-            <button
-              id="startRunForce"
-              class="btn btn-primary btn-force"
-              title="Force Full Rerun (Ignores existing files)"
-            >
-              🔥
-            </button>
+        </div>
+      </aside>
+
+      <!-- Main Content Area -->
+      <main class="main-content">
+        <!-- Top Persistent Header -->
+        <header class="top-bar">
+          <div class="header-left">
+            <h2 id="viewTitle">Live Run</h2>
           </div>
-          <button id="startCustom" class="btn btn-secondary">📁 Scan Specific Path</button>
-          <button id="stopRun" class="btn btn-danger hidden">⏹ Stop Processing</button>
-        </div>
-      </header>
-
-      <section id="currentRun" class="hidden">
-        <h2>Currently Processing</h2>
-        <div class="progress-wrapper">
-          <div class="progress-bar">
-            <div class="progress-fill" id="progressFill"></div>
+          <div class="header-right">
+            <div id="globalControls" class="controls">
+              <!-- Controls are injected/managed here -->
+              <button id="dryRun" class="btn btn-secondary">🔍 Dry Run</button>
+              <div class="btn-group">
+                <button id="startRun" class="btn btn-primary">▶ Start Run</button>
+                <button id="startRunForce" class="btn btn-primary btn-force" title="Force Full Rerun">🔥</button>
+              </div>
+              <button id="stopRun" class="btn btn-danger hidden">⏹ Stop</button>
+            </div>
           </div>
-          <span class="progress-text" id="progressText">0 / 0</span>
-        </div>
-        <div id="currentTaskStatus" class="current-task-status"></div>
+        </header>
 
-        <div id="filesInProgress"></div>
-      </section>
+        <div id="healthWarning" class="health-warning hidden">
+          <span class="warning-icon">⚠️</span>
+          <span id="healthMessage">System issues detected. Check System Health.</span>
+          <a href="#/system" class="btn-link">View Details</a>
+        </div>
 
-      <section id="completedSection">
-        <div class="section-header">
-          <h2>Completed & Skipped Files</h2>
-          <div class="header-actions">
-            <select id="agreementFilter" class="search-input select-filter">
-              <option value="">All Results</option>
-              <option value="verified">✅ Verified Only</option>
-              <option value="suspicious">⚠️ Suspicious Only</option>
-              <option value="low_confidence">🔘 Low Confidence Only</option>
-            </select>
-            <input type="text" id="fileSearch" placeholder="Search files..." class="search-input" />
-          </div>
-        </div>
-        <div id="completedList" class="file-list"></div>
-        <div id="paginationControls" class="pagination-controls hidden">
-          <span id="paginationInfo">Showing 0 of 0 files</span>
-          <div id="scrollSentinel" class="sentinel"></div>
-          <button id="loadMore" class="btn btn-secondary btn-sm hidden">Show More</button>
-        </div>
-      </section>
+        <!-- Dynamic View Container -->
+        <div id="viewContainer" class="view-container">
+          <!-- Live Run View -->
+          <section id="view-live" class="view">
+            <div id="currentRun" class="progress-section hidden">
+              <div class="progress-wrapper">
+                <div class="progress-bar">
+                  <div id="progressFill" class="progress-fill"></div>
+                </div>
+                <div id="progressText" class="progress-text">0%</div>
+              </div>
+              <div id="currentTaskStatus" class="current-task-status"></div>
+            </div>
 
-      <section id="historySection">
-        <div class="section-header">
-          <h2>Run History</h2>
-          <button id="retryAllFailed" class="btn btn-secondary btn-sm">🔄 Retry All Permanently Failed</button>
+            <div class="live-grid">
+              <div class="live-active">
+                <h3>Processing</h3>
+                <div id="filesInProgress" class="file-list"></div>
+              </div>
+              <div class="live-recent">
+                <div class="section-header">
+                  <h3>Recently Completed</h3>
+                  <button id="clearCompleted" class="btn-link">Clear List</button>
+                </div>
+                <div id="completedList" class="file-list"></div>
+              </div>
+            </div>
+          </section>
+
+          <!-- Explorer View -->
+          <section id="view-explorer" class="view hidden">
+            <div class="filter-bar">
+              <input type="text" id="fileSearch" placeholder="Search 13,000+ files..." class="search-input" />
+              <select id="agreementFilter" class="search-input select-filter">
+                <option value="">All Confidence Levels</option>
+                <option value="verified">✅ Verified Only</option>
+                <option value="suspicious">⚠️ Suspicious Only</option>
+                <option value="low_confidence">🔘 Low Confidence</option>
+              </select>
+            </div>
+            <div id="explorerResults" class="explorer-results">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th>File Name</th>
+                    <th>Status</th>
+                    <th>Best Engine</th>
+                    <th>Score</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="explorerBody"></tbody>
+              </table>
+              <div id="paginationControls" class="pagination-controls hidden">
+                <span id="paginationInfo"></span>
+                <button id="loadMore" class="btn btn-secondary btn-sm">Load More...</button>
+              </div>
+              <div id="scrollSentinel" class="sentinel"></div>
+            </div>
+          </section>
+
+          <!-- Dashboard View -->
+          <section id="view-dashboard" class="view hidden">
+            <div class="dashboard-grid">
+              <div class="card">
+                <h4>Library Success Rate</h4>
+                <div class="summary-grid" id="globalStatsGrid"></div>
+              </div>
+              <div class="card">
+                <h4>Engine Win-Rates</h4>
+                <div class="summary-grid" id="engineStatsGrid"></div>
+              </div>
+              <div class="card full-width">
+                <h4>Common Failure Patterns</h4>
+                <div id="errorSummaryList" class="detail-list"></div>
+              </div>
+            </div>
+          </section>
+
+          <!-- History View -->
+          <section id="view-history" class="view hidden">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Date</th>
+                  <th>Status</th>
+                  <th>Total</th>
+                  <th>Success</th>
+                  <th>Failed</th>
+                  <th>FF</th>
+                  <th>AS</th>
+                  <th>AL</th>
+                  <th>Time</th>
+                  <th>Logs</th>
+                </tr>
+              </thead>
+              <tbody id="historyBody"></tbody>
+            </table>
+          </section>
+
+          <!-- System View -->
+          <section id="view-system" class="view hidden">
+            <div class="system-grid">
+              <div class="card">
+                <h4>Environment Dependencies</h4>
+                <div id="healthList" class="health-list"></div>
+              </div>
+              <div class="card">
+                <h4>Media Configuration</h4>
+                <div class="status-indicators">
+                  <div class="status-indicator">
+                    <div id="statusLight" class="status-light"></div>
+                    <div class="status-text">
+                      <span id="statusLabel" class="status-label">Checking configuration...</span>
+                      <span id="statusPaths" class="status-paths"></span>
+                    </div>
+                  </div>
+                  <div class="schedule-indicator">
+                    <span class="schedule-icon">⏰</span>
+                    <div class="status-text">
+                      <span id="scheduleLabel" class="status-label">Auto-scan</span>
+                      <span id="scheduleTime" class="status-paths"></span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
         </div>
-        <div class="engine-key">
-          <span class="key-title">Engine Results Key:</span>
-          <span class="key-item"><span class="engine-pass">1-9</span> = Passed files</span>
-          <span class="key-item"><span class="engine-fail">1-9</span> = Failed files</span>
-          <span class="key-item"
-            >Engines: <strong>F</strong>=ffsubsync, <strong>Au</strong>=autosubsync, <strong>Al</strong>=alass</span
-          >
-        </div>
-        <table id="historyTable">
-          <thead>
-            <tr>
-              <th>Start Time</th>
-              <th>Status</th>
-              <th>Files</th>
-              <th>Completed</th>
-              <th>Skipped</th>
-              <th>Failed</th>
-              <th>F</th>
-              <th>Au</th>
-              <th>Al</th>
-              <th>Duration</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody id="historyBody"></tbody>
-        </table>
-      </section>
+      </main>
     </div>
 
-    <div id="logsModal" class="modal hidden">
-      <div class="modal-content logs-modal">
-        <div class="modal-header">
-          <h3>Run Logs</h3>
-          <button id="closeLogsModal" class="btn-close">&times;</button>
-        </div>
-        <pre id="logsContent" class="logs-content"></pre>
-        <div class="modal-actions">
-          <button id="copyLogs" class="btn btn-secondary">📋 Copy to Clipboard</button>
-          <button id="closeLogsButton" class="btn btn-primary">Close</button>
-        </div>
-      </div>
-    </div>
-
-    <div id="customPathModal" class="modal hidden">
+    <!-- Modals (Simplified for Route-based navigation where possible, but kept for details) -->
+    <div id="debugModal" class="modal hidden">
       <div class="modal-content">
         <div class="modal-header">
-          <h3>Scan Specific Paths</h3>
-          <button id="closeModal" class="btn-close">&times;</button>
-        </div>
-        <textarea id="customPaths" placeholder="/path/to/directory1&#10;/path/to/directory2"></textarea>
-        <div class="modal-actions">
-          <button id="cancelCustom" class="btn btn-secondary">Cancel</button>
-          <button id="submitCustom" class="btn btn-primary">Start Scan</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Debug Info Modal -->
-    <div id="debugModal" class="modal hidden">
-      <div class="modal-content debug-modal">
-        <div class="modal-header">
           <h3>Engine Debug Info</h3>
-          <button id="closeDebugModal" class="close-btn">&times;</button>
+          <button id="closeDebugModal" class="btn-close">&times;</button>
         </div>
         <div class="modal-body">
           <div class="debug-section">
-            <label>Executed Command:</label>
+            <label>Command:</label>
             <pre id="debugCommand" class="code-block"></pre>
           </div>
           <div class="debug-section">
-            <label>Standard Error (Last 1KB):</label>
+            <label>Error Output (stderr):</label>
             <pre id="debugStderr" class="code-block error-text"></pre>
           </div>
           <div class="debug-section">
-            <label>Standard Output:</label>
+            <label>Standard Output (stdout):</label>
             <pre id="debugStdout" class="code-block"></pre>
           </div>
         </div>
@@ -185,89 +231,50 @@
       </div>
     </div>
 
-    <!-- Dashboard Modal -->
-    <div id="dashboardModal" class="modal hidden">
-      <div class="modal-content debug-modal">
+    <div id="logsModal" class="modal hidden">
+      <div class="modal-content logs-modal">
         <div class="modal-header">
-          <h3>Library Dashboard</h3>
-          <button id="closeDashboardModal" class="btn-close">&times;</button>
+          <h3>Run Logs</h3>
+          <button id="closeLogsModal" class="btn-close">&times;</button>
         </div>
-        <div class="modal-body">
-          <h4>Overall Success Rate</h4>
-          <div class="summary-grid" id="globalStatsGrid">
-            <!-- Global stats injected here -->
-          </div>
-
-          <h4>Engine Performance (Lifetime)</h4>
-          <div class="summary-grid" id="engineStatsGrid">
-            <!-- Engine stats injected here -->
-          </div>
-
-          <h4>Top Failure Reasons</h4>
-          <div id="errorSummaryList" class="detail-list">
-            <!-- Error groups injected here -->
-          </div>
-        </div>
+        <div id="logsContent" class="logs-content"></div>
         <div class="modal-footer">
-          <button id="closeDashboardButton" class="btn btn-secondary">Close</button>
+          <button id="copyLogs" class="btn btn-secondary">📋 Copy Logs</button>
+          <button id="closeLogsButton" class="btn btn-secondary">Close</button>
         </div>
       </div>
     </div>
 
-    <!-- Health Check Modal -->
-    <div id="healthModal" class="modal hidden">
+    <div id="dryRunModal" class="modal hidden">
       <div class="modal-content">
         <div class="modal-header">
-          <h3>System Health Check</h3>
-          <button id="closeHealthModal" class="btn-close">&times;</button>
-        </div>
-        <div class="modal-body">
-          <div id="healthList" class="health-list">
-            <!-- Health items will be injected here -->
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button id="closeHealthButton" class="btn btn-primary">Close</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- Dry Run Modal -->
-    <div id="dryRunModal" class="modal hidden">
-      <div class="modal-content debug-modal">
-        <div class="modal-header">
           <h3>Dry Run Impact Report</h3>
-          <button id="closeDryRunModal" class="close-btn">&times;</button>
+          <button id="closeDryRunModal" class="btn-close">&times;</button>
         </div>
         <div class="modal-body">
           <div class="summary-grid">
             <div class="summary-card">
-              <label>Total SRTs</label>
+              <label>Total</label>
               <div id="dryTotal" class="summary-value">-</div>
             </div>
             <div class="summary-card success">
-              <label>Already Done</label>
+              <label>Done</label>
               <div id="dryDone" class="summary-value">-</div>
             </div>
             <div class="summary-card primary">
-              <label>Matched to Video</label>
+              <label>Matched</label>
               <div id="dryMatched" class="summary-value">-</div>
             </div>
             <div class="summary-card danger">
-              <label>Missing Video</label>
+              <label>Missing</label>
               <div id="dryMissing" class="summary-value">-</div>
             </div>
           </div>
-
           <div class="debug-section">
-            <label>Estimated Execution Time (at current concurrency):</label>
+            <label>Est. Run Time:</label>
             <div id="dryEstimate" class="estimate-value">-</div>
           </div>
-
-          <div class="debug-section">
-            <label>Missing Video Details:</label>
-            <div id="dryMissingList" class="detail-list"></div>
-          </div>
+          <div id="dryMissingList" class="detail-list"></div>
         </div>
         <div class="modal-footer">
           <button id="closeDryRunButton" class="btn btn-secondary">Close</button>
