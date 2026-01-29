@@ -8,7 +8,7 @@ import { getScanConfig } from './config';
 import cronstrue from 'cronstrue';
 import parseExpression from 'cron-parser';
 import cron from 'node-cron';
-import { checkDependency } from './helpers';
+import { checkDependency, validatePartialPath } from './helpers';
 
 interface HealthStatus {
   timestamp: number;
@@ -260,8 +260,22 @@ export class SubsyncarrPlusPlusServer {
           return res.status(409).json({ error: 'A run is already in progress' });
         }
 
+        const libraryRoots = getScanConfig().includePaths;
+        let validatedPaths: string[] | undefined;
+
+        if (paths && Array.isArray(paths)) {
+          try {
+            validatedPaths = paths.map((p) => validatePartialPath(p, libraryRoots));
+          } catch (err) {
+            return res.status(403).json({
+              error: 'Security Validation Failed',
+              message: err instanceof Error ? err.message : String(err),
+            });
+          }
+        }
+
         const config = {
-          includePaths: paths || getScanConfig().includePaths,
+          includePaths: validatedPaths || libraryRoots,
           excludePaths: [],
           enableContextAwareMatching: true,
           forceRerun: !!force,

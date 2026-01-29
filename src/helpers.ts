@@ -1,4 +1,6 @@
 import { exec } from 'child_process';
+import * as fs from 'fs';
+import * as path from 'path';
 
 export interface ProcessingResult {
   success: boolean;
@@ -142,6 +144,36 @@ export const getPrimaryOutputPath = (srtPath: string): string => {
   const baseName = fileName.replace(/\.srt$/i, '');
   return `${dir}/${baseName}.synced.srt`;
 };
+
+/**
+ * Validates that a requested path is safe and contained within the allowed library roots.
+ * Prevents directory traversal attacks.
+ */
+export function validatePartialPath(requestedPath: string, allowedRoots: string[]): string {
+  // 1. Normalize and resolve the path to handle ../ or ./
+  const normalizedPath = path.resolve(requestedPath);
+
+  // 2. Check if the path exists
+  if (!fs.existsSync(normalizedPath)) {
+    throw new Error(`Requested path does not exist: ${requestedPath}`);
+  }
+
+  // 3. Resolve actual path (handles symlinks)
+  const realPath = fs.realpathSync(normalizedPath);
+
+  // 4. Verify it's inside one of our library roots
+  const isAuthorized = allowedRoots.some((root) => {
+    const normalizedRoot = path.resolve(root);
+    const realRoot = fs.realpathSync(normalizedRoot);
+    return realPath.startsWith(realRoot);
+  });
+
+  if (!isAuthorized) {
+    throw new Error('Access Denied: Path is outside of configured library roots.');
+  }
+
+  return realPath;
+}
 
 export const extractAudio = async (videoPath: string, outputPath: string, signal?: AbortSignal): Promise<void> => {
   // Extract audio: mono, 16kHz (common denominator for most engines)

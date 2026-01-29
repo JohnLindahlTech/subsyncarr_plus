@@ -81,12 +81,23 @@
           </div>
           <div class="header-right">
             <div id="globalControls" class="controls">
-              <button id="dryRun" class="btn btn-secondary">🔍 Dry Run</button>
-              <div class="btn-group">
-                <button id="startRun" class="btn btn-primary">▶ Start Run</button>
-                <button id="startRunForce" class="btn btn-primary btn-force" title="Force Full Rerun">🔥</button>
-              </div>
               <button id="stopRun" class="btn btn-danger hidden">⏹ Stop</button>
+
+              <div class="main-actions-group">
+                <button id="startRun" class="btn btn-primary">▶ Start Run</button>
+
+                <div class="dropdown">
+                  <button id="actionDropdownBtn" class="btn btn-primary dropdown-toggle">
+                    <span class="chevron-down"></span>
+                  </button>
+                  <div id="actionDropdownMenu" class="dropdown-menu hidden">
+                    <button id="dryRun" class="dropdown-item">🔍 Dry Run Impact</button>
+                    <button id="startRunForce" class="dropdown-item danger">🔥 Force Full Rerun</button>
+                    <div class="dropdown-divider"></div>
+                    <button id="partialRunTrigger" class="dropdown-item">📁 Partial Folder Sync</button>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </header>
@@ -270,6 +281,34 @@
         </header>
         <div class="overlay-body">
           <pre id="logsOverlayContent" class="code-block logs-view-large"></pre>
+        </div>
+      </div>
+    </div>
+
+    <div id="partialRunModal" class="modal hidden">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3>Partial Folder Sync</h3>
+        </div>
+        <div class="modal-body">
+          <p>
+            Enter a sub-directory path relative to your library roots. The system will only scan and sync files within
+            this path.
+          </p>
+          <div class="input-group">
+            <input
+              type="text"
+              id="partialPathInput"
+              class="search-input"
+              placeholder="/media/tv/My Show/S01"
+              style="max-width: 100%"
+            />
+          </div>
+          <p id="partialPathError" class="error-text hidden" style="margin-top: 10px"></p>
+        </div>
+        <div class="modal-footer">
+          <button id="cancelPartialRun" class="btn btn-secondary">Cancel</button>
+          <button id="confirmPartialRun" class="btn btn-primary">🚀 Start Partial Sync</button>
         </div>
       </div>
     </div>

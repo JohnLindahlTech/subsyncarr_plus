@@ -177,11 +177,50 @@ class SubsyncarrPlusPlusClient {
   setupEventHandlers() {
     const get = (id) => document.getElementById(id);
 
+    // Header Actions
     get('themeToggle').onclick = () => this.toggleTheme();
     get('startRun').onclick = () => this.startRun();
-    get('startRunForce').onclick = () => this.startRun(null, true);
     get('stopRun').onclick = () => this.stopRun();
-    get('dryRun').onclick = () => this.runDryRun();
+
+    // Dropdown Handling
+    get('actionDropdownBtn').onclick = (e) => {
+      e.stopPropagation();
+      get('actionDropdownMenu').classList.toggle('hidden');
+    };
+
+    get('dryRun').onclick = () => {
+      get('actionDropdownMenu').classList.add('hidden');
+      this.runDryRun();
+    };
+
+    get('startRunForce').onclick = () => {
+      get('actionDropdownMenu').classList.add('hidden');
+      this.startRun(null, true);
+    };
+
+    get('partialRunTrigger').onclick = () => {
+      get('actionDropdownMenu').classList.add('hidden');
+      get('partialRunModal').classList.remove('hidden');
+      get('partialPathInput').value = '';
+      get('partialPathError').classList.add('hidden');
+      get('partialPathInput').focus();
+    };
+
+    // Partial Run Modal
+    get('cancelPartialRun').onclick = () => get('partialRunModal').classList.add('hidden');
+    get('confirmPartialRun').onclick = async () => {
+      const path = get('partialPathInput').value.trim();
+      if (!path) return;
+
+      try {
+        await this.startRun([path]);
+        get('partialRunModal').classList.add('hidden');
+      } catch (err) {
+        get('partialPathError').textContent = err.message || 'Validation failed';
+        get('partialPathError').classList.remove('hidden');
+      }
+    };
+
     get('clearCompleted').onclick = async () => {
       await API.clearCompleted();
       this.stateManager.update({ files: [] }, 'replace');
@@ -215,6 +254,13 @@ class SubsyncarrPlusPlusClient {
   }
 
   handleGlobalClick(e) {
+    // Close dropdown on outside click
+    const menu = document.getElementById('actionDropdownMenu');
+    const btn = document.getElementById('actionDropdownBtn');
+    if (menu && !menu.contains(e.target) && e.target !== btn) {
+      menu.classList.add('hidden');
+    }
+
     if (e.target.classList.contains('modal') || e.target.classList.contains('details-overlay')) {
       e.target.classList.add('hidden');
       return;
