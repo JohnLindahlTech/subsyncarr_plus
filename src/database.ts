@@ -48,13 +48,20 @@ export interface EngineFailureTracking {
 export class SubsyncarrPlusPlusDatabase {
   private db: Database.Database;
 
-  constructor(dbPath: string) {
+  constructor(dbPath: string, skipInit: boolean = false) {
     this.db = new Database(dbPath);
-    this.initSchema();
+    if (!skipInit) {
+      this.initSchema();
+    } else {
+      // Even if skipping full init, set critical pragmas
+      this.db.pragma('busy_timeout = 5000');
+      this.db.pragma('journal_mode = WAL');
+    }
   }
 
   private initSchema() {
     // Optimize SQLite for high performance with large datasets
+    this.db.pragma('busy_timeout = 5000');
     this.db.pragma('cache_size = -64000'); // 64MB cache
     this.db.pragma('journal_mode = WAL'); // High-concurrency
     this.db.pragma('synchronous = NORMAL'); // Faster writes, still safe in WAL mode

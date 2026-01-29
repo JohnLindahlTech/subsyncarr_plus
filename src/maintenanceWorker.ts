@@ -11,8 +11,8 @@ try {
   const db = new Database(dbPath);
 
   // Optimize connection for maintenance
+  db.pragma('busy_timeout = 10000'); // Be patient during maintenance
   db.pragma('journal_mode = WAL');
-
   const statsBefore =
     (db.pragma('page_count', { simple: true }) as number) * (db.pragma('page_size', { simple: true }) as number);
 

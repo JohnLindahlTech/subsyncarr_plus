@@ -13,8 +13,9 @@ class MockEngine extends EventEmitter {
 }
 
 class MockStateManager extends EventEmitter {
-  startRun = jest.fn();
+  dbPath = 'test.db';
   getCurrentRun = jest.fn();
+  startRun = jest.fn();
   appendLog = jest.fn();
   addFile = jest.fn();
   addFilesBulk = jest.fn();

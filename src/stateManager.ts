@@ -443,35 +443,48 @@ export class StateManager extends EventEmitter {
       },
     });
 
-    const finish = () => {
-      // Always re-open the database connection for the main application
-      this.db = new SubsyncarrPlusPlusDatabase(this.dbPath);
-      console.log(`[${new Date().toISOString()}] Main database connection re-opened.`);
-    };
+    let resultData: MaintenanceResult | null = null;
 
     worker.on('message', (result: MaintenanceResult) => {
-      finish();
-      if (result.success && result.deletedRunIds && result.reclaimedBytes !== undefined) {
-        // Main thread cleans up the log files based on what worker deleted from DB
-        result.deletedRunIds.forEach((id: string) => {
-          this.logFileManager.deleteLog(id);
-        });
-
-        // Also clean orphan logs
-        const orphanLogs = this.logFileManager.deleteOldLogs(30);
-
-        console.log(`[${new Date().toISOString()}] Off-thread maintenance complete:`);
-        console.log(`  - Deleted runs: ${result.deletedRunIds.length}`);
-        console.log(`  - Space reclaimed: ${(result.reclaimedBytes / 1024 / 1024).toFixed(2)} MB`);
-        console.log(`  - Orphan logs cleaned: ${orphanLogs}`);
-      } else {
-        console.error(`[${new Date().toISOString()}] Maintenance worker failed: ${result.error}`);
-      }
+      resultData = result;
     });
 
     worker.on('error', (err: Error) => {
-      finish();
       console.error(`[${new Date().toISOString()}] Maintenance worker thread error:`, err);
+    });
+
+    worker.on('exit', (code: number) => {
+      console.log(
+        `[${new Date().toISOString()}] Maintenance worker exited with code ${code}. Re-opening connection...`,
+      );
+
+      // Use skipInit: true because we already initialized the schema at startup.
+      // This avoids running PRAGMAs and CREATE TABLE statements that might trigger SQLITE_BUSY
+      // if the OS hasn't fully released the file lock yet.
+      try {
+        this.db = new SubsyncarrPlusPlusDatabase(this.dbPath, true);
+        console.log(`[${new Date().toISOString()}] Main database connection re-opened.`);
+
+        if (resultData && resultData.success && resultData.deletedRunIds && resultData.reclaimedBytes !== undefined) {
+          resultData.deletedRunIds.forEach((id: string) => {
+            this.logFileManager.deleteLog(id);
+          });
+          const orphanLogs = this.logFileManager.deleteOldLogs(30);
+          console.log(`[${new Date().toISOString()}] Off-thread maintenance complete:`);
+          console.log(`  - Deleted runs: ${resultData.deletedRunIds.length}`);
+          console.log(`  - Space reclaimed: ${(resultData.reclaimedBytes / 1024 / 1024).toFixed(2)} MB`);
+          console.log(`  - Orphan logs cleaned: ${orphanLogs}`);
+        } else if (resultData && !resultData.success) {
+          console.error(`[${new Date().toISOString()}] Maintenance worker reported failure: ${resultData.error}`);
+        }
+      } catch (err) {
+        console.error(`[${new Date().toISOString()}] Fatal error re-opening database after maintenance:`, err);
+        // Fallback: try one more time after a delay
+        setTimeout(() => {
+          this.db = new SubsyncarrPlusPlusDatabase(this.dbPath, true);
+          console.log(`[${new Date().toISOString()}] Connection recovered after retry.`);
+        }, 2000);
+      }
     });
   }
   close() {
