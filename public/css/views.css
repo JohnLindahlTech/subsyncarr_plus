@@ -279,6 +279,11 @@
   letter-spacing: 0.05em;
 }
 
+.clickable-path:hover {
+  background: var(--primary) !important;
+  color: white !important;
+}
+
 .docs-table {
   width: 100%;
   border-collapse: collapse;

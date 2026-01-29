@@ -245,7 +245,20 @@ class SubsyncarrPlusPlusClient {
           const config = await API.fetchConfig();
           const list = get('allowedRootsList');
           if (list) {
-            list.innerHTML = config.paths.map((p) => `<li><code>${p}</code></li>`).join('');
+            list.innerHTML = config.paths
+              .map(
+                (p) =>
+                  `<li><code class="clickable-path" style="cursor:pointer" title="Click to use this path">${p}</code></li>`,
+              )
+              .join('');
+            
+            // Event Delegation for clicking paths
+            list.onclick = (e) => {
+              if (e.target.classList.contains('clickable-path')) {
+                get('partialPathInput').value = e.target.textContent;
+                get('partialPathInput').focus();
+              }
+            };
           }
         } catch (err) {
           console.error('Failed to fetch roots', err);
