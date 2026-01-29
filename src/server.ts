@@ -407,6 +407,14 @@ export class SubsyncarrPlusPlusServer {
       this.broadcast({ type: 'extraction:stopped', data: videoPath });
     });
 
+    this.stateManager.on('maintenance:started', () => {
+      this.broadcast({ type: 'maintenance:started' });
+    });
+
+    this.stateManager.on('maintenance:finished', () => {
+      this.broadcast({ type: 'maintenance:finished' });
+    });
+
     this.stateManager.on('run:started', (run) => {
       this.broadcast({ type: 'run:started', data: run });
     });
