@@ -111,6 +111,18 @@
   font-weight: 500;
 }
 
+.top-info-badge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border);
+  border-radius: 9999px;
+  font-size: 13px;
+  font-weight: 600;
+}
+
 .live-grid {
   display: grid;
   grid-template-columns: 1fr 400px;

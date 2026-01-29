@@ -202,9 +202,16 @@ select.search-input {
 }
 
 .top-info-badge.maintenance {
-  background: rgba(255, 152, 0, 0.15);
-  border: 1px solid rgba(255, 152, 0, 0.3);
-  color: #ff9800;
+  background: rgba(249, 115, 22, 0.1);
+  border: 1px solid rgba(249, 115, 22, 0.3);
+  color: #fb923c;
+  animation: pulse-orange 2s infinite;
+}
+
+@keyframes pulse-orange {
+  0% { box-shadow: 0 0 0 0 rgba(249, 115, 22, 0.4); }
+  70% { box-shadow: 0 0 0 6px rgba(249, 115, 22, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(249, 115, 22, 0); }
 }
 
 .agreement-badge {
