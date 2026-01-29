@@ -124,6 +124,14 @@ class SubsyncarrPlusPlusClient {
           initMessage: '',
         });
         throw new Error(errorData.message || errorData.error || 'Failed to start run');
+      } else {
+        const data = await res.json();
+        // Force an immediate state update with the new run
+        this.stateManager.update({
+          isRunning: true,
+          currentRun: { id: data.runId, status: 'running' },
+          initMessage: 'Run started...',
+        });
       }
     } catch (err) {
       // Re-throw to be caught by the modal handler
@@ -245,6 +253,7 @@ class SubsyncarrPlusPlusClient {
       if (!path) return;
 
       try {
+        get('partialPathError').classList.add('hidden');
         await this.startRun([path]);
         get('partialRunModal').classList.add('hidden');
       } catch (err) {
@@ -252,7 +261,6 @@ class SubsyncarrPlusPlusClient {
         get('partialPathError').classList.remove('hidden');
       }
     };
-
     get('clearCompleted').onclick = async () => {
       await API.clearCompleted();
       this.stateManager.update({ files: [] }, 'replace');

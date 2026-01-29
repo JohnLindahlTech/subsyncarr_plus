@@ -154,7 +154,9 @@
   min-width: 220px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.3);
+  box-shadow:
+    0 10px 25px -5px rgba(0, 0, 0, 0.3),
+    0 8px 10px -6px rgba(0, 0, 0, 0.3);
   z-index: 5000;
   padding: 8px 0;
 }
