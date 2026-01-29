@@ -382,7 +382,7 @@ export class SubsyncarrPlusPlusDatabase {
   ): FileResult[] {
     let sql = `
       SELECT * FROM file_results
-      WHERE run_id = ?
+      WHERE run_id = ? AND is_hidden_live = 0
     `;
     const params: unknown[] = [runId];
 
@@ -412,7 +412,7 @@ export class SubsyncarrPlusPlusDatabase {
   }
 
   getFileCount(runId: string, search?: string, agreementFilter?: string, statusFilter?: string): number {
-    let sql = 'SELECT COUNT(*) as count FROM file_results WHERE run_id = ?';
+    let sql = 'SELECT COUNT(*) as count FROM file_results WHERE run_id = ? AND is_hidden_live = 0';
     const params: unknown[] = [runId];
 
     if (search) {
