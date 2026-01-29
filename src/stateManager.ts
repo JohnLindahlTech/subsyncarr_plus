@@ -194,6 +194,7 @@ export class StateManager extends EventEmitter {
       skipped?: number;
       failed?: number;
       completed_engines?: number;
+      completed_videos?: number;
     },
   ): void {
     this.db.incrementRunCountersBulk(runId, increments);

@@ -130,13 +130,37 @@ export class ProcessingEngine extends EventEmitter {
       }
     }
 
+    // Identify videos for skipped files to calculate accurate total/completed stats
+    const skippedVideoPaths = new Set<string>();
+    for (const srtPath of filesToSkip) {
+      const { videoPath } = findMatchingVideoFile(srtPath, scanConfig, fileIndex);
+      if (videoPath) {
+        skippedVideoPaths.add(videoPath);
+      }
+    }
+
+    // Calculate total unique videos involved in this run
+    const processingVideoPaths = new Set(groups.keys());
+    processingVideoPaths.delete('no_video'); // Don't count "no_video" as a video
+
+    const allVideoPaths = new Set([...processingVideoPaths, ...skippedVideoPaths]);
+
+    // A video is "fully skipped" if it's in the skipped set but NOT in the processing set
+    let fullySkippedVideosCount = 0;
+    for (const vid of skippedVideoPaths) {
+      if (!processingVideoPaths.has(vid)) {
+        fullySkippedVideosCount++;
+      }
+    }
+
     this.emit('run:init_progress', `Preparing ${groups.size} movie groups...`);
     // Emit the split results so Coordinator can bulk-insert
     this.emit('run:files_found', {
       processing: filesToProcess,
       skipped: filesToSkip,
       totalCount: srtFiles.length,
-      totalVideos: groups.size,
+      totalVideos: allVideoPaths.size, // Use true total (including fully skipped)
+      skippedVideosCount: fullySkippedVideosCount, // Pass this to update completed_videos
       config: scanConfig,
       fileIndex, // Pass the index through for matching
     });

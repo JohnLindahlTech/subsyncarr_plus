@@ -41,11 +41,13 @@ export class ProcessingCoordinator {
         processing,
         skipped,
         totalVideos,
+        skippedVideosCount,
         config,
       }: {
         processing: string[];
         skipped: string[];
         totalVideos: number;
+        skippedVideosCount?: number;
         config: ScanConfig;
       }) => {
         const totalFiles = processing.length + skipped.length;
@@ -79,6 +81,7 @@ export class ProcessingCoordinator {
           this.stateManager.incrementRunCountersBulk(runId, {
             skipped: skipped.length,
             completed_engines: skipped.length * this.enabledEngines.length,
+            completed_videos: skippedVideosCount || 0,
           });
         }
       },
@@ -168,14 +171,20 @@ export class ProcessingCoordinator {
     this.engine.on('file:skipped', ({ srtPath }: { srtPath: string }) => {
       if (this.currentRunId) {
         this.stateManager.updateFileStatus(this.currentRunId, srtPath, 'skipped', null);
-        this.stateManager.incrementRunCounter(this.currentRunId, 'skipped');
+        this.stateManager.incrementRunCountersBulk(this.currentRunId, {
+          skipped: 1,
+          completed_engines: this.enabledEngines.length,
+        });
       }
     });
 
     this.engine.on('file:no_video', ({ srtPath }: { srtPath: string }) => {
       if (this.currentRunId) {
         this.stateManager.updateFileStatus(this.currentRunId, srtPath, 'error', null);
-        this.stateManager.incrementRunCounter(this.currentRunId, 'failed');
+        this.stateManager.incrementRunCountersBulk(this.currentRunId, {
+          failed: 1,
+          completed_engines: this.enabledEngines.length,
+        });
       }
     });
 

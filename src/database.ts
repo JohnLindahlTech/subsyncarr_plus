@@ -208,6 +208,7 @@ export class SubsyncarrPlusPlusDatabase {
       skipped?: number;
       failed?: number;
       completed_engines?: number;
+      completed_videos?: number;
     },
   ): void {
     const fields = Object.keys(increments)
