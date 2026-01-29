@@ -141,10 +141,6 @@
   gap: 24px;
 }
 
-.dashboard-grid .card.full-width {
-  grid-column: span 2;
-}
-
 .system-grid {
   display: grid;
   grid-template-columns: 1fr 1fr;

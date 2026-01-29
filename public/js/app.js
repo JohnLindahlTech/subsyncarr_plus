@@ -162,6 +162,30 @@ class SubsyncarrPlusPlusClient {
     document.getElementById('dryMatched').textContent = d.matched.length;
     document.getElementById('dryMissing').textContent = d.missingVideo.length;
     document.getElementById('dryEstimate').textContent = this.ui.formatDuration(d.estimatedMs);
+
+    const missingList = document.getElementById('dryMissingList');
+    if (missingList) {
+      if (d.missingVideo.length > 0) {
+        missingList.innerHTML = `
+          <label style="margin-top: 20px; display: block; font-size: 12px; font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">Files with Missing Videos</label>
+          <div style="max-height: 200px; overflow-y: auto; margin-top: 10px; border: 1px solid var(--border); border-radius: var(--radius); background: var(--background-alt);">
+            ${d.missingVideo
+              .map(
+                (m) => `
+              <div style="padding: 10px 15px; border-bottom: 1px solid var(--border); font-size: 13px;">
+                <div style="font-weight: 600;">${m.srt}</div>
+                <div style="font-size: 11px; color: var(--danger);">${m.reason}</div>
+              </div>
+            `,
+              )
+              .join('')}
+          </div>
+        `;
+      } else {
+        missingList.innerHTML = '';
+      }
+    }
+
     document.getElementById('dryRunModal').classList.remove('hidden');
   }
 
@@ -251,7 +275,7 @@ class SubsyncarrPlusPlusClient {
                   `<li><code class="clickable-path" style="cursor:pointer" title="Click to use this path">${p}</code></li>`,
               )
               .join('');
-            
+
             // Event Delegation for clicking paths
             list.onclick = (e) => {
               if (e.target.classList.contains('clickable-path')) {

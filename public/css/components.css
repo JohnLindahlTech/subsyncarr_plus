@@ -377,6 +377,63 @@ select.search-input {
   border: 1px solid var(--border);
   box-shadow: var(--shadow);
 }
+.card h4 {
+  margin-top: 0;
+  margin-bottom: 20px;
+  font-size: 14px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-secondary);
+}
+
+.summary-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.summary-card {
+  background: var(--background-alt);
+  padding: 16px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  text-align: center;
+}
+
+.summary-card label {
+  display: block;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+  letter-spacing: 0.05em;
+}
+
+.summary-card .summary-value {
+  font-size: 24px;
+  font-weight: 800;
+  color: var(--text);
+}
+
+.summary-card.success .summary-value {
+  color: var(--success);
+}
+.summary-card.danger .summary-value {
+  color: var(--danger);
+}
+.summary-card.primary .summary-value {
+  color: var(--primary);
+}
+
+.detail-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
 .file-card {
   background: var(--card-bg);
   padding: 16px;
