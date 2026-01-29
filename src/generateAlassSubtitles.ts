@@ -1,6 +1,5 @@
-import { basename, dirname, join } from 'path';
-import { execPromise, ProcessingResult, EngineProfile } from './helpers';
-import { existsSync } from 'fs';
+import { execPromise, ProcessingResult, EngineProfile, getEngineOutputPath } from './helpers';
+import * as fs from 'fs';
 
 export async function generateAlassSubtitles(
   srtPath: string,
@@ -10,14 +9,10 @@ export async function generateAlassSubtitles(
   timeoutMs?: number,
   profile?: EngineProfile,
 ): Promise<ProcessingResult> {
-  const directory = dirname(srtPath);
-  const srtBaseName = basename(srtPath, '.srt');
-  const suffix = profile && profile.name !== 'default' ? `.${profile.name}` : '';
-  const outputPath = join(directory, `${srtBaseName}.alass${suffix}.srt`);
+  const outputPath = getEngineOutputPath(srtPath, 'alass', profile?.name);
 
   // Check if synced subtitle already exists
-  const exists = existsSync(outputPath);
-  if (exists) {
+  if (fs.existsSync(outputPath)) {
     return {
       success: true,
       message: `Skipping ${outputPath} - already processed`,
