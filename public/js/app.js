@@ -43,6 +43,7 @@ class SubsyncarrPlusPlusClient {
       '#/dashboard': 'dashboard',
       '#/history': 'history',
       '#/system': 'system',
+      '#/docs': 'docs',
     };
     const view = viewMap[hash] || 'live';
     this.switchView(view);
@@ -181,7 +182,10 @@ class SubsyncarrPlusPlusClient {
     get('startRunForce').onclick = () => this.startRun(null, true);
     get('stopRun').onclick = () => this.stopRun();
     get('dryRun').onclick = () => this.runDryRun();
-    get('clearCompleted').onclick = () => API.clearCompleted();
+    get('clearCompleted').onclick = async () => {
+      await API.clearCompleted();
+      this.stateManager.update({ files: [] }, 'replace');
+    };
 
     get('closeOverlay').onclick = () => get('detailsOverlay').classList.add('hidden');
     get('closeLogsOverlay').onclick = () => get('logsOverlay').classList.add('hidden');

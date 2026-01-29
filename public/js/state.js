@@ -18,6 +18,7 @@ export class StateManager {
       initMessage: '',
       isDryRunning: false,
       activeExtractions: [],
+      isMaintenance: false,
     };
     this.updateCallback = updateCallback;
     this.reconnectInterval = 3000;
