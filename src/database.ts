@@ -96,6 +96,7 @@ export class SubsyncarrPlusPlusDatabase {
         current_engine TEXT,
         video_status TEXT,
         engines TEXT DEFAULT '{}',
+        is_hidden_live BOOLEAN DEFAULT 0,
         created_at INTEGER NOT NULL,
         updated_at INTEGER NOT NULL,
         FOREIGN KEY(run_id) REFERENCES runs(id)
@@ -143,6 +144,11 @@ export class SubsyncarrPlusPlusDatabase {
     const hasVideoStatusColumn = fileResultsColumns.some((col) => col.name === 'video_status');
     if (!hasVideoStatusColumn) {
       this.db.exec(`ALTER TABLE file_results ADD COLUMN video_status TEXT`);
+    }
+
+    const hasHiddenColumn = fileResultsColumns.some((col) => col.name === 'is_hidden_live');
+    if (!hasHiddenColumn) {
+      this.db.exec(`ALTER TABLE file_results ADD COLUMN is_hidden_live BOOLEAN DEFAULT 0`);
     }
 
     // Migration: Add quality metrics columns
@@ -435,13 +441,16 @@ export class SubsyncarrPlusPlusDatabase {
    */
   getLiveFileResults(runId: string, recentLimit: number = 10): FileResult[] {
     const processing = this.db
-      .prepare('SELECT * FROM file_results WHERE run_id = ? AND status = ? ORDER BY updated_at DESC')
+      .prepare(
+        'SELECT * FROM file_results WHERE run_id = ? AND status = ? AND is_hidden_live = 0 ORDER BY updated_at DESC',
+      )
       .all(runId, 'processing') as FileResult[];
 
     const recentFinished = this.db
       .prepare(
         `SELECT * FROM file_results 
          WHERE run_id = ? AND status IN ('completed', 'error', 'skipped') 
+         AND is_hidden_live = 0
          ORDER BY updated_at DESC LIMIT ?`,
       )
       .all(runId, recentLimit) as FileResult[];
@@ -477,7 +486,8 @@ export class SubsyncarrPlusPlusDatabase {
     this.db
       .prepare(
         `
-      DELETE FROM file_results
+      UPDATE file_results
+      SET is_hidden_live = 1
       WHERE run_id = ? AND status != 'processing'
     `,
       )

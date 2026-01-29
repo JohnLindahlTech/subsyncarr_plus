@@ -360,20 +360,14 @@ export class StateManager extends EventEmitter {
   }
 
   clearCompletedFiles(): void {
-    if (!this.currentRunId) return;
+    // If no active run, find the most recent one to clear its 'live' results
+    const runId = this.currentRunId || this.db.getRunHistory(1)[0]?.id;
+    if (!runId) return;
 
-    this.db.clearCompletedFiles(this.currentRunId);
+    this.db.clearCompletedFiles(runId);
 
-    // Reset counters for the UI
-    this.db.updateRun(this.currentRunId, {
-      completed: 0,
-      skipped: 0,
-      failed: 0,
-      completed_engines: 0,
-    });
-
-    const run = this.db.getRun(this.currentRunId)!;
-    this.emit('files:cleared', { currentRun: run, files: [] });
+    // Broadcast the full state update so all clients clear their lists instantly
+    this.emitFullStateUpdate(runId);
   }
 
   getFileResults(
