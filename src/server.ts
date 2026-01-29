@@ -265,11 +265,15 @@ export class SubsyncarrPlusPlusServer {
 
         if (paths && Array.isArray(paths)) {
           try {
+            console.log(`[${new Date().toISOString()}] Validating partial scan paths: ${JSON.stringify(paths)}`);
             validatedPaths = paths.map((p) => validatePartialPath(p, libraryRoots));
+            console.log(`[${new Date().toISOString()}] Paths validated successfully.`);
           } catch (err) {
+            const msg = err instanceof Error ? err.message : String(err);
+            console.error(`[${new Date().toISOString()}] 🛡️ Security Validation Failed: ${msg}`);
             return res.status(403).json({
               error: 'Security Validation Failed',
-              message: err instanceof Error ? err.message : String(err),
+              message: msg,
             });
           }
         }

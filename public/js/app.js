@@ -102,13 +102,33 @@ class SubsyncarrPlusPlusClient {
   }
 
   async startRun(paths = null, force = false) {
+    // Save current state in case we need to roll back
+    const previousState = { ...this.stateManager.state };
+
     this.stateManager.update({
       isRunning: true,
       currentRun: null,
       files: [],
       initMessage: 'Initializing scan...',
     });
-    await API.startRun(paths, force);
+
+    try {
+      const res = await API.startRun(paths, force);
+      if (!res.ok) {
+        const errorData = await res.json();
+        // Roll back UI state
+        this.stateManager.update({
+          isRunning: previousState.isRunning,
+          currentRun: previousState.currentRun,
+          files: previousState.files,
+          initMessage: '',
+        });
+        throw new Error(errorData.message || errorData.error || 'Failed to start run');
+      }
+    } catch (err) {
+      // Re-throw to be caught by the modal handler
+      throw err;
+    }
   }
 
   async stopRun() {
