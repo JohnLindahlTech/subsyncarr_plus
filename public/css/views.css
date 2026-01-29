@@ -254,6 +254,31 @@
   border-left: 3px solid var(--primary);
 }
 
+.docs-list.small li {
+  margin-bottom: 8px;
+  font-size: 0.85rem;
+  padding-left: 12px;
+  border-left-width: 2px;
+}
+
+.allowed-roots-box {
+  background: var(--bg-main);
+  padding: 15px;
+  border-radius: 6px;
+  margin-bottom: 20px;
+  border: 1px solid var(--border);
+}
+
+.allowed-roots-box label {
+  display: block;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  margin-bottom: 10px;
+  letter-spacing: 0.05em;
+}
+
 .docs-table {
   width: 100%;
   border-collapse: collapse;

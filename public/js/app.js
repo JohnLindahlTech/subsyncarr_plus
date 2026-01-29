@@ -237,8 +237,20 @@ class SubsyncarrPlusPlusClient {
     }
 
     if (get('partialRunTrigger')) {
-      get('partialRunTrigger').onclick = () => {
+      get('partialRunTrigger').onclick = async () => {
         if (dropdownMenu) dropdownMenu.classList.add('hidden');
+
+        // Fetch allowed paths to show in modal
+        try {
+          const config = await API.fetchConfig();
+          const list = get('allowedRootsList');
+          if (list) {
+            list.innerHTML = config.paths.map((p) => `<li><code>${p}</code></li>`).join('');
+          }
+        } catch (err) {
+          console.error('Failed to fetch roots', err);
+        }
+
         get('partialRunModal').classList.remove('hidden');
         get('partialPathInput').value = '';
         get('partialPathError').classList.add('hidden');

@@ -290,12 +290,17 @@
         <div class="modal-header">
           <h3>Partial Folder Sync</h3>
         </div>
-        <div class="modal-body">
-          <p>
-            Enter a sub-directory path relative to your library roots. The system will only scan and sync files within
-            this path.
-          </p>
-          <div class="input-group">
+                <div class="modal-body">
+                  <p>Enter a sub-directory path relative to your library roots. The system will only scan and sync files within this path.</p>
+                  
+                  <div class="allowed-roots-box">
+                    <label>Authorized Library Roots:</label>
+                    <ul id="allowedRootsList" class="docs-list small">
+                      <!-- Paths injected by JS -->
+                    </ul>
+                  </div>
+        
+                  <div class="input-group">
             <input
               type="text"
               id="partialPathInput"
