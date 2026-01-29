@@ -126,12 +126,21 @@ export async function execPromise(
   });
 }
 
-export const getEngineOutputPath = (srtPath: string, engine: string): string => {
+export const getEngineOutputPath = (srtPath: string, engine: string, profile: string = 'default'): string => {
   const parts = srtPath.split('/');
   const fileName = parts.pop()!;
   const dir = parts.join('/');
   const baseName = fileName.replace(/\.srt$/i, '');
-  return `${dir}/${baseName}.${engine}.srt`;
+  const profileSuffix = profile === 'default' ? '' : `.${profile}`;
+  return `${dir}/${baseName}.${engine}${profileSuffix}.srt`;
+};
+
+export const getPrimaryOutputPath = (srtPath: string): string => {
+  const parts = srtPath.split('/');
+  const fileName = parts.pop()!;
+  const dir = parts.join('/');
+  const baseName = fileName.replace(/\.srt$/i, '');
+  return `${dir}/${baseName}.synced.srt`;
 };
 
 export const extractAudio = async (videoPath: string, outputPath: string, signal?: AbortSignal): Promise<void> => {

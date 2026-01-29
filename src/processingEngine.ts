@@ -6,8 +6,15 @@ import { generateFfsubsyncSubtitles } from './generateFfsubsyncSubtitles';
 import { generateAutosubsyncSubtitles } from './generateAutosubsyncSubtitles';
 import { generateAlassSubtitles } from './generateAlassSubtitles';
 import { StateManager } from './stateManager';
-import { extractAudio, getVideoDuration, ENGINE_PROFILES, ProcessingResult } from './helpers';
-import { existsSync, unlinkSync } from 'fs';
+import {
+  extractAudio,
+  getVideoDuration,
+  ENGINE_PROFILES,
+  ProcessingResult,
+  getPrimaryOutputPath,
+  getEngineOutputPath,
+} from './helpers';
+import * as fs from 'fs';
 import * as path from 'path';
 import { randomUUID } from 'crypto';
 import * as os from 'os';
@@ -67,25 +74,35 @@ export class ProcessingEngine extends EventEmitter {
     this.log(`[${new Date().toISOString()}] Checking for existing subtitles...`);
 
     for (const srtPath of srtFiles) {
-      let allEnginesDone = true;
+      let alreadyDone = false;
 
       // Preparation for #10: If forceRerun is true, we don't check for existing output files
-      if (scanConfig.forceRerun) {
-        allEnginesDone = false;
-      } else {
+      if (!scanConfig.forceRerun) {
         const dir = path.dirname(srtPath);
         const baseName = path.basename(srtPath, '.srt');
 
-        for (const engine of this.enabledEngines) {
-          const outputName = `${baseName}.${engine}.srt`;
-          if (!fileIndex.get(dir)?.has(outputName)) {
-            allEnginesDone = false;
-            break;
+        // Check 1: Primary file exists? (The ultimate 'Done' signal)
+        const primaryName = `${baseName}.synced.srt`;
+        if (fileIndex.get(dir)?.has(primaryName)) {
+          alreadyDone = true;
+        } else {
+          // Check 2: Check every enabled engine and EVERY one of its profiles
+          outer: for (const engine of this.enabledEngines) {
+            const profiles = ENGINE_PROFILES[engine] || [{ name: 'default' }];
+            for (const profile of profiles) {
+              const suffix = profile.name === 'default' ? '' : `.${profile.name}`;
+              const outputName = `${baseName}.${engine}${suffix}.srt`;
+
+              if (fileIndex.get(dir)?.has(outputName)) {
+                alreadyDone = true;
+                break outer;
+              }
+            }
           }
         }
       }
 
-      if (allEnginesDone) {
+      if (alreadyDone) {
         filesToSkip.push(srtPath);
       } else {
         filesToProcess.push(srtPath);
@@ -208,9 +225,9 @@ export class ProcessingEngine extends EventEmitter {
         await this.processFile(srtPath, audioExtracted ? tempAudioPath : undefined, fileIndex);
       }
     } finally {
-      if (audioExtracted && existsSync(tempAudioPath)) {
+      if (audioExtracted && fs.existsSync(tempAudioPath)) {
         try {
-          unlinkSync(tempAudioPath);
+          fs.unlinkSync(tempAudioPath);
         } catch (e) {
           // Ignore cleanup errors
         }
@@ -256,6 +273,13 @@ export class ProcessingEngine extends EventEmitter {
     const controller = new AbortController();
     this.activeControllers.set(srtPath, controller);
 
+    // #10: If primary .synced.srt exists, skip unless forceRerun is true
+    if (!this.currentScanConfig?.forceRerun && fs.existsSync(getPrimaryOutputPath(srtPath))) {
+      this.log(`[${new Date().toISOString()}] Skipped (Primary already exists): ${fileName}`);
+      this.emit('file:skipped', { srtPath, reason: 'already_synced' });
+      return;
+    }
+
     try {
       // #4: Adaptive Timeout based on video duration
       const videoSeconds = await getVideoDuration(videoPath);
@@ -268,6 +292,8 @@ export class ProcessingEngine extends EventEmitter {
       // Process with each enabled engine
       let anyEngineSucceeded = false;
       let anyEngineSkipped = false;
+      let absoluteBestResult: { score: number; path: string } | null = null;
+
       for (const engine of this.enabledEngines) {
         // Check cancellation before each engine
         if (this.globalStopRequested || this.cancelledFiles.has(srtPath)) {
@@ -302,6 +328,7 @@ export class ProcessingEngine extends EventEmitter {
         for (const profile of profiles) {
           this.log(`[${new Date().toISOString()}] Trial: ${engine} (${profile.name}) for: ${fileName}`);
           const startTime = Date.now();
+          const trialOutputPath = getEngineOutputPath(srtPath, engine, profile.name);
           let currentTrialResult: ProcessingResult;
 
           try {
@@ -346,8 +373,18 @@ export class ProcessingEngine extends EventEmitter {
             );
 
             // IPO Logic: Keep the best score
-            if (!bestTrialResult || (currentTrialResult.score || 0) > (bestTrialResult.score || 0)) {
-              bestTrialResult = { ...currentTrialResult, duration };
+            if (currentTrialResult.success) {
+              if (!bestTrialResult || (currentTrialResult.score || 0) > (bestTrialResult.score || 0)) {
+                bestTrialResult = { ...currentTrialResult, duration };
+              }
+
+              // Track winner for primary file
+              if (!absoluteBestResult || (currentTrialResult.score || 0) > absoluteBestResult.score) {
+                absoluteBestResult = {
+                  score: currentTrialResult.score || 0,
+                  path: trialOutputPath,
+                };
+              }
             }
 
             // Optimization: If score is high enough, don't try other profiles
@@ -395,6 +432,15 @@ export class ProcessingEngine extends EventEmitter {
         if (runId) {
           this.stateManager.reconcileFileResults(runId, srtPath);
         }
+      }
+
+      // After all engines finish, create the Primary file if anyone succeeded
+      if (absoluteBestResult && fs.existsSync(absoluteBestResult.path)) {
+        const primaryPath = getPrimaryOutputPath(srtPath);
+        fs.copyFileSync(absoluteBestResult.path, primaryPath);
+        this.log(
+          `[${new Date().toISOString()}] Winner determined! Primary file created: ${path.basename(primaryPath)} (Score: ${absoluteBestResult.score}%)`,
+        );
       }
 
       if (anyEngineSucceeded) {
