@@ -316,7 +316,7 @@ export class ProcessingEngine extends EventEmitter {
       // Process with each enabled engine
       let anyEngineSucceeded = false;
       let anyEngineSkipped = false;
-      let absoluteBestResult: { score: number; path: string } | null = null;
+      let absoluteBestResult: { score: number | undefined; path: string } | null = null;
 
       for (const engine of this.enabledEngines) {
         // Check cancellation before each engine
@@ -398,14 +398,18 @@ export class ProcessingEngine extends EventEmitter {
 
             // IPO Logic: Keep the best score
             if (currentTrialResult.success) {
-              if (!bestTrialResult || (currentTrialResult.score || 0) > (bestTrialResult.score || 0)) {
+              if (
+                !bestTrialResult ||
+                !bestTrialResult.success ||
+                (currentTrialResult.score || 0) > (bestTrialResult.score || 0)
+              ) {
                 bestTrialResult = { ...currentTrialResult, duration };
               }
 
               // Track winner for primary file
-              if (!absoluteBestResult || (currentTrialResult.score || 0) > absoluteBestResult.score) {
+              if (!absoluteBestResult || (currentTrialResult.score || 0) > (absoluteBestResult.score || 0)) {
                 absoluteBestResult = {
-                  score: currentTrialResult.score || 0,
+                  score: currentTrialResult.score,
                   path: trialOutputPath,
                 };
               }
@@ -462,8 +466,12 @@ export class ProcessingEngine extends EventEmitter {
       if (absoluteBestResult && fs.existsSync(absoluteBestResult.path)) {
         const primaryPath = getPrimaryOutputPath(srtPath);
         fs.copyFileSync(absoluteBestResult.path, primaryPath);
+
+        const scoreVal = absoluteBestResult.score;
+        const scoreStr = scoreVal !== undefined ? `${scoreVal}%` : 'N/A';
+        const warning = scoreVal !== undefined && scoreVal < 50 ? ' [LOW CONFIDENCE]' : '';
         this.log(
-          `[${new Date().toISOString()}] Winner determined! Primary file created: ${path.basename(primaryPath)} (Score: ${absoluteBestResult.score}%)`,
+          `[${new Date().toISOString()}] Winner determined! Primary file created: ${path.basename(primaryPath)} (Score: ${scoreStr})${warning}`,
         );
       }
 

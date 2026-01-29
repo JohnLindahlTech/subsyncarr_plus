@@ -313,30 +313,41 @@ export class StateManager extends EventEmitter {
     }
 
     const engines: Record<string, EngineResult> = JSON.parse(file.engines || '{}');
-    const successes = Object.entries(engines).filter(([, res]) => res.success && res.score !== undefined) as Array<
-      [string, Required<Pick<EngineResult, 'success' | 'score'>>]
-    >;
+    const successes = Object.entries(engines)
+      .filter(([, res]) => res.success)
+      .map(([name, res]) => ({
+        name,
+        score: res.score !== undefined ? res.score : 0,
+      }));
 
     if (successes.length === 0) {
+      this.db.updateFileResult(runId, filePath, {
+        best_engine: null,
+        best_score: null,
+        agreement_status: 'low_confidence',
+      });
       return { bestEngine: null, status: 'low_confidence' };
     }
 
     // Sort by score descending
-    successes.sort((a, b) => b[1].score - a[1].score);
-    const [bestName, bestResult] = successes[0];
+    successes.sort((a, b) => b.score - a.score);
+    const bestResult = successes[0];
+    const bestName = bestResult.name;
 
     let status: 'verified' | 'suspicious' | 'low_confidence' = 'low_confidence';
 
     if (successes.length >= 2) {
-      const secondScore = successes[1][1].score;
+      const secondScore = successes[1].score;
       // If the top two engines agree within 5 points and are both high, it's verified
       if (Math.abs(bestResult.score - secondScore) <= 5 && bestResult.score > 70) {
         status = 'verified';
       } else if (Math.abs(bestResult.score - secondScore) > 30) {
         // High disagreement between engines
         status = 'suspicious';
+      } else if (bestResult.score > 50) {
+        status = 'verified'; // General consensus with decent score
       } else {
-        status = 'verified'; // General consensus
+        status = 'low_confidence'; // Consensus but both are low
       }
     } else {
       // Only one engine succeeded
