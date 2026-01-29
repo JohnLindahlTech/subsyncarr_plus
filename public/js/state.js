@@ -73,7 +73,14 @@ export class StateManager {
       const msg = JSON.parse(event.data);
       switch (msg.type) {
         case 'state':
+          // WebSocket updates use 'merge' mode to avoid trashing current view
           this.update({ ...msg.data }, 'merge');
+          break;
+        case 'maintenance:started':
+          this.update({ isMaintenance: true });
+          break;
+        case 'maintenance:finished':
+          this.update({ isMaintenance: false });
           break;
         case 'run:started':
           this.update({ currentRun: msg.data, isRunning: true, files: [] });

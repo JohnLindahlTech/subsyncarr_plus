@@ -76,6 +76,19 @@ export class SubsyncarrPlusPlusServer {
   private setupMiddleware() {
     this.app.use(express.json());
     this.app.use(express.static(join(__dirname, '../public')));
+
+    // Quality Fix: Return 503 while database is being vacuumed
+    this.app.use((req, res, next) => {
+      // Exclude static files from maintenance block
+      if (req.path.startsWith('/api/') && this.stateManager.isMaintenanceMode()) {
+        res.status(503).json({
+          error: 'Service Temporarily Unavailable',
+          message: 'Database maintenance is in progress. Please try again in a few minutes.',
+        });
+        return;
+      }
+      next();
+    });
   }
 
   private setupRoutes() {

@@ -54,14 +54,14 @@ export class SubsyncarrPlusPlusDatabase {
       this.initSchema();
     } else {
       // Even if skipping full init, set critical pragmas
-      this.db.pragma('busy_timeout = 5000');
+      this.db.pragma('busy_timeout = 30000');
       this.db.pragma('journal_mode = WAL');
     }
   }
 
   private initSchema() {
     // Optimize SQLite for high performance with large datasets
-    this.db.pragma('busy_timeout = 5000');
+    this.db.pragma('busy_timeout = 30000');
     this.db.pragma('cache_size = -64000'); // 64MB cache
     this.db.pragma('journal_mode = WAL'); // High-concurrency
     this.db.pragma('synchronous = NORMAL'); // Faster writes, still safe in WAL mode

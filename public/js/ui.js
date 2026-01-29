@@ -144,8 +144,12 @@ export class UIManager {
       (state.isRunning && (!state.currentRun || state.currentRun.status === 'completed')) || state.isDryRunning;
 
     const indicator = document.getElementById('scanningIndicator');
-
+    const maintIndicator = document.getElementById('maintenanceIndicator');
     const label = indicator ? indicator.querySelector('.top-info-text') : null;
+
+    if (maintIndicator) {
+      maintIndicator.classList.toggle('hidden', !state.isMaintenance);
+    }
 
     if (indicator) {
       indicator.classList.toggle('hidden', !isScanning);
