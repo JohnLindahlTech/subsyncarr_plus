@@ -256,8 +256,8 @@ class SubsyncarrPlusPlusClient {
   handleGlobalClick(e) {
     // Close dropdown on outside click
     const menu = document.getElementById('actionDropdownMenu');
-    const btn = document.getElementById('actionDropdownBtn');
-    if (menu && !menu.contains(e.target) && e.target !== btn) {
+    const dropdownBtn = document.getElementById('actionDropdownBtn');
+    if (menu && !menu.contains(e.target) && e.target !== dropdownBtn) {
       menu.classList.add('hidden');
     }
 
