@@ -183,28 +183,40 @@ class SubsyncarrPlusPlusClient {
     get('stopRun').onclick = () => this.stopRun();
 
     // Dropdown Handling
-    get('actionDropdownBtn').onclick = (e) => {
-      e.stopPropagation();
-      get('actionDropdownMenu').classList.toggle('hidden');
-    };
+    const dropdownBtn = get('actionDropdownBtn');
+    const dropdownMenu = get('actionDropdownMenu');
 
-    get('dryRun').onclick = () => {
-      get('actionDropdownMenu').classList.add('hidden');
-      this.runDryRun();
-    };
+    if (dropdownBtn && dropdownMenu) {
+      dropdownBtn.onclick = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        dropdownMenu.classList.toggle('hidden');
+      };
+    }
 
-    get('startRunForce').onclick = () => {
-      get('actionDropdownMenu').classList.add('hidden');
-      this.startRun(null, true);
-    };
+    if (get('dryRun')) {
+      get('dryRun').onclick = () => {
+        if (dropdownMenu) dropdownMenu.classList.add('hidden');
+        this.runDryRun();
+      };
+    }
 
-    get('partialRunTrigger').onclick = () => {
-      get('actionDropdownMenu').classList.add('hidden');
-      get('partialRunModal').classList.remove('hidden');
-      get('partialPathInput').value = '';
-      get('partialPathError').classList.add('hidden');
-      get('partialPathInput').focus();
-    };
+    if (get('startRunForce')) {
+      get('startRunForce').onclick = () => {
+        if (dropdownMenu) dropdownMenu.classList.add('hidden');
+        this.startRun(null, true);
+      };
+    }
+
+    if (get('partialRunTrigger')) {
+      get('partialRunTrigger').onclick = () => {
+        if (dropdownMenu) dropdownMenu.classList.add('hidden');
+        get('partialRunModal').classList.remove('hidden');
+        get('partialPathInput').value = '';
+        get('partialPathError').classList.add('hidden');
+        get('partialPathInput').focus();
+      };
+    }
 
     // Partial Run Modal
     get('cancelPartialRun').onclick = () => get('partialRunModal').classList.add('hidden');
@@ -257,7 +269,9 @@ class SubsyncarrPlusPlusClient {
     // Close dropdown on outside click
     const menu = document.getElementById('actionDropdownMenu');
     const dropdownBtn = document.getElementById('actionDropdownBtn');
-    if (menu && !menu.contains(e.target) && e.target !== dropdownBtn) {
+
+    // Check if we clicked outside the menu and outside the toggle button
+    if (menu && !menu.contains(e.target) && !dropdownBtn.contains(e.target)) {
       menu.classList.add('hidden');
     }
 
