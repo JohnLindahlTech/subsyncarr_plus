@@ -9,11 +9,21 @@ const handle503 = (res) => {
 };
 
 export const API = {
-  async fetchStatus(page = 1, limit = 50, search = '', agreementFilter = '', statusFilter = '') {
+  async fetchStatus(
+    page = 1,
+    limit = 50,
+    search = '',
+    agreementFilter = '',
+    statusFilter = '',
+    sortColumn = 'file_path',
+    sortOrder = 'ASC',
+  ) {
     const s = search ? `&search=${encodeURIComponent(search)}` : '';
     const f = agreementFilter ? `&filter=${agreementFilter}` : '';
     const st = statusFilter ? `&status=${statusFilter}` : '';
-    const res = await fetch(`/api/status?page=${page}&limit=${limit}${s}${f}${st}`).then(handle503);
+    const sc = `&sortColumn=${sortColumn}`;
+    const so = `&sortOrder=${sortOrder}`;
+    const res = await fetch(`/api/status?page=${page}&limit=${limit}${s}${f}${st}${sc}${so}`).then(handle503);
     return res.json();
   },
 

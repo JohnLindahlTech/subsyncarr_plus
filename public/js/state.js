@@ -11,6 +11,8 @@ export class StateManager {
       searchQuery: '',
       agreementFilter: '',
       statusFilter: '',
+      sortColumn: 'file_path',
+      sortOrder: 'ASC',
       health: null,
       activeView: 'live',
       activeDebugFile: null,
@@ -54,8 +56,43 @@ export class StateManager {
           }
         });
 
-        // Always keep sorted by update time for consistency
-        deltas.files = mergedFiles.sort((a, b) => b.updated_at - a.updated_at);
+        // Apply sorting based on view
+        if (this.state.activeView === 'live') {
+          // Live view: Processing first (ASC), then Completed/Error/Skipped (DESC updated_at)
+          deltas.files = mergedFiles.sort((a, b) => {
+            const isAProc = a.status === 'processing';
+            const isBProc = b.status === 'processing';
+
+            if (isAProc && !isBProc) return -1;
+            if (!isAProc && isBProc) return 1;
+
+            if (isAProc && isBProc) {
+              return a.file_path.localeCompare(b.file_path, undefined, { numeric: true });
+            }
+
+            // Both are finished
+            return b.updated_at - a.updated_at;
+          });
+        } else {
+          // Explorer view: use configured sort
+          const { sortColumn, sortOrder } = this.state;
+          const factor = sortOrder === 'ASC' ? 1 : -1;
+
+          deltas.files = mergedFiles.sort((a, b) => {
+            let valA = a[sortColumn];
+            let valB = b[sortColumn];
+
+            // Handle scores and numeric values
+            if (typeof valA === 'number' && typeof valB === 'number') {
+              return (valA - valB) * factor;
+            }
+
+            // Fallback to string comparison
+            valA = String(valA || '').toLowerCase();
+            valB = String(valB || '').toLowerCase();
+            return valA.localeCompare(valB, undefined, { numeric: true }) * factor;
+          });
+        }
       }
       // In 'replace' mode, deltas.files simply overwrites this.state.files
     }

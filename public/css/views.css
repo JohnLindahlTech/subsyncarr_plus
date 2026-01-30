@@ -150,11 +150,26 @@
   border-bottom: 1px solid var(--border);
 }
 
-.data-table th {
-  background: var(--bg-main);
-  color: var(--text-muted);
-  font-weight: 500;
-  font-size: 0.9rem;
+.data-table th.sortable {
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.2s;
+}
+
+.data-table th.sortable:hover {
+  background: var(--bg-input);
+  color: var(--primary);
+}
+
+.data-table th.active-sort {
+  color: var(--primary);
+  font-weight: 700;
+}
+
+.sort-icon {
+  display: inline-block;
+  width: 12px;
+  font-weight: bold;
 }
 
 .data-table td {

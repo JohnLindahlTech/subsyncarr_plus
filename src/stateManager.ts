@@ -389,8 +389,10 @@ export class StateManager extends EventEmitter {
     search?: string,
     agreementFilter?: string,
     statusFilter?: string,
+    sortColumn?: string,
+    sortOrder?: 'ASC' | 'DESC',
   ) {
-    return this.db.getFileResults(runId, limit, offset, search, agreementFilter, statusFilter);
+    return this.db.getFileResults(runId, limit, offset, search, agreementFilter, statusFilter, sortColumn, sortOrder);
   }
 
   getFileCount(runId: string, search?: string, agreementFilter?: string, statusFilter?: string) {

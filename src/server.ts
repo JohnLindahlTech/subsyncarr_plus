@@ -153,6 +153,8 @@ export class SubsyncarrPlusPlusServer {
       const search = (req.query.search as string) || undefined;
       const agreementFilter = (req.query.filter as string) || undefined;
       const statusFilter = (req.query.status as string) || undefined;
+      const sortColumn = (req.query.sortColumn as string) || 'file_path';
+      const sortOrder = (req.query.sortOrder as 'ASC' | 'DESC') || 'ASC';
       const offset = (page - 1) * limit;
 
       let currentRun = this.stateManager.getCurrentRun();
@@ -169,7 +171,16 @@ export class SubsyncarrPlusPlusServer {
         ? this.stateManager.getFileCount(currentRun.id, search, agreementFilter, statusFilter)
         : 0;
       const files = currentRun
-        ? this.stateManager.getFileResults(currentRun.id, limit, offset, search, agreementFilter, statusFilter)
+        ? this.stateManager.getFileResults(
+            currentRun.id,
+            limit,
+            offset,
+            search,
+            agreementFilter,
+            statusFilter,
+            sortColumn,
+            sortOrder,
+          )
         : [];
 
       res.json({

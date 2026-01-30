@@ -236,6 +236,21 @@ export class UIManager {
   renderExplorerList(state) {
     const body = document.getElementById('explorerBody');
     if (!body) return;
+
+    // Update sort icons
+    document.querySelectorAll('th[data-sort]').forEach((th) => {
+      const icon = th.querySelector('.sort-icon');
+      if (icon) {
+        if (th.dataset.sort === state.sortColumn) {
+          icon.textContent = state.sortOrder === 'ASC' ? ' ↑' : ' ↓';
+          th.classList.add('active-sort');
+        } else {
+          icon.textContent = '';
+          th.classList.remove('active-sort');
+        }
+      }
+    });
+
     if (state.files.length === 0) {
       body.innerHTML = '<tr><td colspan="5" class="no-data">No files found matching your search.</td></tr>';
       return;

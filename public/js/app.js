@@ -357,6 +357,22 @@ class SubsyncarrPlusPlusClient {
       return;
     }
 
+    const th = e.target.closest('th[data-sort]');
+    if (th) {
+      const column = th.dataset.sort;
+      const currentSort = this.stateManager.state.sortColumn;
+      const currentOrder = this.stateManager.state.sortOrder;
+
+      let newOrder = 'ASC';
+      if (column === currentSort) {
+        newOrder = currentOrder === 'ASC' ? 'DESC' : 'ASC';
+      }
+
+      this.stateManager.update({ sortColumn: column, sortOrder: newOrder });
+      this.fetchInitialState();
+      return;
+    }
+
     const btn = e.target.closest('button');
     if (!btn) return;
 
@@ -384,7 +400,15 @@ class SubsyncarrPlusPlusClient {
 
   async reconcileState() {
     const s = this.stateManager.state;
-    const data = await API.fetchStatus(1, 50, s.searchQuery, s.agreementFilter, s.statusFilter);
+    const data = await API.fetchStatus(
+      1,
+      50,
+      s.searchQuery,
+      s.agreementFilter,
+      s.statusFilter,
+      s.sortColumn,
+      s.sortOrder,
+    );
     this.stateManager.update({
       currentRun: data.currentRun,
       isRunning: data.isRunning,
@@ -409,7 +433,15 @@ class SubsyncarrPlusPlusClient {
   async loadMoreFiles() {
     const s = this.stateManager.state;
     const next = s.pagination.page + 1;
-    const data = await API.fetchStatus(next, 50, s.searchQuery, s.agreementFilter, s.statusFilter);
+    const data = await API.fetchStatus(
+      next,
+      50,
+      s.searchQuery,
+      s.agreementFilter,
+      s.statusFilter,
+      s.sortColumn,
+      s.sortOrder,
+    );
     this.stateManager.update({
       files: [...s.files, ...data.files],
       pagination: data.pagination,

@@ -380,7 +380,13 @@ export class SubsyncarrPlusPlusDatabase {
     search?: string,
     agreementFilter?: string,
     statusFilter?: string,
+    sortColumn: string = 'file_path',
+    sortOrder: 'ASC' | 'DESC' = 'ASC',
   ): FileResult[] {
+    const allowedSortColumns = ['file_path', 'status', 'best_engine', 'best_score', 'created_at', 'updated_at'];
+    const actualSortColumn = allowedSortColumns.includes(sortColumn) ? sortColumn : 'file_path';
+    const actualSortOrder = sortOrder === 'DESC' ? 'DESC' : 'ASC';
+
     let sql = `
       SELECT * FROM file_results
       WHERE run_id = ? AND is_hidden_live = 0
@@ -402,7 +408,7 @@ export class SubsyncarrPlusPlusDatabase {
       params.push(statusFilter);
     }
 
-    sql += ' ORDER BY created_at ASC';
+    sql += ` ORDER BY ${actualSortColumn} ${actualSortOrder}`;
 
     if (limit !== undefined && offset !== undefined) {
       sql += ' LIMIT ? OFFSET ?';
@@ -443,7 +449,7 @@ export class SubsyncarrPlusPlusDatabase {
   getLiveFileResults(runId: string, recentLimit: number = 10): FileResult[] {
     const processing = this.db
       .prepare(
-        'SELECT * FROM file_results WHERE run_id = ? AND status = ? AND is_hidden_live = 0 ORDER BY updated_at DESC',
+        'SELECT * FROM file_results WHERE run_id = ? AND status = ? AND is_hidden_live = 0 ORDER BY file_path ASC',
       )
       .all(runId, 'processing') as FileResult[];
 

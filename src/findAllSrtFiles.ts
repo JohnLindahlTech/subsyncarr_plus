@@ -52,5 +52,8 @@ export async function findAllSrtFiles(config: ScanConfig): Promise<ScanResult> {
   // Scan all included paths in parallel
   await Promise.all(config.includePaths.map((path) => scan(path)));
 
+  // Sort files alphanumerically for consistent processing order
+  srtFiles.sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
+
   return { srtFiles, fileIndex };
 }
