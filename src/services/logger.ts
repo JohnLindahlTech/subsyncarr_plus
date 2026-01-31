@@ -7,6 +7,16 @@ const logger = pino({
     pid: false,
   },
   timestamp: pino.stdTimeFunctions.isoTime,
+  transport: appConfig.isTest
+    ? undefined
+    : {
+        target: 'pino-pretty',
+        options: {
+          colorize: false,
+          translateTime: 'SYS:standard',
+          ignore: 'pid,hostname',
+        },
+      },
 });
 
 export default logger;
