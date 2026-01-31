@@ -2,6 +2,7 @@
 /build
 /dist
 /coverage
+*.tsbuildinfo
 .eslintcache
 .env
 /test-srts
@@ -12,3 +13,4 @@ builds
 *.tar
 *.tar.gz
 testlogs
+.test-tmp

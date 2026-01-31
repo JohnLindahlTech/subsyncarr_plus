@@ -1,8 +1,8 @@
-# Subsyncarr Plus
+# Subsyncarr++
 
 An automated subtitle synchronization tool that runs as a Docker container. It continuously monitors your media directories for video files with out-of-sync subtitles and automatically synchronizes them using three sync engines (ffsubsync, autosubsync, and alass). This is a fork from the software [subsyncarr](https://github.com/johnpc/subsyncarr).
 
-**Docker Hub:** [tomtomw123/subsyncarr-plus](https://hub.docker.com/r/tomtomw123/subsyncarr-plus)
+**Docker Hub:** [tomtomw123/subsyncarr-plus-plus](https://hub.docker.com/r/tomtomw123/subsyncarr-plus-plus)
 
 ## Features
 
@@ -16,6 +16,7 @@ An automated subtitle synchronization tool that runs as a Docker container. It c
 - **Processing History** - View past runs with detailed statistics, results, and logs
 - **Configuration Dashboard** - View current settings, monitored paths, and schedule status
 - **Configurable Timeouts** - Set per-engine timeout limits to prevent hung processes
+- **Context-Aware Matching** - Intelligently matches subtitles even with inconsistent filenames by looking for solitary video files in current or parent directories.
 - **Log Management** - Configurable retention policies with automatic trimming and deletion
 - **Non Destructive** - Creates new files for each engine so no original files are altered. Allows easy switching between engines while watching content.
 
@@ -99,17 +100,29 @@ docker run -d \
 
 ### Core Configuration
 
-| Variable                    | Default                       | Description                                                                      |
-| --------------------------- | ----------------------------- | -------------------------------------------------------------------------------- |
-| `SCAN_PATHS`                | `/scan_dir`                   | Comma-separated directories to scan for SRT files (must be mounted as volumes)   |
-| `EXCLUDE_PATHS`             | _(none)_                      | Comma-separated directories to exclude from scanning                             |
-| `CRON_SCHEDULE`             | `0 0 * * *`                   | Cron expression for sync schedule (daily at midnight), or `disabled` to turn off |
-| `MAX_CONCURRENT_SYNC_TASKS` | `1`                           | Number of subtitle files to process in parallel (higher = faster but more CPU)   |
-| `INCLUDE_ENGINES`           | `ffsubsync,autosubsync,alass` | Which sync engines to use (comma-separated)                                      |
-| `SYNC_ENGINE_TIMEOUT_MS`    | `1800000`                     | Timeout for each sync engine in milliseconds (30 min default)                    |
-| `TZ`                        | _(system)_                    | Timezone for logging and cron scheduling (e.g., `America/New_York`)              |
-| `PUID`                      | `1000`                        | User ID for file permissions (run `id -u` to find yours)                         |
-| `PGID`                      | `1000`                        | Group ID for file permissions (run `id -g` to find yours)                        |
+| Variable                        | Default                       | Description                                                                      |
+| ------------------------------- | ----------------------------- | -------------------------------------------------------------------------------- |
+| `SCAN_PATHS`                    | `/scan_dir`                   | Comma-separated directories to scan for SRT files (must be mounted as volumes)   |
+| `EXCLUDE_PATHS`                 | _(none)_                      | Comma-separated directories to exclude from scanning                             |
+| `CRON_SCHEDULE`                 | `0 0 * * *`                   | Cron expression for sync schedule (daily at midnight), or `disabled` to turn off |
+| `MAX_CONCURRENT_SYNC_TASKS`     | `1`                           | Number of **video files** to process in parallel (higher = faster but more CPU)  |
+| `INCLUDE_ENGINES`               | `ffsubsync,autosubsync,alass` | Which sync engines to use (comma-separated)                                      |
+| `ENABLE_CONTEXT_AWARE_MATCHING` | `true`                        | Fallback to solitary video files if no direct filename match exists              |
+| `SYNC_ENGINE_TIMEOUT_MS`        | `1800000`                     | Timeout for each sync engine in milliseconds (30 min default)                    |
+
+### Temporary Directory & Audio Extraction
+
+Subsyncarr Plus uses a unified audio extraction pattern to maximize performance. For each video, audio is extracted once into a temporary `.wav` file and shared across all engines and subtitles.
+
+By default, the system's temporary directory is used. For large runs or to reduce SSD wear, it is recommended to mount a high-speed volume or RAM disk to `/tmp`:
+
+```yaml
+services:
+  subsyncarr-plus:
+    volumes:
+      - /path/to/media:/media
+      - /dev/shm:/tmp # Example: Use host RAM disk for temporary audio
+```
 
 ### Database & Log Configuration
 

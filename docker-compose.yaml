@@ -1,10 +1,10 @@
-name: subsyncarr-plus
+name: subsyncarr-plus-plus
 
 services:
-  subsyncarr-plus:
-    image: tomtomw123/subsyncarr-plus:latest
-    container_name: subsyncarr-plus
-    user: "1000:10"
+  subsyncarr-plus-plus:
+    image: johnlindahl/subsyncarr-plus-plus:latest
+    container_name: subsyncarr-plus-plus
+    user: '1000:10'
     ports:
       - '3000:3000' # Web UI
     volumes:
@@ -15,13 +15,15 @@ services:
       - /path/to/tv:/tv
       - /path/to/anime:/anime
       - ./data:/app/data # Persist database across restarts
+      # Optional: mount host RAM disk to /tmp to speed up audio extraction and reduce SSD wear
+      # - /dev/shm:/tmp
     restart: unless-stopped
     deploy:
       resources:
         limits:
-          memory: 768M      # Hard limit - increased for file-based logging and large runs
+          memory: 768M # Hard limit - increased for file-based logging and large runs
         reservations:
-          memory: 128M      # Minimum guaranteed memory
+          memory: 128M # Minimum guaranteed memory
     environment:
       - TZ=Etc/UTC # Replace with your own timezone
       - PUID=1000
@@ -31,6 +33,7 @@ services:
       - EXCLUDE_PATHS=/movies/temp,/tv/downloads # Exclude certain sub-directories from the scan
       - MAX_CONCURRENT_SYNC_TASKS=1 # Defaults to 1 if not set. Higher number will consume more CPU but sync your library faster
       - INCLUDE_ENGINES=ffsubsync,autosubsync # If not set, all engines are used by default
+      - ENABLE_CONTEXT_AWARE_MATCHING=true # If true, matches subtitles to any single video in the same or parent folder if no direct name match is found
       # Timeout configuration (optional - uncomment and adjust if needed):
       # - SYNC_ENGINE_TIMEOUT_MS=1800000  # 30 minutes (default)
       # - SYNC_ENGINE_TIMEOUT_MS=3600000  # 60 minutes for very large files
@@ -38,4 +41,4 @@ services:
       # Web UI configuration (optional):
       # - WEB_PORT=3000                   # Port for web UI (default: 3000)
       # - WEB_HOST=127.0.0.1              # Host to bind to (default: 127.0.0.1, use 0.0.0.0 for all interfaces)
-      # - DB_PATH=/app/data/subsyncarr-plus.db # SQLite database location (default: /app/data/subsyncarr-plus.db)
+      # - DB_PATH=/app/data/subsyncarr-plus-plus.db # SQLite database location (default: /app/data/subsyncarr-plus-plus.db)

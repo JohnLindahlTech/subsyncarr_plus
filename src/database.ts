@@ -1,4 +1,7 @@
 import Database from 'better-sqlite3';
+import { RunStatus, FileStatus, AgreementStatus } from './types.js';
+import { MIGRATIONS } from './database/migrations.js';
+import logger from './services/logger.js';
 
 export interface Run {
   id: string;
@@ -10,8 +13,11 @@ export interface Run {
   failed: number;
   total_engines: number;
   completed_engines: number;
-  status: 'running' | 'completed' | 'cancelled';
+  total_videos: number;
+  completed_videos: number;
+  status: RunStatus;
   logs: string;
+  current_video: string | null;
 }
 
 export interface FileResult {
@@ -19,9 +25,13 @@ export interface FileResult {
   run_id: string;
   file_path: string;
   video_path: string | null;
-  status: 'pending' | 'processing' | 'completed' | 'skipped' | 'error';
+  status: FileStatus;
   current_engine: string | null;
+  video_status: string | null;
   engines: string; // JSON stringified { ffsubsync?: {...}, autosubsync?: {...}, alass?: {...} }
+  best_engine: string | null;
+  best_score: number | null;
+  agreement_status: AgreementStatus | null;
   created_at: number;
   updated_at: number;
 }
@@ -38,95 +48,79 @@ export interface EngineFailureTracking {
   updated_at: number;
 }
 
-export class SubsyncarrPlusDatabase {
+export class SubsyncarrPlusPlusDatabase {
   private db: Database.Database;
 
-  constructor(dbPath: string) {
+  constructor(dbPath: string, skipInit: boolean = false) {
     this.db = new Database(dbPath);
-    this.initSchema();
+    this.setPragmas();
+    if (!skipInit) {
+      this.runMigrations();
+    }
   }
 
-  private initSchema() {
-    // Optimize SQLite for low memory usage
-    this.db.pragma('cache_size = -1000'); // 1MB cache (negative means KB)
-    this.db.pragma('mmap_size = 0'); // Disable memory-mapping
-    this.db.pragma('journal_mode = WAL'); // Better concurrency
-    this.db.pragma('temp_store = MEMORY'); // Keep temp data in memory
+  private setPragmas() {
+    // Optimize SQLite for high performance with large datasets
+    this.db.pragma('busy_timeout = 30000');
+    this.db.pragma('cache_size = -64000'); // 64MB cache
+    this.db.pragma('journal_mode = WAL'); // High-concurrency
+    this.db.pragma('synchronous = NORMAL'); // Faster writes, still safe in WAL mode
+    this.db.pragma('mmap_size = 268435456'); // 256MB Memory-mapping for faster reads
+    this.db.pragma('temp_store = MEMORY'); // Faster temp tables
     this.db.pragma('auto_vacuum = INCREMENTAL'); // Reclaim space gradually
+  }
 
-    this.db.exec(`
-      CREATE TABLE IF NOT EXISTS runs (
-        id TEXT PRIMARY KEY,
-        start_time INTEGER NOT NULL,
-        end_time INTEGER,
-        total_files INTEGER NOT NULL,
-        completed INTEGER DEFAULT 0,
-        skipped INTEGER DEFAULT 0,
-        failed INTEGER DEFAULT 0,
-        total_engines INTEGER DEFAULT 0,
-        completed_engines INTEGER DEFAULT 0,
-        status TEXT NOT NULL,
-        logs TEXT DEFAULT ''
-      );
+  private runMigrations() {
+    // Ensure the schema_version table exists
+    this.db.exec('CREATE TABLE IF NOT EXISTS schema_version (version INTEGER PRIMARY KEY)');
 
-      CREATE TABLE IF NOT EXISTS file_results (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        run_id TEXT NOT NULL,
-        file_path TEXT NOT NULL,
-        video_path TEXT,
-        status TEXT NOT NULL,
-        current_engine TEXT,
-        engines TEXT DEFAULT '{}',
-        created_at INTEGER NOT NULL,
-        updated_at INTEGER NOT NULL,
-        FOREIGN KEY(run_id) REFERENCES runs(id)
-      );
+    const currentVersion =
+      (
+        this.db.prepare('SELECT MAX(version) as version FROM schema_version').get() as {
+          version: number | null;
+        }
+      ).version || 0;
 
-      CREATE INDEX IF NOT EXISTS idx_file_results_run
-        ON file_results(run_id);
-      CREATE INDEX IF NOT EXISTS idx_file_results_status
-        ON file_results(status);
-    `);
+    // --- PRODUCTION BACKWARDS COMPATIBILITY ---
+    // If schema_version table is new (version 0) but the 'runs' table already exists,
+    // it means this is a production database from the "junior team" era.
+    // We mark it as already having applied the first 3 migrations to avoid errors.
+    if (currentVersion === 0) {
+      const legacyTable = this.db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='runs'").get();
+      if (legacyTable) {
+        logger.info('Production legacy database detected. Aligning schema version tracking.');
+        const legacyVersion = 3; // The number of migrations representing the junior team's final state
+        this.db.prepare('INSERT INTO schema_version (version) VALUES (?)').run(legacyVersion);
 
-    // Migration: Add logs column if it doesn't exist
-    const columns = this.db.pragma('table_info(runs)') as Array<{ name: string }>;
-    const hasLogsColumn = columns.some((col) => col.name === 'logs');
-    if (!hasLogsColumn) {
-      this.db.exec(`ALTER TABLE runs ADD COLUMN logs TEXT DEFAULT ''`);
+        // If we have more than 3 migrations in the future, the runner below will
+        // pick up from version 3 and apply the new ones.
+        if (MIGRATIONS.length <= legacyVersion) {
+          return;
+        }
+      }
     }
 
-    // Migration: Add total_engines and completed_engines columns if they don't exist
-    const hasTotalEnginesColumn = columns.some((col) => col.name === 'total_engines');
-    if (!hasTotalEnginesColumn) {
-      this.db.exec(`ALTER TABLE runs ADD COLUMN total_engines INTEGER DEFAULT 0`);
-    }
-    const hasCompletedEnginesColumn = columns.some((col) => col.name === 'completed_engines');
-    if (!hasCompletedEnginesColumn) {
-      this.db.exec(`ALTER TABLE runs ADD COLUMN completed_engines INTEGER DEFAULT 0`);
+    if (currentVersion >= MIGRATIONS.length) {
+      return;
     }
 
-    // Migration: Create engine_failure_tracking table
-    const tables = this.db
-      .prepare("SELECT name FROM sqlite_master WHERE type='table' AND name='engine_failure_tracking'")
-      .all();
-    if (tables.length === 0) {
-      this.db.exec(`
-        CREATE TABLE engine_failure_tracking (
-          id INTEGER PRIMARY KEY AUTOINCREMENT,
-          file_path TEXT NOT NULL,
-          engine TEXT NOT NULL,
-          consecutive_failures INTEGER DEFAULT 0,
-          last_failure_time INTEGER,
-          last_success_time INTEGER,
-          is_skipped BOOLEAN DEFAULT 0,
-          created_at INTEGER NOT NULL,
-          updated_at INTEGER NOT NULL,
-          UNIQUE(file_path, engine)
-        );
+    logger.info({ from: currentVersion, to: MIGRATIONS.length }, 'Running database migrations');
 
-        CREATE INDEX idx_failure_tracking_file ON engine_failure_tracking(file_path);
-        CREATE INDEX idx_failure_tracking_skipped ON engine_failure_tracking(is_skipped);
-      `);
+    const transaction = this.db.transaction(() => {
+      for (let i = currentVersion; i < MIGRATIONS.length; i++) {
+        const migration = MIGRATIONS[i];
+        logger.debug({ version: i + 1 }, 'Applying migration');
+        this.db.exec(migration);
+        this.db.prepare('INSERT INTO schema_version (version) VALUES (?)').run(i + 1);
+      }
+    });
+
+    try {
+      transaction();
+      logger.info('Database migrations completed successfully');
+    } catch (error) {
+      logger.error({ error }, 'Database migration failed');
+      throw error;
     }
   }
 
@@ -134,9 +128,9 @@ export class SubsyncarrPlusDatabase {
   createRun(id: string, totalFiles: number): void {
     const stmt = this.db.prepare(`
       INSERT INTO runs (id, start_time, total_files, status)
-      VALUES (?, ?, ?, 'running')
+      VALUES (?, ?, ?, ?)
     `);
-    stmt.run(id, Date.now(), totalFiles);
+    stmt.run(id, Date.now(), totalFiles, RunStatus.RUNNING);
   }
 
   updateRun(id: string, updates: Partial<Run>): void {
@@ -144,6 +138,23 @@ export class SubsyncarrPlusDatabase {
       .map((k) => `${k} = ?`)
       .join(', ');
     const values = Object.values(updates);
+    this.db.prepare(`UPDATE runs SET ${fields} WHERE id = ?`).run(...values, id);
+  }
+
+  incrementRunCountersBulk(
+    id: string,
+    increments: {
+      completed?: number;
+      skipped?: number;
+      failed?: number;
+      completed_engines?: number;
+      completed_videos?: number;
+    },
+  ): void {
+    const fields = Object.keys(increments)
+      .map((k) => `${k} = ${k} + ?`)
+      .join(', ');
+    const values = Object.values(increments);
     this.db.prepare(`UPDATE runs SET ${fields} WHERE id = ?`).run(...values, id);
   }
 
@@ -167,8 +178,16 @@ export class SubsyncarrPlusDatabase {
   /**
    * Delete old runs and their associated file results
    */
-  deleteOldRuns(olderThanDays: number): number {
+  deleteOldRuns(olderThanDays: number): string[] {
     const cutoffTime = Date.now() - olderThanDays * 24 * 60 * 60 * 1000;
+
+    // Find run IDs to delete
+    const runsToDelete = this.db.prepare('SELECT id FROM runs WHERE start_time < ?').all(cutoffTime) as Array<{
+      id: string;
+    }>;
+    const runIds = runsToDelete.map((r) => r.id);
+
+    if (runIds.length === 0) return [];
 
     // Use transaction for atomicity
     const deleteFiles = this.db.prepare(
@@ -178,8 +197,8 @@ export class SubsyncarrPlusDatabase {
 
     const transaction = this.db.transaction(() => {
       deleteFiles.run(cutoffTime);
-      const result = deleteRuns.run(cutoffTime);
-      return result.changes;
+      deleteRuns.run(cutoffTime);
+      return runIds;
     });
 
     return transaction();
@@ -202,10 +221,10 @@ export class SubsyncarrPlusDatabase {
   }
 
   /**
-   * Vacuum database to reclaim space after deletions
+   * Reclaim disk space and defragment the database
    */
   vacuum(): void {
-    this.db.pragma('incremental_vacuum');
+    this.db.exec('VACUUM');
   }
 
   /**
@@ -223,14 +242,34 @@ export class SubsyncarrPlusDatabase {
   }
 
   // File methods
-  createFileResult(runId: string, filePath: string, videoPath: string | null): void {
+  createFileResult(runId: string, filePath: string, videoPath: string | null, isHidden: boolean = false): void {
     const stmt = this.db.prepare(`
       INSERT INTO file_results
-        (run_id, file_path, video_path, status, created_at, updated_at)
-      VALUES (?, ?, ?, 'pending', ?, ?)
+        (run_id, file_path, video_path, status, is_hidden_live, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
     `);
     const now = Date.now();
-    stmt.run(runId, filePath, videoPath, now, now);
+    stmt.run(runId, filePath, videoPath, FileStatus.PENDING, isHidden ? 1 : 0, now, now);
+  }
+
+  bulkCreateFileResults(
+    runId: string,
+    files: Array<{ filePath: string; videoPath: string | null; status: FileResult['status']; isHidden?: boolean }>,
+  ): void {
+    const now = Date.now();
+    const insert = this.db.prepare(`
+      INSERT INTO file_results
+        (run_id, file_path, video_path, status, is_hidden_live, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    const transaction = this.db.transaction((items) => {
+      for (const item of items) {
+        insert.run(runId, item.filePath, item.videoPath, item.status, item.isHidden ? 1 : 0, now, now);
+      }
+    });
+
+    transaction(files);
   }
 
   updateFileResult(runId: string, filePath: string, updates: Partial<FileResult>): void {
@@ -250,16 +289,226 @@ export class SubsyncarrPlusDatabase {
       .run(...values, runId, filePath);
   }
 
-  getFileResults(runId: string): FileResult[] {
-    return this.db
+  updateFilesVideoStatus(runId: string, videoPath: string, videoStatus: string | null): void {
+    this.db
       .prepare(
         `
-      SELECT * FROM file_results
-      WHERE run_id = ?
-      ORDER BY created_at ASC
+      UPDATE file_results
+      SET video_status = ?, updated_at = ?
+      WHERE run_id = ? AND video_path = ?
     `,
       )
-      .all(runId) as FileResult[];
+      .run(videoStatus, Date.now(), runId, videoPath);
+  }
+
+  manuallyVerifyFile(runId: string, filePath: string): void {
+    this.db
+      .prepare(
+        `
+      UPDATE file_results
+      SET agreement_status = ?, updated_at = ?
+      WHERE run_id = ? AND file_path = ?
+    `,
+      )
+      .run(AgreementStatus.VERIFIED, Date.now(), runId, filePath);
+  }
+
+  getFileResults(
+    runId: string,
+    limit?: number,
+    offset?: number,
+    search?: string,
+    agreementFilter?: string,
+    statusFilter?: string,
+    sortColumn: string = 'file_path',
+    sortOrder: 'ASC' | 'DESC' = 'ASC',
+  ): FileResult[] {
+    const allowedSortColumns = ['file_path', 'status', 'best_engine', 'best_score', 'created_at', 'updated_at'];
+    const actualSortColumn = allowedSortColumns.includes(sortColumn) ? sortColumn : 'file_path';
+    const actualSortOrder = sortOrder === 'DESC' ? 'DESC' : 'ASC';
+
+    let sql = `
+      SELECT * FROM file_results
+      WHERE run_id = ? AND is_hidden_live = 0
+    `;
+    const params: unknown[] = [runId];
+
+    if (search) {
+      sql += ' AND file_path LIKE ?';
+      params.push(`%${search}%`);
+    }
+
+    if (agreementFilter) {
+      sql += ' AND agreement_status = ?';
+      params.push(agreementFilter);
+    }
+
+    if (statusFilter) {
+      sql += ' AND status = ?';
+      params.push(statusFilter);
+    }
+
+    sql += ` ORDER BY ${actualSortColumn} ${actualSortOrder}`;
+
+    if (limit !== undefined && offset !== undefined) {
+      sql += ' LIMIT ? OFFSET ?';
+      params.push(limit, offset);
+    }
+
+    return this.db.prepare(sql).all(...params) as FileResult[];
+  }
+
+  getFileCount(runId: string, search?: string, agreementFilter?: string, statusFilter?: string): number {
+    let sql = 'SELECT COUNT(*) as count FROM file_results WHERE run_id = ? AND is_hidden_live = 0';
+    const params: unknown[] = [runId];
+
+    if (search) {
+      sql += ' AND file_path LIKE ?';
+      params.push(`%${search}%`);
+    }
+
+    if (agreementFilter) {
+      sql += ' AND agreement_status = ?';
+      params.push(agreementFilter);
+    }
+
+    if (statusFilter) {
+      sql += ' AND status = ?';
+      params.push(statusFilter);
+    }
+
+    const result = this.db.prepare(sql).get(...params) as { count: number };
+    return result.count;
+  }
+
+  getGlobalFileResults(
+    limit?: number,
+    offset?: number,
+    search?: string,
+    agreementFilter?: string,
+    statusFilter?: string,
+    sortColumn: string = 'file_path',
+    sortOrder: 'ASC' | 'DESC' = 'ASC',
+  ): FileResult[] {
+    const allowedSortColumns = ['file_path', 'status', 'best_engine', 'best_score', 'created_at', 'updated_at'];
+    const actualSortColumn = allowedSortColumns.includes(sortColumn) ? sortColumn : 'file_path';
+    const actualSortOrder = sortOrder === 'DESC' ? 'DESC' : 'ASC';
+
+    let sql = `
+      SELECT * FROM file_results 
+      WHERE id IN (SELECT MAX(id) FROM file_results GROUP BY file_path)
+    `;
+    const params: unknown[] = [];
+
+    if (search) {
+      sql += ' AND file_path LIKE ?';
+      params.push(`%${search}%`);
+    }
+
+    if (agreementFilter) {
+      sql += ' AND agreement_status = ?';
+      params.push(agreementFilter);
+    }
+
+    if (statusFilter) {
+      sql += ' AND status = ?';
+      params.push(statusFilter);
+    }
+
+    sql += ` ORDER BY ${actualSortColumn} ${actualSortOrder}`;
+
+    if (limit !== undefined && offset !== undefined) {
+      sql += ' LIMIT ? OFFSET ?';
+      params.push(limit, offset);
+    }
+
+    return this.db.prepare(sql).all(...params) as FileResult[];
+  }
+
+  getGlobalFileCount(search?: string, agreementFilter?: string, statusFilter?: string): number {
+    let sql = `
+      SELECT COUNT(*) as count FROM file_results 
+      WHERE id IN (SELECT MAX(id) FROM file_results GROUP BY file_path)
+    `;
+    const params: unknown[] = [];
+
+    if (search) {
+      sql += ' AND file_path LIKE ?';
+      params.push(`%${search}%`);
+    }
+
+    if (agreementFilter) {
+      sql += ' AND agreement_status = ?';
+      params.push(agreementFilter);
+    }
+
+    if (statusFilter) {
+      sql += ' AND status = ?';
+      params.push(statusFilter);
+    }
+
+    const result = this.db.prepare(sql).get(...params) as { count: number };
+    return result.count;
+  }
+
+  /**
+   * Gets a specialized set of files for the Live View:
+   * 1. All currently processing files
+   * 2. The N most recently completed/failed/skipped files
+   */
+  getLiveFileResults(runId: string, recentLimit: number = 10): FileResult[] {
+    const processing = this.db
+      .prepare(
+        'SELECT * FROM file_results WHERE run_id = ? AND status = ? AND is_hidden_live = 0 ORDER BY file_path ASC',
+      )
+      .all(runId, FileStatus.PROCESSING) as FileResult[];
+
+    const recentFinished = this.db
+      .prepare(
+        `SELECT * FROM file_results 
+         WHERE run_id = ? AND status IN (?, ?, ?) 
+         AND is_hidden_live = 0
+         ORDER BY updated_at DESC LIMIT ?`,
+      )
+      .all(runId, FileStatus.COMPLETED, FileStatus.ERROR, FileStatus.SKIPPED, recentLimit) as FileResult[];
+
+    // Combine and remove duplicates (though there shouldn't be any based on status)
+    return [...processing, ...recentFinished];
+  }
+
+  updateAllFileResults(runId: string, updates: Partial<FileResult>, whereStatusIn: string[]): void {
+    if (whereStatusIn.length === 0) {
+      return;
+    }
+
+    const updatesWithTimestamp = { ...updates, updated_at: Date.now() };
+    const fields = Object.keys(updatesWithTimestamp)
+      .map((k) => `${k} = ?`)
+      .join(', ');
+    const values = Object.values(updatesWithTimestamp);
+    const statusPlaceholders = whereStatusIn.map(() => '?').join(', ');
+
+    this.db
+      .prepare(
+        `
+      UPDATE file_results
+      SET ${fields}
+      WHERE run_id = ? AND status IN (${statusPlaceholders})
+    `,
+      )
+      .run(...values, runId, ...whereStatusIn);
+  }
+
+  clearCompletedFiles(runId: string): void {
+    this.db
+      .prepare(
+        `
+      UPDATE file_results
+      SET is_hidden_live = 1
+      WHERE run_id = ? AND status != ?
+    `,
+      )
+      .run(runId, FileStatus.PROCESSING);
   }
 
   // Engine failure tracking methods
@@ -282,13 +531,13 @@ export class SubsyncarrPlusDatabase {
     return results.map((r) => r.engine);
   }
 
-  recordEngineFailure(filePath: string, engine: string): void {
+  recordEngineFailure(filePath: string, engine: string, isPermanent: boolean = false): void {
     const existing = this.getEngineFailureTracking(filePath, engine);
     const now = Date.now();
 
     if (existing) {
       const newFailureCount = existing.consecutive_failures + 1;
-      const isSkipped = newFailureCount >= 3;
+      const isSkipped = isPermanent || newFailureCount >= 3;
 
       this.db
         .prepare(
@@ -309,10 +558,10 @@ export class SubsyncarrPlusDatabase {
         INSERT INTO engine_failure_tracking
           (file_path, engine, consecutive_failures, last_failure_time,
            is_skipped, created_at, updated_at)
-        VALUES (?, ?, 1, ?, 0, ?, ?)
+        VALUES (?, ?, 1, ?, ?, ?, ?)
       `,
         )
-        .run(filePath, engine, now, now, now);
+        .run(filePath, engine, now, isPermanent ? 1 : 0, now, now);
     }
   }
 
@@ -379,6 +628,20 @@ export class SubsyncarrPlusDatabase {
     }
   }
 
+  resetAllEngineSkipStatuses(): void {
+    const now = Date.now();
+    this.db
+      .prepare(
+        `
+      UPDATE engine_failure_tracking
+      SET consecutive_failures = 0,
+          is_skipped = 0,
+          updated_at = ?
+    `,
+      )
+      .run(now);
+  }
+
   getFailureTrackingStats(): {
     totalSkipped: number;
     skippedByEngine: Record<string, number>;
@@ -401,5 +664,126 @@ export class SubsyncarrPlusDatabase {
 
   close() {
     this.db.close();
+  }
+
+  /**
+   * Get global statistics across all historical runs
+   */
+  getGlobalStats() {
+    const stats = this.db
+      .prepare(
+        `
+      SELECT 
+        COUNT(*) as total_files,
+        SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) as success_count,
+        SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) as error_count,
+        SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) as skipped_count
+      FROM file_results
+    `,
+      )
+      .get(FileStatus.COMPLETED, FileStatus.ERROR, FileStatus.SKIPPED) as {
+      total_files: number;
+      success_count: number;
+      error_count: number;
+      skipped_count: number;
+    };
+
+    const engineStats = ['ffsubsync', 'autosubsync', 'alass'].map((engine) => {
+      const res = this.db
+        .prepare(
+          `
+        SELECT 
+          COUNT(*) as total,
+          SUM(CASE WHEN json_extract(engines, '$.' || ? || '.success') = 1 THEN 1 ELSE 0 END) as success
+        FROM file_results
+        WHERE json_extract(engines, '$.' || ? || '.success') IS NOT NULL
+      `,
+        )
+        .get(engine, engine) as { total: number; success: number };
+      return { engine, ...res };
+    });
+
+    return { ...stats, engines: engineStats };
+  }
+
+  /**
+   * Aggregates errors by their message to identify systemic issues across all engines
+   */
+  getErrorGroups(limit: number = 10) {
+    const engines = ['ffsubsync', 'autosubsync', 'alass'];
+    const groups: Record<string, { message: string; count: number; examples: string[] }> = {};
+
+    // Quality Fix: Look for any engine failure, even in files that eventually succeeded
+    const filesWithFailures = this.db
+      .prepare(
+        `
+      SELECT file_path, engines FROM file_results 
+      WHERE engines LIKE '%"success":false%'
+      ORDER BY updated_at DESC 
+      LIMIT 1000
+    `,
+      )
+      .all() as Array<{ file_path: string; engines: string }>;
+
+    filesWithFailures.forEach((file) => {
+      const engineData = JSON.parse(file.engines || '{}');
+      for (const e of engines) {
+        // Report every failure found in the file, not just the first one
+        if (engineData[e] && engineData[e].success === false && engineData[e].message) {
+          const rawMsg = engineData[e].message;
+
+          // Normalization: Strip specific details to allow grouping.
+          const genericMsg = rawMsg
+            // 1. Strip timestamps like [23:39:21]
+            .replace(/\[\d{2}:\d{2}:\d{2}\]/g, '[timestamp]')
+            // 2. Strip quoted absolute paths (handles spaces correctly)
+            .replace(/["']\/[^"']+\.(srt|mkv|mp4|avi|m4v|ts|mp3|wav|srt)["']/gi, '"<path>"')
+            // 3. Strip unquoted absolute paths (allowing spaces, stopping at extension + boundary)
+            .replace(/\/[\/a-z0-9\s\(\)\[\]\.\!\-\_\$]+?\.(srt|mkv|mp4|avi|m4v|ts|mp3|wav|srt)/gi, '<path>')
+            // 4. Strip any leftover standalone filenames
+            .replace(/[^\s\/\n]+?\.(srt|mkv|mp4|avi|m4v|ts|mp3|wav|srt)/gi, '<file>')
+            // 5. Clean up standard prefixes and boilerplate
+            .replace(/Error processing .*?:/i, 'Error processing <item>:')
+            .replace(/Command failed: ffsubsync .*? -i/i, 'Command failed: ffsubsync <path> -i')
+            .replace(/parsing subtitle file .*? failed/i, 'parsing subtitle file <item> failed')
+            .replace(/ffsubsync\.py:\d+/g, 'ffsubsync.py:<line>')
+            .trim();
+
+          if (!groups[genericMsg]) {
+            groups[genericMsg] = { message: genericMsg, count: 0, examples: [] };
+          }
+          groups[genericMsg].count++;
+          if (groups[genericMsg].examples.length < 3) {
+            groups[genericMsg].examples.push(`${e}: ${file.file_path.split('/').pop() || ''}`);
+          }
+        }
+      }
+    });
+
+    return Object.values(groups)
+      .sort((a, b) => b.count - a.count)
+      .slice(0, limit);
+  }
+
+  /**
+   * Get average duration for an engine in milliseconds
+   */
+  getAverageEngineDuration(engine: string): number {
+    try {
+      // Extract duration from JSON engines column
+      const result = this.db
+        .prepare(
+          `
+        SELECT AVG(json_extract(engines, '$.' || ? || '.duration')) as avg_duration
+        FROM file_results
+        WHERE json_extract(engines, '$.' || ? || '.success') = 1
+      `,
+        )
+        .get(engine, engine) as { avg_duration: number | null };
+
+      return result.avg_duration || 30000; // Default to 30s if no data
+    } catch (e) {
+      return 30000;
+    }
   }
 }

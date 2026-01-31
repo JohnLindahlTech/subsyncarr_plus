@@ -1,14 +1,19 @@
-import { basename, dirname, join } from 'path';
-import { execPromise, ProcessingResult } from './helpers';
-import { existsSync } from 'fs';
+import { execPromise, ProcessingResult, EngineProfile, getEngineOutputPath } from './helpers.js';
+import * as fs from 'fs';
+import logger from './services/logger.js';
 
-export async function generateAlassSubtitles(srtPath: string, videoPath: string): Promise<ProcessingResult> {
-  const directory = dirname(srtPath);
-  const srtBaseName = basename(srtPath, '.srt');
-  const outputPath = join(directory, `${srtBaseName}.alass.srt`);
+export async function generateAlassSubtitles(
+  srtPath: string,
+  videoPath: string,
+  signal?: AbortSignal,
+  audioPath?: string,
+  timeoutMs?: number,
+  profile?: EngineProfile,
+): Promise<ProcessingResult> {
+  const outputPath = getEngineOutputPath(srtPath, 'alass', profile?.name);
 
-  const exists = existsSync(outputPath);
-  if (exists) {
+  // Check if synced subtitle already exists
+  if (fs.existsSync(outputPath)) {
     return {
       success: true,
       message: `Skipping ${outputPath} - already processed`,
@@ -16,18 +21,46 @@ export async function generateAlassSubtitles(srtPath: string, videoPath: string)
   }
 
   try {
-    const command = `alass "${videoPath}" "${srtPath}" "${outputPath}"`;
-    console.log(`${new Date().toLocaleString()} Processing: ${command}`);
-    const { stdout, stderr } = await execPromise(command);
+    const reference = audioPath || videoPath;
+    const profileArgs = profile ? profile.args : [];
+    const args = [reference, srtPath, outputPath, ...profileArgs];
+    const command = `alass ${args.join(' ')}`;
+    logger.info({ command }, 'Processing alass');
+    const { stdout, stderr } = await execPromise('alass', args, timeoutMs, signal);
+
+    // Parse score from stdout: "Score: 12.34"
+    let score: number | undefined;
+    const scoreMatch = stdout.match(/Score:\s*([0-9.]+)/i);
+    if (scoreMatch) {
+      const rawScore = parseFloat(scoreMatch[1]);
+      // alass scores are typically 0-20. 10 is very good.
+      // We'll normalize 0-15+ to 0-100% for comparison logic.
+      score = Math.min(Math.round((rawScore / 15) * 100), 100);
+    }
+
     return {
       success: true,
       message: `Successfully processed: ${outputPath}`,
       stdout: stdout || undefined,
       stderr: stderr || undefined,
+      command,
+      score,
     };
   } catch (error) {
+    const reference = audioPath || videoPath;
+    const command = `alass "${reference}" "${srtPath}" "${outputPath}"`;
     const errorMessage = error instanceof Error ? error.message : String(error);
     const isTimeout = errorMessage.includes('SIGTERM') || errorMessage.includes('timed out');
+    const isAborted = errorMessage.includes('Aborted');
+
+    if (isAborted) {
+      return {
+        success: false,
+        message: `Aborted: Processing of ${outputPath} was cancelled by user`,
+        command,
+        isPermanent: false,
+      };
+    }
 
     // Extract stdout/stderr from error if available
     const execError = error as { stdout?: string; stderr?: string };
@@ -40,6 +73,7 @@ export async function generateAlassSubtitles(srtPath: string, videoPath: string)
         message: `Timeout: ${outputPath} took longer than allowed timeout`,
         stdout: stdout || undefined,
         stderr: stderr || undefined,
+        command,
       };
     }
 
@@ -48,6 +82,14 @@ export async function generateAlassSubtitles(srtPath: string, videoPath: string)
       message: `Error processing ${outputPath}: ${errorMessage}`,
       stdout: stdout || undefined,
       stderr: stderr || undefined,
+      command,
+      isPermanent:
+        errorMessage.toLowerCase().includes('too few subtitle entries') ||
+        stderr.toLowerCase().includes('too few subtitle entries') ||
+        errorMessage.toLowerCase().includes('alignment failed') ||
+        stderr.toLowerCase().includes('alignment failed') ||
+        errorMessage.toLowerCase().includes('wrong charset encoding') ||
+        stderr.toLowerCase().includes('wrong charset encoding'),
     };
   }
 }

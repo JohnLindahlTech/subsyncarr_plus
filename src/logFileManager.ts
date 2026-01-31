@@ -1,5 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import logger from './services/logger.js';
 
 export class LogFileManager {
   private logDir: string;
@@ -24,6 +25,11 @@ export class LogFileManager {
 
     this.currentRunId = runId;
     const logFilePath = this.getLogFilePath(runId);
+
+    // Ensure directory exists again just in case it was deleted
+    if (!fs.existsSync(this.logDir)) {
+      fs.mkdirSync(this.logDir, { recursive: true });
+    }
 
     // Create write stream in append mode
     this.currentLogStream = fs.createWriteStream(logFilePath, { flags: 'a' });
@@ -61,7 +67,7 @@ export class LogFileManager {
 
     this.currentLogStream.write(content, (err) => {
       if (err) {
-        console.error(`[${new Date().toISOString()}] Error writing to log file:`, err);
+        logger.error({ err }, 'Error writing to log file');
       }
     });
   }
@@ -101,7 +107,7 @@ export class LogFileManager {
     try {
       return fs.readFileSync(logFilePath, 'utf-8');
     } catch (error) {
-      console.error(`[${new Date().toISOString()}] Error reading log file:`, error);
+      logger.error({ error, runId }, 'Error reading log file');
       return '';
     }
   }
@@ -113,7 +119,7 @@ export class LogFileManager {
       try {
         fs.unlinkSync(logFilePath);
       } catch (error) {
-        console.error(`[${new Date().toISOString()}] Error deleting log file:`, error);
+        logger.error({ error, runId }, 'Error deleting log file');
       }
     }
   }
@@ -139,7 +145,7 @@ export class LogFileManager {
         }
       }
     } catch (error) {
-      console.error(`[${new Date().toISOString()}] Error cleaning up old log files:`, error);
+      logger.error({ error }, 'Error cleaning up old log files');
     }
 
     return deletedCount;
