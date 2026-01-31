@@ -7,7 +7,6 @@ import { join } from 'path';
 import { getScanConfig } from './config';
 import cronstrue from 'cronstrue';
 import parseExpression from 'cron-parser';
-import cron from 'node-cron';
 import { checkDependency, validatePartialPath } from './helpers';
 import { FileResult } from './database';
 
@@ -36,7 +35,6 @@ export class SubsyncarrPlusPlusServer {
     this.setupMiddleware();
     this.setupRoutes();
     this.setupWebSocket();
-    this.setupMaintenanceSchedule();
     this.performHealthCheck();
   }
 
@@ -60,18 +58,6 @@ export class SubsyncarrPlusPlusServer {
 
     console.log(`[${new Date().toISOString()}] Health check complete. All OK: ${this.healthStatus.allOk}`);
     this.broadcast({ type: 'health:updated', data: this.healthStatus });
-  }
-
-  private setupMaintenanceSchedule() {
-    // Run maintenance every day at 3 AM
-    cron.schedule('0 3 * * *', () => {
-      this.stateManager.performMaintenance();
-    });
-
-    // Also run once on startup (background) after a short delay
-    setTimeout(() => {
-      this.stateManager.performMaintenance();
-    }, 5000);
   }
 
   private setupMiddleware() {
