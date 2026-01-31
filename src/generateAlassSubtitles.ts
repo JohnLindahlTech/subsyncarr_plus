@@ -21,10 +21,11 @@ export async function generateAlassSubtitles(
 
   try {
     const reference = audioPath || videoPath;
-    const profileArgs = profile ? profile.args.join(' ') : '';
-    const command = `alass "${reference}" "${srtPath}" "${outputPath}" ${profileArgs}`;
+    const profileArgs = profile ? profile.args : [];
+    const args = [reference, srtPath, outputPath, ...profileArgs];
+    const command = `alass ${args.join(' ')}`;
     console.log(`${new Date().toLocaleString()} Processing: ${command}`);
-    const { stdout, stderr } = await execPromise(command, timeoutMs, signal);
+    const { stdout, stderr } = await execPromise('alass', args, timeoutMs, signal);
 
     // Parse score from stdout: "Score: 12.34"
     let score: number | undefined;

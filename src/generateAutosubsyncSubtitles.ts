@@ -23,9 +23,10 @@ export async function generateAutosubsyncSubtitles(
 
   try {
     const reference = audioPath || videoPath;
-    const command = `autosubsync "${reference}" "${srtPath}" "${outputPath}"`;
+    const args = [reference, srtPath, outputPath];
+    const command = `autosubsync ${args.join(' ')}`;
     console.log(`${new Date().toLocaleString()} Processing: ${command}`);
-    const { stdout, stderr } = await execPromise(command, timeoutMs, signal);
+    const { stdout, stderr } = await execPromise('autosubsync', args, timeoutMs, signal);
     return {
       success: true,
       message: `Successfully processed: ${outputPath}`,

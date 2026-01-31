@@ -21,10 +21,11 @@ export async function generateFfsubsyncSubtitles(
 
   try {
     const reference = audioPath || videoPath;
-    const profileArgs = profile ? profile.args.join(' ') : '';
-    const command = `ffsubsync "${reference}" -i "${srtPath}" -o "${outputPath}" ${profileArgs}`;
+    const profileArgs = profile ? profile.args : [];
+    const args = [reference, '-i', srtPath, '-o', outputPath, ...profileArgs];
+    const command = `ffsubsync ${args.join(' ')}`;
     console.log(`${new Date().toLocaleString()} Processing: ${command}`);
-    const { stdout, stderr } = await execPromise(command, timeoutMs, signal);
+    const { stdout, stderr } = await execPromise('ffsubsync', args, timeoutMs, signal);
 
     // Parse score from stdout. ffsubsync can output "fit score: 0.85" or large alignment scores.
     let score: number | undefined;

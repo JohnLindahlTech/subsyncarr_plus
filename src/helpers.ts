@@ -1,4 +1,4 @@
-import { exec } from 'child_process';
+import { execFile } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -39,7 +39,7 @@ export async function checkDependency(
   args: string[] = ['--version'],
 ): Promise<{ name: string; found: boolean; version?: string; error?: string }> {
   try {
-    const { stdout, stderr } = await execPromise(`${command} ${args.join(' ')}`, 5000);
+    const { stdout, stderr } = await execPromise(command, args, 5000);
     const output = stdout.trim() || stderr.trim();
     return {
       name: command,
@@ -50,7 +50,7 @@ export async function checkDependency(
     // Fallback: try --help just to check existence if --version failed
     if (args.includes('--version')) {
       try {
-        await execPromise(`${command} --help`, 5000);
+        await execPromise(command, ['--help'], 5000);
         return {
           name: command,
           found: true,
@@ -75,7 +75,8 @@ export async function checkDependency(
 export async function getVideoDuration(videoPath: string): Promise<number> {
   try {
     const { stdout } = await execPromise(
-      `ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "${videoPath}"`,
+      'ffprobe',
+      ['-v', 'error', '-show_entries', 'format=duration', '-of', 'default=noprint_wrappers=1:nokey=1', videoPath],
       5000,
     );
     return parseFloat(stdout.trim()) || 0;
@@ -86,7 +87,8 @@ export async function getVideoDuration(videoPath: string): Promise<number> {
 }
 
 export async function execPromise(
-  command: string,
+  file: string,
+  args: string[],
   timeoutMs?: number,
   signal?: AbortSignal,
 ): Promise<{ stdout: string; stderr: string }> {
@@ -98,7 +100,7 @@ export async function execPromise(
   const timeout = timeoutMs ?? defaultTimeout;
 
   return new Promise((resolve, reject) => {
-    const child = exec(command, { timeout, maxBuffer: 1024 * 1024 * 10 }, (error, stdout, stderr) => {
+    const child = execFile(file, args, { timeout, maxBuffer: 1024 * 1024 * 10 }, (error, stdout, stderr) => {
       if (error) {
         // Attach stdout/stderr to error for debugging
         const err = error as Error & { stdout?: string; stderr?: string };
@@ -111,12 +113,14 @@ export async function execPromise(
     });
 
     if (signal) {
+      if (signal.aborted) {
+        child.kill('SIGTERM');
+      }
+
       signal.addEventListener(
         'abort',
         () => {
           child.kill('SIGTERM'); // Try graceful kill first
-          // Force kill if it doesn't exit quickly?
-          // For simplicity, we rely on SIGTERM. ffmpeg usually handles it.
           const err = new Error('Aborted') as Error & { stdout?: string; stderr?: string };
           err.stdout = '';
           err.stderr = 'Process aborted by user';
@@ -177,6 +181,6 @@ export function validatePartialPath(requestedPath: string, allowedRoots: string[
 
 export const extractAudio = async (videoPath: string, outputPath: string, signal?: AbortSignal): Promise<void> => {
   // Extract audio: mono, 16kHz (common denominator for most engines)
-  const command = `ffmpeg -y -i "${videoPath}" -vn -ac 1 -ar 16000 "${outputPath}"`;
-  await execPromise(command, undefined, signal);
+  const args = ['-y', '-i', videoPath, '-vn', '-ac', '1', '-ar', '16000', outputPath];
+  await execPromise('ffmpeg', args, undefined, signal);
 };
