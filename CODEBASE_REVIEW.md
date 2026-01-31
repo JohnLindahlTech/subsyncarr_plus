@@ -140,7 +140,7 @@ While the codebase is now in excellent shape, the following minor optimizations 
 
 **Recommendation:** Pass `ScannerService` and `AudioExtractor` as constructor arguments. This allows for much cleaner unit testing without needing to mock the file system or `ffmpeg` globally.
 
-### 7.4. Formal Database Migrations
+### 7.4. Formal Database Migrations - [VERIFIED]
 
 **Issue:** Migration logic is currently hardcoded file-checks in `index-server.ts`.
 
