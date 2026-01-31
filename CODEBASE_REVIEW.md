@@ -64,7 +64,6 @@ The critical "God Object" anti-pattern has been resolved by decomposing `Process
 
 While the codebase is now in excellent shape, the following minor optimizations could be considered for future sprints:
 
-- **AbortSignal in execFile:** The `execPromise` helper currently manually handles `AbortSignal`. Node.js 16+ supports passing `signal` directly in the `execFile` options, which would simplify the code.
 - **Frontend Refactor:** The current refactor focused on the backend. The frontend (`public/js/*.js`) remains plain JavaScript. Migrating this to a build step (e.g., Vite + TypeScript) would improve maintainability.
 
 ## 6. Actionable Tasks Status
@@ -73,9 +72,11 @@ While the codebase is now in excellent shape, the following minor optimizations 
 
 - [x] **Objective:** Replace `exec` with `spawn` or `execFile` in `src/helpers.ts`.
 - [x] **Sub-task:** Refactor `execPromise` to accept `args: string[]` instead of a command string.
+- [x] **Sub-task:** Refactor `execPromise` to use native Node.js `signal` option for `AbortSignal`.
 - [x] **Sub-task:** Update `generateFfsubsyncSubtitles.ts`, `generateAutosubsyncSubtitles.ts`, and `generateAlassSubtitles.ts` to pass arguments as arrays.
 - [x] **Validation:** Ensure that arguments with spaces are handled correctly WITHOUT manual quotes.
 - [x] **Validation:** Verify `stdout` parsing still works.
+- [x] **Validation:** Verify `AbortSignal` correctly terminates processes via native support.
 
 ### Task 2: Logging & Configuration - [VERIFIED]
 
@@ -105,6 +106,7 @@ While the codebase is now in excellent shape, the following minor optimizations 
 - [x] **Sub-task:** Create `src/__tests__/integration/pipeline.test.ts`.
 - [x] **Sub-task:** Use `better-sqlite3` with an in-memory DB (or isolated temp file) for tests.
 - [x] **Sub-task:** Mock _only_ the `child_process.execFile` calls.
+- [x] **Validation:** Verify `AbortSignal` propagation in `execPromise` via unit/integration tests.
 
 ### Task 6: Modernize Tooling (Vitest) & Migrate to ESM - [VERIFIED]
 
@@ -122,7 +124,7 @@ While the codebase is now in excellent shape, the following minor optimizations 
 
 ## 7. Advanced Architectural Refinements (New Suggestions)
 
-### 7.1. Orchestrated Graceful Shutdown
+### 7.1. Orchestrated Graceful Shutdown - [VERIFIED]
 
 **Issue:** The `SIGTERM` handler closes the HTTP server but doesn't orchestrate the shutdown of the `p-queue` or active `child_process` instances.
 
@@ -145,3 +147,24 @@ While the codebase is now in excellent shape, the following minor optimizations 
 **Issue:** Migration logic is currently hardcoded file-checks in `index-server.ts`.
 
 **Recommendation:** Implement a simple migration runner that stores a `schema_version` in the database. This prevents data corruption when updating between versions with structural changes.
+
+## 8. Latest Review Findings (Post-Refactor)
+
+**Date:** January 31, 2026
+
+### 8.1. ESM Runtime Error in StateManager
+
+- **Issue:** `src/stateManager.ts` was using `require('worker_threads')` inside a method, which causes a runtime error in an ESM environment (`"type": "module"`).
+- **Fix:** Replaced with a top-level `import { Worker } from 'worker_threads';`.
+- **Status:** **Fixed & Verified**.
+
+### 8.2. Overall Assessment
+
+The codebase is now in excellent condition. The "Advanced Architectural Refinements" have been implemented correctly:
+
+- **Graceful Shutdown:** Implemented in `ProcessingCoordinator` and `index-server.ts`.
+- **Config Validation:** Implemented using `zod` in `AppConfig`.
+- **Dependency Injection:** `ProcessingEngine` now accepts services via constructor.
+- **Migrations:** A robust migration runner is implemented in `SubsyncarrPlusPlusDatabase`.
+
+**Recommendation:** Proceed with deployment or feature development. The frontend (Task 5.2) remains the only significant area for future modernization.

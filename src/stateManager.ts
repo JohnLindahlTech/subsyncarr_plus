@@ -10,6 +10,7 @@ import { RunStatus, FileStatus, AgreementStatus, EngineResult, EngineName } from
 import { ScoreCalculator } from './services/ScoreCalculator.js';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
+import { Worker } from 'worker_threads';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -453,7 +454,6 @@ export class StateManager extends EventEmitter {
     this.db.close();
 
     const workerPath = path.join(__dirname, 'maintenanceWorker.js');
-    const { Worker } = require('worker_threads');
     const config = getScanConfig();
     const worker = new Worker(workerPath, {
       workerData: {

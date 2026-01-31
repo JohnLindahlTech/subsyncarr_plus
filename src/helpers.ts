@@ -97,8 +97,14 @@ export async function execPromise(
   const timeout = timeoutMs ?? appConfig.syncEngineTimeoutMs;
 
   return new Promise((resolve, reject) => {
-    const child = execFile(file, args, { timeout, maxBuffer: 1024 * 1024 * 10 }, (error, stdout, stderr) => {
+    execFile(file, args, { timeout, signal, maxBuffer: 1024 * 1024 * 10 }, (error, stdout, stderr) => {
       if (error) {
+        if (error.name === 'AbortError') {
+          const err = new Error('Aborted') as Error & { stdout?: string; stderr?: string };
+          err.stdout = '';
+          err.stderr = 'Process aborted by user';
+          return reject(err);
+        }
         // Attach stdout/stderr to error for debugging
         const err = error as Error & { stdout?: string; stderr?: string };
         err.stdout = stdout;
@@ -108,24 +114,6 @@ export async function execPromise(
         resolve({ stdout, stderr });
       }
     });
-
-    if (signal) {
-      if (signal.aborted) {
-        child.kill('SIGTERM');
-      }
-
-      signal.addEventListener(
-        'abort',
-        () => {
-          child.kill('SIGTERM'); // Try graceful kill first
-          const err = new Error('Aborted') as Error & { stdout?: string; stderr?: string };
-          err.stdout = '';
-          err.stderr = 'Process aborted by user';
-          reject(err);
-        },
-        { once: true },
-      );
-    }
   });
 }
 
