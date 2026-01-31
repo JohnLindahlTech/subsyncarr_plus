@@ -1,4 +1,5 @@
 import Database from 'better-sqlite3';
+import { RunStatus, FileStatus, AgreementStatus } from './types';
 
 export interface Run {
   id: string;
@@ -12,7 +13,7 @@ export interface Run {
   completed_engines: number;
   total_videos: number;
   completed_videos: number;
-  status: 'running' | 'completed' | 'cancelled';
+  status: RunStatus;
   logs: string;
   current_video: string | null;
 }
@@ -22,13 +23,13 @@ export interface FileResult {
   run_id: string;
   file_path: string;
   video_path: string | null;
-  status: 'pending' | 'processing' | 'completed' | 'skipped' | 'error';
+  status: FileStatus;
   current_engine: string | null;
   video_status: string | null;
   engines: string; // JSON stringified { ffsubsync?: {...}, autosubsync?: {...}, alass?: {...} }
   best_engine: string | null;
   best_score: number | null;
-  agreement_status: 'verified' | 'suspicious' | 'low_confidence' | null;
+  agreement_status: AgreementStatus | null;
   created_at: number;
   updated_at: number;
 }
@@ -197,9 +198,9 @@ export class SubsyncarrPlusPlusDatabase {
   createRun(id: string, totalFiles: number): void {
     const stmt = this.db.prepare(`
       INSERT INTO runs (id, start_time, total_files, status)
-      VALUES (?, ?, ?, 'running')
+      VALUES (?, ?, ?, ?)
     `);
-    stmt.run(id, Date.now(), totalFiles);
+    stmt.run(id, Date.now(), totalFiles, RunStatus.RUNNING);
   }
 
   updateRun(id: string, updates: Partial<Run>): void {
@@ -315,10 +316,10 @@ export class SubsyncarrPlusPlusDatabase {
     const stmt = this.db.prepare(`
       INSERT INTO file_results
         (run_id, file_path, video_path, status, is_hidden_live, created_at, updated_at)
-      VALUES (?, ?, ?, 'pending', ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
     `);
     const now = Date.now();
-    stmt.run(runId, filePath, videoPath, isHidden ? 1 : 0, now, now);
+    stmt.run(runId, filePath, videoPath, FileStatus.PENDING, isHidden ? 1 : 0, now, now);
   }
 
   bulkCreateFileResults(
@@ -375,11 +376,11 @@ export class SubsyncarrPlusPlusDatabase {
       .prepare(
         `
       UPDATE file_results
-      SET agreement_status = 'verified', updated_at = ?
+      SET agreement_status = ?, updated_at = ?
       WHERE run_id = ? AND file_path = ?
     `,
       )
-      .run(Date.now(), runId, filePath);
+      .run(AgreementStatus.VERIFIED, Date.now(), runId, filePath);
   }
 
   getFileResults(
@@ -530,16 +531,16 @@ export class SubsyncarrPlusPlusDatabase {
       .prepare(
         'SELECT * FROM file_results WHERE run_id = ? AND status = ? AND is_hidden_live = 0 ORDER BY file_path ASC',
       )
-      .all(runId, 'processing') as FileResult[];
+      .all(runId, FileStatus.PROCESSING) as FileResult[];
 
     const recentFinished = this.db
       .prepare(
         `SELECT * FROM file_results 
-         WHERE run_id = ? AND status IN ('completed', 'error', 'skipped') 
+         WHERE run_id = ? AND status IN (?, ?, ?) 
          AND is_hidden_live = 0
          ORDER BY updated_at DESC LIMIT ?`,
       )
-      .all(runId, recentLimit) as FileResult[];
+      .all(runId, FileStatus.COMPLETED, FileStatus.ERROR, FileStatus.SKIPPED, recentLimit) as FileResult[];
 
     // Combine and remove duplicates (though there shouldn't be any based on status)
     return [...processing, ...recentFinished];
@@ -574,10 +575,10 @@ export class SubsyncarrPlusPlusDatabase {
         `
       UPDATE file_results
       SET is_hidden_live = 1
-      WHERE run_id = ? AND status != 'processing'
+      WHERE run_id = ? AND status != ?
     `,
       )
-      .run(runId);
+      .run(runId, FileStatus.PROCESSING);
   }
 
   // Engine failure tracking methods
@@ -744,13 +745,18 @@ export class SubsyncarrPlusPlusDatabase {
         `
       SELECT 
         COUNT(*) as total_files,
-        SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as success_count,
-        SUM(CASE WHEN status = 'error' THEN 1 ELSE 0 END) as error_count,
-        SUM(CASE WHEN status = 'skipped' THEN 1 ELSE 0 END) as skipped_count
+        SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) as success_count,
+        SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) as error_count,
+        SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) as skipped_count
       FROM file_results
     `,
       )
-      .get() as { total_files: number; success_count: number; error_count: number; skipped_count: number };
+      .get(FileStatus.COMPLETED, FileStatus.ERROR, FileStatus.SKIPPED) as {
+      total_files: number;
+      success_count: number;
+      error_count: number;
+      skipped_count: number;
+    };
 
     const engineStats = ['ffsubsync', 'autosubsync', 'alass'].map((engine) => {
       const res = this.db

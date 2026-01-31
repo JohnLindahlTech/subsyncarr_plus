@@ -167,12 +167,15 @@ exec(command, ...)
 - [x] **Sub-task:** Introduce `p-queue` to replace the manual worker pool in `ProcessingEngine`.
 - [x] **Constraint:** Maintain the `EventEmitter` interface of `ProcessingEngine` so `Coordinator` doesn't break.
 
-### Task 4: State & Database Cleanup
+### Task 4: State & Database Cleanup - [COMPLETED]
 
-- [ ] **Objective:** Separate DB concerns from business logic.
-- [ ] **Sub-task:** Extract `reconcileFileResults` logic into a pure function/service `ScoreCalculator.ts`.
-- [ ] **Sub-task:** Define proper Enums for `FileStatus` etc., in `src/types.ts`.
-- [ ] **Sub-task:** Ensure `StateManager` only handles DB reads/writes.
+- [x] **Objective:** Separate DB concerns from business logic.
+
+- [x] **Sub-task:** Extract `reconcileFileResults` logic into a pure function/service `ScoreCalculator.ts`.
+
+- [x] **Sub-task:** Define proper Enums for `FileStatus` etc., in `src/types.ts`.
+
+- [x] **Sub-task:** Ensure `StateManager` only handles DB reads/writes.
 
 ### Task 5: Testing Improvements
 

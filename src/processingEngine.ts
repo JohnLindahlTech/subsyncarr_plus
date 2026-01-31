@@ -21,6 +21,7 @@ import * as os from 'os';
 import { appConfig } from './config/appConfig';
 import logger from './services/logger';
 import PQueue from 'p-queue';
+import { EngineName } from './types';
 
 export class ProcessingEngine extends EventEmitter {
   private cancelledFiles: Set<string> = new Set();
@@ -334,7 +335,7 @@ export class ProcessingEngine extends EventEmitter {
 
           try {
             switch (engine) {
-              case 'ffsubsync':
+              case EngineName.FFSUBSYNC:
                 currentTrialResult = await generateFfsubsyncSubtitles(
                   srtPath,
                   videoPath,
@@ -344,7 +345,7 @@ export class ProcessingEngine extends EventEmitter {
                   profile,
                 );
                 break;
-              case 'autosubsync':
+              case EngineName.AUTOSUBSYNC:
                 currentTrialResult = await generateAutosubsyncSubtitles(
                   srtPath,
                   videoPath,
@@ -353,7 +354,7 @@ export class ProcessingEngine extends EventEmitter {
                   timeoutMs,
                 );
                 break;
-              case 'alass':
+              case EngineName.ALASS:
                 currentTrialResult = await generateAlassSubtitles(
                   srtPath,
                   videoPath,

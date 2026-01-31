@@ -6,6 +6,7 @@ import { Run } from './database';
 import { once } from 'events';
 import { appConfig } from './config/appConfig';
 import logger from './services/logger';
+import { FileStatus } from './types';
 
 export class ProcessingCoordinator {
   private processingPromise: Promise<void> | null = null;
@@ -62,7 +63,7 @@ export class ProcessingCoordinator {
           return {
             filePath,
             videoPath: match.videoPath,
-            status: 'pending' as const,
+            status: FileStatus.PENDING,
           };
         });
         this.stateManager.addFilesBulk(runId, pendingFiles);
@@ -73,7 +74,7 @@ export class ProcessingCoordinator {
           return {
             filePath: item.path,
             videoPath: match.videoPath,
-            status: 'skipped' as const,
+            status: FileStatus.SKIPPED,
             isHidden: item.isHidden,
           };
         });
@@ -128,13 +129,13 @@ export class ProcessingCoordinator {
 
     this.engine.on('file:started', ({ srtPath }: { srtPath: string }) => {
       if (this.currentRunId) {
-        this.stateManager.updateFileStatus(this.currentRunId, srtPath, 'processing', null);
+        this.stateManager.updateFileStatus(this.currentRunId, srtPath, FileStatus.PROCESSING, null);
       }
     });
 
     this.engine.on('file:engine_started', ({ srtPath, engine }: { srtPath: string; engine: string }) => {
       if (this.currentRunId) {
-        this.stateManager.updateFileStatus(this.currentRunId, srtPath, 'processing', engine);
+        this.stateManager.updateFileStatus(this.currentRunId, srtPath, FileStatus.PROCESSING, engine);
       }
     });
 
@@ -166,14 +167,14 @@ export class ProcessingCoordinator {
 
     this.engine.on('file:completed', ({ srtPath }: { srtPath: string }) => {
       if (this.currentRunId) {
-        this.stateManager.updateFileStatus(this.currentRunId, srtPath, 'completed', null);
+        this.stateManager.updateFileStatus(this.currentRunId, srtPath, FileStatus.COMPLETED, null);
         this.stateManager.incrementRunCounter(this.currentRunId, 'completed');
       }
     });
 
     this.engine.on('file:skipped', ({ srtPath }: { srtPath: string }) => {
       if (this.currentRunId) {
-        this.stateManager.updateFileStatus(this.currentRunId, srtPath, 'skipped', null);
+        this.stateManager.updateFileStatus(this.currentRunId, srtPath, FileStatus.SKIPPED, null);
         this.stateManager.incrementRunCountersBulk(this.currentRunId, {
           skipped: 1,
           completed_engines: this.enabledEngines.length,
@@ -183,7 +184,7 @@ export class ProcessingCoordinator {
 
     this.engine.on('file:no_video', ({ srtPath }: { srtPath: string }) => {
       if (this.currentRunId) {
-        this.stateManager.updateFileStatus(this.currentRunId, srtPath, 'error', null);
+        this.stateManager.updateFileStatus(this.currentRunId, srtPath, FileStatus.ERROR, null);
 
         // Mark as permanent failure for all engines so it doesn't keep retrying every run
         for (const engine of this.enabledEngines) {
@@ -199,7 +200,7 @@ export class ProcessingCoordinator {
 
     this.engine.on('file:failed', ({ srtPath }: { srtPath: string }) => {
       if (this.currentRunId) {
-        this.stateManager.updateFileStatus(this.currentRunId, srtPath, 'error', null);
+        this.stateManager.updateFileStatus(this.currentRunId, srtPath, FileStatus.ERROR, null);
         this.stateManager.incrementRunCounter(this.currentRunId, 'failed');
       }
     });
