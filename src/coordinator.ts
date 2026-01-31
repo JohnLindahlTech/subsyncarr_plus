@@ -45,7 +45,7 @@ export class ProcessingCoordinator {
         config,
       }: {
         processing: string[];
-        skipped: string[];
+        skipped: Array<{ path: string; isHidden: boolean }>;
         totalVideos: number;
         skippedVideosCount?: number;
         config: ScanConfig;
@@ -66,12 +66,13 @@ export class ProcessingCoordinator {
         this.stateManager.addFilesBulk(runId, pendingFiles);
 
         // Bulk add skipped files
-        const skippedFiles = skipped.map((filePath) => {
-          const match = findMatchingVideoFile(filePath, config);
+        const skippedFiles = skipped.map((item) => {
+          const match = findMatchingVideoFile(item.path, config);
           return {
-            filePath,
+            filePath: item.path,
             videoPath: match.videoPath,
             status: 'skipped' as const,
+            isHidden: item.isHidden,
           };
         });
         this.stateManager.addFilesBulk(runId, skippedFiles);
@@ -181,6 +182,12 @@ export class ProcessingCoordinator {
     this.engine.on('file:no_video', ({ srtPath }: { srtPath: string }) => {
       if (this.currentRunId) {
         this.stateManager.updateFileStatus(this.currentRunId, srtPath, 'error', null);
+
+        // Mark as permanent failure for all engines so it doesn't keep retrying every run
+        for (const engine of this.enabledEngines) {
+          this.stateManager.recordEngineFailure(srtPath, engine, true);
+        }
+
         this.stateManager.incrementRunCountersBulk(this.currentRunId, {
           failed: 1,
           completed_engines: this.enabledEngines.length,

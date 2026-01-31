@@ -302,30 +302,30 @@ export class SubsyncarrPlusPlusDatabase {
   }
 
   // File methods
-  createFileResult(runId: string, filePath: string, videoPath: string | null): void {
+  createFileResult(runId: string, filePath: string, videoPath: string | null, isHidden: boolean = false): void {
     const stmt = this.db.prepare(`
       INSERT INTO file_results
-        (run_id, file_path, video_path, status, created_at, updated_at)
-      VALUES (?, ?, ?, 'pending', ?, ?)
+        (run_id, file_path, video_path, status, is_hidden_live, created_at, updated_at)
+      VALUES (?, ?, ?, 'pending', ?, ?, ?)
     `);
     const now = Date.now();
-    stmt.run(runId, filePath, videoPath, now, now);
+    stmt.run(runId, filePath, videoPath, isHidden ? 1 : 0, now, now);
   }
 
   bulkCreateFileResults(
     runId: string,
-    files: Array<{ filePath: string; videoPath: string | null; status: FileResult['status'] }>,
+    files: Array<{ filePath: string; videoPath: string | null; status: FileResult['status']; isHidden?: boolean }>,
   ): void {
     const now = Date.now();
     const insert = this.db.prepare(`
       INSERT INTO file_results
-        (run_id, file_path, video_path, status, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?)
+        (run_id, file_path, video_path, status, is_hidden_live, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
     `);
 
     const transaction = this.db.transaction((items) => {
       for (const item of items) {
-        insert.run(runId, item.filePath, item.videoPath, item.status, now, now);
+        insert.run(runId, item.filePath, item.videoPath, item.status, item.isHidden ? 1 : 0, now, now);
       }
     });
 

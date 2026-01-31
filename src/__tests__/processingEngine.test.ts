@@ -85,7 +85,7 @@ describe('ProcessingEngine', () => {
     expect(filesFoundSpy).toHaveBeenCalledWith(
       expect.objectContaining({
         processing: [],
-        skipped: ['file1.srt'],
+        skipped: [{ isHidden: true, path: 'file1.srt' }],
       }),
     );
   });
@@ -107,7 +107,7 @@ describe('ProcessingEngine', () => {
     expect(filesFoundSpy).toHaveBeenCalledWith(
       expect.objectContaining({
         processing: ['file2.srt'],
-        skipped: ['file1.srt'],
+        skipped: [{ isHidden: true, path: 'file1.srt' }],
       }),
     );
   });
@@ -139,6 +139,7 @@ describe('ProcessingEngine', () => {
     // Inject a mock stateManager into the engine
     const mockStateManager = {
       shouldSkipEngine: jest.fn().mockReturnValue(true), // Always skip
+      getSkippedEngines: jest.fn().mockReturnValue([]),
       reconcileFileResults: jest.fn(),
       getCurrentRun: jest.fn().mockReturnValue({ id: 'test-run' }),
       incrementCompletedVideos: jest.fn(),

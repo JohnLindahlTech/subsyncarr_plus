@@ -221,14 +221,14 @@ export class StateManager extends EventEmitter {
   }
 
   // File management
-  addFile(runId: string, filePath: string, videoPath: string | null): void {
-    this.db.createFileResult(runId, filePath, videoPath);
+  addFile(runId: string, filePath: string, videoPath: string | null, isHidden: boolean = false): void {
+    this.db.createFileResult(runId, filePath, videoPath, isHidden);
     this.emitFullStateUpdate(runId);
   }
 
   addFilesBulk(
     runId: string,
-    files: Array<{ filePath: string; videoPath: string | null; status: FileResult['status'] }>,
+    files: Array<{ filePath: string; videoPath: string | null; status: FileResult['status']; isHidden?: boolean }>,
   ): void {
     this.db.bulkCreateFileResults(runId, files);
     // Don't emit individual updates for bulk inserts to avoid event storm
@@ -425,6 +425,14 @@ export class StateManager extends EventEmitter {
   // Engine skip logic methods
   getSkippedEngines(filePath: string): string[] {
     return this.db.getAllSkippedEngines(filePath);
+  }
+
+  recordEngineFailure(filePath: string, engine: string, isPermanent: boolean = false): void {
+    this.db.recordEngineFailure(filePath, engine, isPermanent);
+  }
+
+  recordEngineSuccess(filePath: string, engine: string): void {
+    this.db.recordEngineSuccess(filePath, engine);
   }
 
   shouldSkipEngine(filePath: string, engine: string): boolean {

@@ -68,13 +68,13 @@ export class ProcessingEngine extends EventEmitter {
 
     // Bulk Pre-Check: Filter out files that are already done
     const filesToProcess: string[] = [];
-    const filesToSkip: string[] = [];
+    const filesToSkip: Array<{ path: string; isHidden: boolean }> = [];
 
     this.emit('run:init_progress', `Checking ${srtFiles.length} files for existing subtitles...`);
     this.log(`[${new Date().toISOString()}] Checking for existing subtitles...`);
 
     for (const srtPath of srtFiles) {
-      let alreadyDone = false;
+      let shouldSkip = false;
 
       // Preparation for #10: If forceRerun is true, we don't check for existing output files
       if (!scanConfig.forceRerun) {
@@ -84,9 +84,11 @@ export class ProcessingEngine extends EventEmitter {
         // Check 1: Primary file exists? (The ultimate 'Done' signal)
         const primaryName = `${baseName}.synced.srt`;
         if (fileIndex.get(dir)?.has(primaryName)) {
-          alreadyDone = true;
-        } else {
-          // Check 2: Check every enabled engine and EVERY one of its profiles
+          shouldSkip = true;
+        }
+
+        // Check 2: Any engine output exists?
+        if (!shouldSkip) {
           outer: for (const engine of this.enabledEngines) {
             const profiles = ENGINE_PROFILES[engine] || [{ name: 'default' }];
             for (const profile of profiles) {
@@ -94,16 +96,26 @@ export class ProcessingEngine extends EventEmitter {
               const outputName = `${baseName}.${engine}${suffix}.srt`;
 
               if (fileIndex.get(dir)?.has(outputName)) {
-                alreadyDone = true;
+                shouldSkip = true;
                 break outer;
               }
             }
           }
         }
+
+        // Check 3: Permanent Failures (e.g. No Video found)
+        if (!shouldSkip && this.stateManager) {
+          const skippedEngines = this.stateManager.getSkippedEngines(srtPath);
+          const allEnabledEnginesSkipped = this.enabledEngines.every((e) => skippedEngines.includes(e));
+          if (allEnabledEnginesSkipped && skippedEngines.length > 0) {
+            shouldSkip = true;
+          }
+        }
       }
 
-      if (alreadyDone) {
-        filesToSkip.push(srtPath);
+      if (shouldSkip) {
+        // Files are hidden in Live view if they were already done and we aren't forcing a rerun
+        filesToSkip.push({ path: srtPath, isHidden: !scanConfig.forceRerun });
       } else {
         filesToProcess.push(srtPath);
       }
@@ -132,8 +144,8 @@ export class ProcessingEngine extends EventEmitter {
 
     // Identify videos for skipped files to calculate accurate total/completed stats
     const skippedVideoPaths = new Set<string>();
-    for (const srtPath of filesToSkip) {
-      const { videoPath } = findMatchingVideoFile(srtPath, scanConfig, fileIndex);
+    for (const item of filesToSkip) {
+      const { videoPath } = findMatchingVideoFile(item.path, scanConfig, fileIndex);
       if (videoPath) {
         skippedVideoPaths.add(videoPath);
       }
