@@ -98,14 +98,15 @@ export class SubsyncarrPlusPlusDatabase {
         engines TEXT DEFAULT '{}',
         is_hidden_live BOOLEAN DEFAULT 0,
         created_at INTEGER NOT NULL,
-        updated_at INTEGER NOT NULL,
-        FOREIGN KEY(run_id) REFERENCES runs(id)
+        updated_at INTEGER NOT NULL
       );
 
       CREATE INDEX IF NOT EXISTS idx_file_results_run
         ON file_results(run_id);
       CREATE INDEX IF NOT EXISTS idx_file_results_status
         ON file_results(status);
+      CREATE INDEX IF NOT EXISTS idx_file_results_path
+        ON file_results(file_path);
     `);
 
     // Migration: Add logs column if it doesn't exist
@@ -157,6 +158,14 @@ export class SubsyncarrPlusPlusDatabase {
       this.db.exec(`ALTER TABLE file_results ADD COLUMN best_engine TEXT`);
       this.db.exec(`ALTER TABLE file_results ADD COLUMN best_score INTEGER`);
       this.db.exec(`ALTER TABLE file_results ADD COLUMN agreement_status TEXT`);
+    }
+
+    // Migration: Add path index if it doesn't exist
+    const indexes = this.db
+      .prepare("SELECT name FROM sqlite_master WHERE type='index' AND name='idx_file_results_path'")
+      .all();
+    if (indexes.length === 0) {
+      this.db.exec(`CREATE INDEX IF NOT EXISTS idx_file_results_path ON file_results(file_path)`);
     }
 
     // Migration: Create engine_failure_tracking table
@@ -421,6 +430,76 @@ export class SubsyncarrPlusPlusDatabase {
   getFileCount(runId: string, search?: string, agreementFilter?: string, statusFilter?: string): number {
     let sql = 'SELECT COUNT(*) as count FROM file_results WHERE run_id = ? AND is_hidden_live = 0';
     const params: unknown[] = [runId];
+
+    if (search) {
+      sql += ' AND file_path LIKE ?';
+      params.push(`%${search}%`);
+    }
+
+    if (agreementFilter) {
+      sql += ' AND agreement_status = ?';
+      params.push(agreementFilter);
+    }
+
+    if (statusFilter) {
+      sql += ' AND status = ?';
+      params.push(statusFilter);
+    }
+
+    const result = this.db.prepare(sql).get(...params) as { count: number };
+    return result.count;
+  }
+
+  getGlobalFileResults(
+    limit?: number,
+    offset?: number,
+    search?: string,
+    agreementFilter?: string,
+    statusFilter?: string,
+    sortColumn: string = 'file_path',
+    sortOrder: 'ASC' | 'DESC' = 'ASC',
+  ): FileResult[] {
+    const allowedSortColumns = ['file_path', 'status', 'best_engine', 'best_score', 'created_at', 'updated_at'];
+    const actualSortColumn = allowedSortColumns.includes(sortColumn) ? sortColumn : 'file_path';
+    const actualSortOrder = sortOrder === 'DESC' ? 'DESC' : 'ASC';
+
+    let sql = `
+      SELECT * FROM file_results 
+      WHERE id IN (SELECT MAX(id) FROM file_results GROUP BY file_path)
+    `;
+    const params: unknown[] = [];
+
+    if (search) {
+      sql += ' AND file_path LIKE ?';
+      params.push(`%${search}%`);
+    }
+
+    if (agreementFilter) {
+      sql += ' AND agreement_status = ?';
+      params.push(agreementFilter);
+    }
+
+    if (statusFilter) {
+      sql += ' AND status = ?';
+      params.push(statusFilter);
+    }
+
+    sql += ` ORDER BY ${actualSortColumn} ${actualSortOrder}`;
+
+    if (limit !== undefined && offset !== undefined) {
+      sql += ' LIMIT ? OFFSET ?';
+      params.push(limit, offset);
+    }
+
+    return this.db.prepare(sql).all(...params) as FileResult[];
+  }
+
+  getGlobalFileCount(search?: string, agreementFilter?: string, statusFilter?: string): number {
+    let sql = `
+      SELECT COUNT(*) as count FROM file_results 
+      WHERE id IN (SELECT MAX(id) FROM file_results GROUP BY file_path)
+    `;
+    const params: unknown[] = [];
 
     if (search) {
       sql += ' AND file_path LIKE ?';

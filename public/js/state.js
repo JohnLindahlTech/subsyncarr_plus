@@ -41,16 +41,18 @@ export class StateManager {
           const idx = mergedFiles.findIndex((f) => f.file_path === newFile.file_path);
 
           if (idx >= 0) {
-            // Update existing entry
-            mergedFiles[idx] = { ...mergedFiles[idx], ...newFile };
+            // Update existing entry if it's newer or same run
+            if (newFile.updated_at >= mergedFiles[idx].updated_at) {
+              mergedFiles[idx] = { ...mergedFiles[idx], ...newFile };
+            }
 
-            // If it no longer matches filters (and we aren't in Live view), remove it
-            if (this.state.activeView !== 'live' && !(matchesAgreement && matchesStatus && matchesSearch)) {
+            // If it no longer matches filters, remove it
+            if (!(matchesAgreement && matchesStatus && matchesSearch)) {
               mergedFiles.splice(idx, 1);
             }
           } else {
-            // New entry: only add if it matches filters or we are in Live view
-            if (this.state.activeView === 'live' || (matchesAgreement && matchesStatus && matchesSearch)) {
+            // New entry: add if it matches filters
+            if (matchesAgreement && matchesStatus && matchesSearch) {
               mergedFiles.unshift(newFile);
             }
           }

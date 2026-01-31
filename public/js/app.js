@@ -50,9 +50,16 @@ class SubsyncarrPlusPlusClient {
   }
 
   switchView(viewId) {
+    const previousView = this.stateManager.state.activeView;
     this.stateManager.update({ activeView: viewId });
+
     if (viewId === 'dashboard') this.fetchDashboardData();
     if (viewId === 'history') this.fetchHistory();
+
+    // If switching between live/explorer, re-fetch status to get correct scope (global vs run)
+    if ((viewId === 'live' || viewId === 'explorer') && viewId !== previousView) {
+      this.fetchInitialState();
+    }
   }
 
   // --- THEME ---
@@ -74,7 +81,17 @@ class SubsyncarrPlusPlusClient {
 
   async fetchInitialState() {
     const s = this.stateManager.state;
-    const data = await API.fetchStatus(1, 50, s.searchQuery, s.agreementFilter, s.statusFilter);
+    const runId = s.activeView === 'live' && s.currentRun ? s.currentRun.id : null;
+    const data = await API.fetchStatus(
+      1,
+      50,
+      s.searchQuery,
+      s.agreementFilter,
+      s.statusFilter,
+      s.sortColumn,
+      s.sortOrder,
+      runId,
+    );
     this.stateManager.update({ ...data });
   }
 
@@ -89,6 +106,7 @@ class SubsyncarrPlusPlusClient {
 
   async fetchDashboardData() {
     try {
+      this.ui.renderDashboardLoading();
       const { stats, errors } = await API.fetchDashboard();
       this.ui.renderDashboard(stats, errors);
     } catch (err) {
@@ -400,6 +418,7 @@ class SubsyncarrPlusPlusClient {
 
   async reconcileState() {
     const s = this.stateManager.state;
+    const runId = s.activeView === 'live' && s.currentRun ? s.currentRun.id : null;
     const data = await API.fetchStatus(
       1,
       50,
@@ -408,6 +427,7 @@ class SubsyncarrPlusPlusClient {
       s.statusFilter,
       s.sortColumn,
       s.sortOrder,
+      runId,
     );
     this.stateManager.update({
       currentRun: data.currentRun,
@@ -433,6 +453,7 @@ class SubsyncarrPlusPlusClient {
   async loadMoreFiles() {
     const s = this.stateManager.state;
     const next = s.pagination.page + 1;
+    const runId = s.activeView === 'live' && s.currentRun ? s.currentRun.id : null;
     const data = await API.fetchStatus(
       next,
       50,
@@ -441,6 +462,7 @@ class SubsyncarrPlusPlusClient {
       s.statusFilter,
       s.sortColumn,
       s.sortOrder,
+      runId,
     );
     this.stateManager.update({
       files: [...s.files, ...data.files],

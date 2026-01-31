@@ -17,13 +17,15 @@ export const API = {
     statusFilter = '',
     sortColumn = 'file_path',
     sortOrder = 'ASC',
+    runId = '',
   ) {
     const s = search ? `&search=${encodeURIComponent(search)}` : '';
     const f = agreementFilter ? `&filter=${agreementFilter}` : '';
     const st = statusFilter ? `&status=${statusFilter}` : '';
     const sc = `&sortColumn=${sortColumn}`;
     const so = `&sortOrder=${sortOrder}`;
-    const res = await fetch(`/api/status?page=${page}&limit=${limit}${s}${f}${st}${sc}${so}`).then(handle503);
+    const rid = runId ? `&runId=${runId}` : '';
+    const res = await fetch(`/api/status?page=${page}&limit=${limit}${s}${f}${st}${sc}${so}${rid}`).then(handle503);
     return res.json();
   },
 

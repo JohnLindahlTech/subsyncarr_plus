@@ -9,6 +9,7 @@ import cronstrue from 'cronstrue';
 import parseExpression from 'cron-parser';
 import cron from 'node-cron';
 import { checkDependency, validatePartialPath } from './helpers';
+import { FileResult } from './database';
 
 interface HealthStatus {
   timestamp: number;
@@ -155,36 +156,52 @@ export class SubsyncarrPlusPlusServer {
       const statusFilter = (req.query.status as string) || undefined;
       const sortColumn = (req.query.sortColumn as string) || 'file_path';
       const sortOrder = (req.query.sortOrder as 'ASC' | 'DESC') || 'ASC';
+      const runId = (req.query.runId as string) || undefined;
       const offset = (page - 1) * limit;
 
-      let currentRun = this.stateManager.getCurrentRun();
+      const currentRun = this.stateManager.getCurrentRun();
 
-      // If no active run, try to get the latest run from history to show its results
-      if (!currentRun) {
+      // For stats/header, if no active run, try to get the latest run from history
+      let statsRun = currentRun;
+      if (!statsRun) {
         const history = this.stateManager.getRunHistory(1);
         if (history.length > 0) {
-          currentRun = history[0];
+          statsRun = history[0];
         }
       }
 
-      const totalFiles = currentRun
-        ? this.stateManager.getFileCount(currentRun.id, search, agreementFilter, statusFilter)
-        : 0;
-      const files = currentRun
-        ? this.stateManager.getFileResults(
-            currentRun.id,
-            limit,
-            offset,
-            search,
-            agreementFilter,
-            statusFilter,
-            sortColumn,
-            sortOrder,
-          )
-        : [];
+      let files: FileResult[] = [];
+      let totalFiles = 0;
+
+      if (runId) {
+        // Run-specific view (e.g., Live view)
+        totalFiles = this.stateManager.getFileCount(runId, search, agreementFilter, statusFilter);
+        files = this.stateManager.getFileResults(
+          runId,
+          limit,
+          offset,
+          search,
+          agreementFilter,
+          statusFilter,
+          sortColumn,
+          sortOrder,
+        );
+      } else {
+        // Global library view
+        totalFiles = this.stateManager.getGlobalFileCount(search, agreementFilter, statusFilter);
+        files = this.stateManager.getGlobalFileResults(
+          limit,
+          offset,
+          search,
+          agreementFilter,
+          statusFilter,
+          sortColumn,
+          sortOrder,
+        );
+      }
 
       res.json({
-        currentRun, // This might be a completed run now
+        currentRun: statsRun, // Return latest run for progress bars even in global view
         files,
         pagination: {
           page,

@@ -298,6 +298,20 @@ export class UIManager {
       </div>`;
   }
 
+  renderDashboardLoading() {
+    const loadingHtml = `
+      <div class="dashboard-loading-placeholder">
+        <span class="spinner-sm"></span> 
+        <span class="loading-text">Analyzing library statistics...</span>
+      </div>`;
+
+    const grids = ['globalStatsGrid', 'engineStatsGrid', 'errorSummaryList'];
+    grids.forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) el.innerHTML = loadingHtml;
+    });
+  }
+
   renderDashboard(stats, errors) {
     const grid = document.getElementById('globalStatsGrid');
     const engineGrid = document.getElementById('engineStatsGrid');

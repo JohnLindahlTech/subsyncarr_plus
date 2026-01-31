@@ -4,6 +4,7 @@ import { randomUUID } from 'crypto';
 import { LogFileManager } from './logFileManager';
 import * as path from 'path';
 import cron from 'node-cron';
+import { getScanConfig } from './config';
 
 interface MaintenanceResult {
   success: boolean;
@@ -399,6 +400,22 @@ export class StateManager extends EventEmitter {
     return this.db.getFileCount(runId, search, agreementFilter, statusFilter);
   }
 
+  getGlobalFileResults(
+    limit?: number,
+    offset?: number,
+    search?: string,
+    agreementFilter?: string,
+    statusFilter?: string,
+    sortColumn?: string,
+    sortOrder?: 'ASC' | 'DESC',
+  ) {
+    return this.db.getGlobalFileResults(limit, offset, search, agreementFilter, statusFilter, sortColumn, sortOrder);
+  }
+
+  getGlobalFileCount(search?: string, agreementFilter?: string, statusFilter?: string) {
+    return this.db.getGlobalFileCount(search, agreementFilter, statusFilter);
+  }
+
   manuallyVerifyFile(runId: string, filePath: string): void {
     this.db.manuallyVerifyFile(runId, filePath);
     this.emitFullStateUpdate(runId);
@@ -479,11 +496,13 @@ export class StateManager extends EventEmitter {
 
     const workerPath = path.join(__dirname, 'maintenanceWorker.js');
     const { Worker } = require('worker_threads');
+    const config = getScanConfig();
     const worker = new Worker(workerPath, {
       workerData: {
         dbPath: this.dbPath,
         olderThanDays: 30,
         trimLogsOlderThanDays: 7,
+        libraryRoots: config.includePaths,
       },
     });
 
