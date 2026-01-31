@@ -1,14 +1,16 @@
+import { join } from 'path';
+import cronstrue from 'cronstrue';
+import parseExpression from 'cron-parser';
+import { appConfig } from './config/appConfig';
+import logger from './services/logger';
+import { checkDependency, validatePartialPath } from './helpers';
+import { FileResult } from './database';
+import { ProcessingCoordinator } from './coordinator';
+import { StateManager } from './stateManager';
 import express from 'express';
 import { WebSocketServer, WebSocket } from 'ws';
 import { createServer } from 'http';
-import { ProcessingCoordinator } from './coordinator';
-import { StateManager } from './stateManager';
-import { join } from 'path';
 import { getScanConfig } from './config';
-import cronstrue from 'cronstrue';
-import parseExpression from 'cron-parser';
-import { checkDependency, validatePartialPath } from './helpers';
-import { FileResult } from './database';
 
 interface HealthStatus {
   timestamp: number;
@@ -39,8 +41,8 @@ export class SubsyncarrPlusPlusServer {
   }
 
   private async performHealthCheck() {
-    console.log(`[${new Date().toISOString()}] Performing system health check...`);
-    const engines = process.env.INCLUDE_ENGINES?.split(',') || ['ffsubsync', 'autosubsync', 'alass'];
+    logger.info('Performing system health check...');
+    const engines = appConfig.includeEngines;
 
     const dependencies = [
       { cmd: 'ffmpeg', args: ['-version'] },
@@ -56,7 +58,7 @@ export class SubsyncarrPlusPlusServer {
       allOk: results.every((r) => r.found),
     };
 
-    console.log(`[${new Date().toISOString()}] Health check complete. All OK: ${this.healthStatus.allOk}`);
+    logger.info({ allOk: this.healthStatus.allOk }, 'Health check complete');
     this.broadcast({ type: 'health:updated', data: this.healthStatus });
   }
 
@@ -81,7 +83,7 @@ export class SubsyncarrPlusPlusServer {
   private setupRoutes() {
     // Get configuration status
     this.app.get('/api/config', (req, res) => {
-      console.log(`[${new Date().toISOString()}] GET /api/config`);
+      logger.debug('GET /api/config');
       const config = getScanConfig();
       // Check if paths actually contain something other than default
       const isDefaultPath =
@@ -90,7 +92,7 @@ export class SubsyncarrPlusPlusServer {
 
       // Get cron schedule info
 
-      const cronSchedule = process.env.CRON_SCHEDULE || '0 0 * * *';
+      const cronSchedule = appConfig.cronSchedule;
       let scheduleDescription = '';
       let nextRun = null;
 
@@ -100,7 +102,7 @@ export class SubsyncarrPlusPlusServer {
           const interval = parseExpression.parse(cronSchedule);
           nextRun = interval.next().toDate().getTime();
         } catch (error) {
-          console.error('Error parsing cron schedule:', error);
+          logger.error({ error, cronSchedule }, 'Error parsing cron schedule');
           scheduleDescription = cronSchedule;
         }
       }
@@ -274,17 +276,17 @@ export class SubsyncarrPlusPlusServer {
           return res.status(409).json({ error: 'A run is already in progress' });
         }
 
-        const libraryRoots = getScanConfig().includePaths;
+        const libraryRoots = appConfig.getScanConfig().includePaths;
         let validatedPaths: string[] | undefined;
 
         if (paths && Array.isArray(paths)) {
           try {
-            console.log(`[${new Date().toISOString()}] Validating partial scan paths: ${JSON.stringify(paths)}`);
+            logger.info({ paths }, 'Validating partial scan paths');
             validatedPaths = paths.map((p) => validatePartialPath(p, libraryRoots));
-            console.log(`[${new Date().toISOString()}] Paths validated successfully.`);
+            logger.info('Paths validated successfully.');
           } catch (err) {
             const msg = err instanceof Error ? err.message : String(err);
-            console.error(`[${new Date().toISOString()}] 🛡️ Security Validation Failed: ${msg}`);
+            logger.error({ err }, '🛡️ Security Validation Failed');
             return res.status(403).json({
               error: 'Security Validation Failed',
               message: msg,
@@ -399,7 +401,7 @@ export class SubsyncarrPlusPlusServer {
 
   private setupWebSocket() {
     this.wss.on('connection', (ws) => {
-      console.log(`[${new Date().toISOString()}] WebSocket client connected (total: ${this.clients.size + 1})`);
+      logger.info({ totalClients: this.clients.size + 1 }, 'WebSocket client connected');
       this.clients.add(ws);
 
       const currentRun = this.stateManager.getCurrentRun();
@@ -427,7 +429,7 @@ export class SubsyncarrPlusPlusServer {
 
       ws.on('close', () => {
         this.clients.delete(ws);
-        console.log(`[${new Date().toISOString()}] WebSocket client disconnected (total: ${this.clients.size})`);
+        logger.info({ totalClients: this.clients.size }, 'WebSocket client disconnected');
       });
     });
 
@@ -483,7 +485,7 @@ export class SubsyncarrPlusPlusServer {
 
   start(port: number = 3000, host: string = '127.0.0.1') {
     this.httpServer.listen(port, host, () => {
-      console.log(`[${new Date().toISOString()}] Subsyncarr Plus Plus UI available at http://${host}:${port}`);
+      logger.info({ port, host }, 'Subsyncarr Plus Plus UI available');
     });
   }
 

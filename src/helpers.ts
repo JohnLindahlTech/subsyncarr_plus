@@ -1,6 +1,8 @@
 import { execFile } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
+import { appConfig } from './config/appConfig';
+import logger from './services/logger';
 
 export interface ProcessingResult {
   success: boolean;
@@ -81,7 +83,7 @@ export async function getVideoDuration(videoPath: string): Promise<number> {
     );
     return parseFloat(stdout.trim()) || 0;
   } catch (error) {
-    console.error(`Error getting duration for ${videoPath}:`, error);
+    logger.error({ error, videoPath }, 'Error getting duration for video');
     return 0;
   }
 }
@@ -92,12 +94,7 @@ export async function execPromise(
   timeoutMs?: number,
   signal?: AbortSignal,
 ): Promise<{ stdout: string; stderr: string }> {
-  // Read from env var with default of 30 minutes (1800000ms)
-  const defaultTimeout = process.env.SYNC_ENGINE_TIMEOUT_MS
-    ? parseInt(process.env.SYNC_ENGINE_TIMEOUT_MS, 10)
-    : 1800000;
-
-  const timeout = timeoutMs ?? defaultTimeout;
+  const timeout = timeoutMs ?? appConfig.syncEngineTimeoutMs;
 
   return new Promise((resolve, reject) => {
     const child = execFile(file, args, { timeout, maxBuffer: 1024 * 1024 * 10 }, (error, stdout, stderr) => {

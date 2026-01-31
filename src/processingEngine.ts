@@ -18,6 +18,8 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { randomUUID } from 'crypto';
 import * as os from 'os';
+import { appConfig } from './config/appConfig';
+import logger from './services/logger';
 
 export class ProcessingEngine extends EventEmitter {
   private cancelledFiles: Set<string> = new Set();
@@ -31,12 +33,12 @@ export class ProcessingEngine extends EventEmitter {
 
   constructor() {
     super();
-    this.enabledEngines = process.env.INCLUDE_ENGINES?.split(',') || ['ffsubsync', 'autosubsync', 'alass'];
-    this.maxLogBufferSize = parseInt(process.env.LOG_BUFFER_SIZE || '1000', 10);
+    this.enabledEngines = appConfig.includeEngines;
+    this.maxLogBufferSize = appConfig.logBufferSize;
   }
 
   private log(message: string): void {
-    console.log(message);
+    logger.debug({ message }, 'Engine log message');
 
     // Ring buffer - remove oldest if at capacity
     if (this.logBuffer.length >= this.maxLogBufferSize) {
@@ -57,21 +59,21 @@ export class ProcessingEngine extends EventEmitter {
 
   async processRun(config?: ScanConfig, maxConcurrentOverride?: number): Promise<void> {
     const scanConfig = config || getScanConfig();
-    const maxConcurrent = maxConcurrentOverride || parseInt(process.env.MAX_CONCURRENT_SYNC_TASKS || '1', 10);
+    const maxConcurrent = maxConcurrentOverride || appConfig.maxConcurrentSyncTasks;
     this.currentScanConfig = scanConfig;
     this.emit('run:init_progress', 'Scanning directories...');
-    this.log(`[${new Date().toISOString()}] Scanning for subtitle files...`);
-    this.log(`[${new Date().toISOString()}] Scan paths: ${JSON.stringify(scanConfig.includePaths)}`);
+    this.log(`Scanning for subtitle files...`);
+    this.log(`Scan paths: ${JSON.stringify(scanConfig.includePaths)}`);
 
     const { srtFiles, fileIndex } = await findAllSrtFiles(scanConfig);
-    this.log(`[${new Date().toISOString()}] Found ${srtFiles.length} subtitle files`);
+    this.log(`Found ${srtFiles.length} subtitle files`);
 
     // Bulk Pre-Check: Filter out files that are already done
     const filesToProcess: string[] = [];
     const filesToSkip: Array<{ path: string; isHidden: boolean }> = [];
 
     this.emit('run:init_progress', `Checking ${srtFiles.length} files for existing subtitles...`);
-    this.log(`[${new Date().toISOString()}] Checking for existing subtitles...`);
+    this.log(`Checking for existing subtitles...`);
 
     for (const srtPath of srtFiles) {
       let shouldSkip = false;
@@ -121,9 +123,7 @@ export class ProcessingEngine extends EventEmitter {
       }
     }
 
-    this.log(
-      `[${new Date().toISOString()}] Pre-check results: ${filesToProcess.length} to process, ${filesToSkip.length} already done`,
-    );
+    this.log(`Pre-check results: ${filesToProcess.length} to process, ${filesToSkip.length} already done`);
 
     this.emit('run:init_progress', 'Analyzing video matches...');
     // Group files by video path
@@ -180,8 +180,8 @@ export class ProcessingEngine extends EventEmitter {
     const groupList = Array.from(groups.entries());
 
     // Process using a Worker Pool to avoid idle time between batches
-    this.log(`[${new Date().toISOString()}] Processing with concurrency: ${maxConcurrent} videos (Worker Pool)`);
-    this.log(`[${new Date().toISOString()}] Enabled engines: ${this.enabledEngines.join(', ')}`);
+    this.log(`Processing with concurrency: ${maxConcurrent} videos (Worker Pool)`);
+    this.log(`Enabled engines: ${this.enabledEngines.join(', ')}`);
 
     const queue = [...groupList];
     const totalVideos = groupList.length;
@@ -199,7 +199,7 @@ export class ProcessingEngine extends EventEmitter {
 
           completedVideos++;
           if (completedVideos % maxConcurrent === 0 || completedVideos === totalVideos) {
-            this.log(`[${new Date().toISOString()}] Progress: ${completedVideos}/${totalVideos} videos processed`);
+            this.log(`Progress: ${completedVideos}/${totalVideos} videos processed`);
           }
         }
       });
@@ -207,10 +207,10 @@ export class ProcessingEngine extends EventEmitter {
     await Promise.all(workers);
 
     if (this.globalStopRequested) {
-      this.log(`[${new Date().toISOString()}] Processing halted by stop request`);
+      this.log(`Processing halted by stop request`);
     }
 
-    this.log(`[${new Date().toISOString()}] All files processed`);
+    this.log(`All files processed`);
   }
 
   private async processVideoGroup(
@@ -233,7 +233,7 @@ export class ProcessingEngine extends EventEmitter {
 
     try {
       // Extract audio once for the entire group
-      this.log(`[${new Date().toISOString()}] Extracting audio for group: ${path.basename(videoPath)}`);
+      this.log(`Extracting audio for group: ${path.basename(videoPath)}`);
       if (this.stateManager) this.stateManager.startExtraction(videoPath);
 
       // Use a controller just for the extraction part
@@ -245,9 +245,7 @@ export class ProcessingEngine extends EventEmitter {
         await extractAudio(videoPath, tempAudioPath, extractionController.signal);
         audioExtracted = true;
       } catch (err) {
-        this.log(
-          `[${new Date().toISOString()}] Audio extraction failed: ${err instanceof Error ? err.message : String(err)}`,
-        );
+        this.log(`Audio extraction failed: ${err instanceof Error ? err.message : String(err)}`);
         // Fall back to direct video processing if extraction fails
       } finally {
         if (this.stateManager) this.stateManager.stopExtraction(videoPath);
@@ -283,27 +281,27 @@ export class ProcessingEngine extends EventEmitter {
 
     // Check if stopped or cancelled
     if (this.globalStopRequested || this.cancelledFiles.has(srtPath)) {
-      this.log(`[${new Date().toISOString()}] Skipped (cancelled): ${fileName}`);
+      this.log(`Skipped (cancelled): ${fileName}`);
       this.emit('file:skipped', { srtPath, reason: 'cancelled' });
       return;
     }
 
-    this.log(`[${new Date().toISOString()}] Processing: ${fileName}`);
+    this.log(`Processing: ${fileName}`);
 
     const { videoPath } = findMatchingVideoFile(srtPath, this.currentScanConfig, fileIndex);
 
     this.emit('file:started', { srtPath, videoPath });
 
     if (!videoPath) {
-      this.log(`[${new Date().toISOString()}] No matching video found for: ${fileName}`);
+      this.log(`No matching video found for: ${fileName}`);
       this.emit('file:no_video', { srtPath });
       return;
     }
 
     if (audioPath) {
-      this.log(`[${new Date().toISOString()}] Using shared audio reference for: ${fileName}`);
+      this.log(`Using shared audio reference for: ${fileName}`);
     } else {
-      this.log(`[${new Date().toISOString()}] Found video: ${videoPath.split('/').pop()}`);
+      this.log(`Found video: ${videoPath.split('/').pop()}`);
     }
 
     const controller = new AbortController();
@@ -311,7 +309,7 @@ export class ProcessingEngine extends EventEmitter {
 
     // #10: If primary .synced.srt exists, skip unless forceRerun is true
     if (!this.currentScanConfig?.forceRerun && fs.existsSync(getPrimaryOutputPath(srtPath))) {
-      this.log(`[${new Date().toISOString()}] Skipped (Primary already exists): ${fileName}`);
+      this.log(`Skipped (Primary already exists): ${fileName}`);
       this.emit('file:skipped', { srtPath, reason: 'already_synced' });
       return;
     }
@@ -321,9 +319,7 @@ export class ProcessingEngine extends EventEmitter {
       const videoSeconds = await getVideoDuration(videoPath);
       // Timeout = 10% of video length + 60s buffer, converted to ms
       const timeoutMs = Math.round(videoSeconds * 0.1 + 60) * 1000;
-      this.log(
-        `[${new Date().toISOString()}] Using adaptive timeout: ${Math.round(timeoutMs / 1000)}s for ${fileName}`,
-      );
+      this.log(`Using adaptive timeout: ${Math.round(timeoutMs / 1000)}s for ${fileName}`);
 
       // Process with each enabled engine
       let anyEngineSucceeded = false;
@@ -333,7 +329,7 @@ export class ProcessingEngine extends EventEmitter {
       for (const engine of this.enabledEngines) {
         // Check cancellation before each engine
         if (this.globalStopRequested || this.cancelledFiles.has(srtPath)) {
-          this.log(`[${new Date().toISOString()}] Skipped (cancelled): ${fileName}`);
+          this.log(`Skipped (cancelled): ${fileName}`);
           this.emit('file:skipped', { srtPath, reason: 'cancelled' });
           return;
         }
@@ -341,7 +337,7 @@ export class ProcessingEngine extends EventEmitter {
         // Check if engine should be skipped due to consecutive failures
         // Preparation for #10: If forceRerun is true, we don't skip engines
         if (!this.currentScanConfig?.forceRerun && this.stateManager?.shouldSkipEngine(srtPath, engine)) {
-          this.log(`[${new Date().toISOString()}] ⊘ Skipping ${engine} (3+ consecutive failures): ${fileName}`);
+          this.log(`⊘ Skipping ${engine} (3+ consecutive failures): ${fileName}`);
           anyEngineSkipped = true;
           this.emit('file:engine_completed', {
             srtPath,
@@ -362,7 +358,7 @@ export class ProcessingEngine extends EventEmitter {
         let bestTrialResult: ProcessingResult | null = null;
 
         for (const profile of profiles) {
-          this.log(`[${new Date().toISOString()}] Trial: ${engine} (${profile.name}) for: ${fileName}`);
+          this.log(`Trial: ${engine} (${profile.name}) for: ${fileName}`);
           const startTime = Date.now();
           const trialOutputPath = getEngineOutputPath(srtPath, engine, profile.name);
           let currentTrialResult: ProcessingResult;
@@ -405,7 +401,7 @@ export class ProcessingEngine extends EventEmitter {
             const duration = Date.now() - startTime;
             const status = currentTrialResult.success ? '✓' : '✗';
             this.log(
-              `[${new Date().toISOString()}] ${status} ${engine} (${profile.name}) trial completed (${(duration / 1000).toFixed(1)}s): ${fileName}`,
+              `${status} ${engine} (${profile.name}) trial completed (${(duration / 1000).toFixed(1)}s): ${fileName}`,
             );
 
             // IPO Logic: Keep the best score
@@ -429,18 +425,14 @@ export class ProcessingEngine extends EventEmitter {
 
             // Optimization: If score is high enough, don't try other profiles
             if (currentTrialResult.success && (currentTrialResult.score || 0) >= 85) {
-              this.log(
-                `[${new Date().toISOString()}] Confidence high (${currentTrialResult.score}%). Skipping other profiles.`,
-              );
+              this.log(`Confidence high (${currentTrialResult.score}%). Skipping other profiles.`);
               break;
             }
           } catch (error) {
             const duration = Date.now() - startTime;
             const errorMsg = error instanceof Error ? error.message : String(error);
-            this.log(
-              `[${new Date().toISOString()}] ✗ ${engine} (${profile.name}) trial failed (${(duration / 1000).toFixed(1)}s): ${fileName}`,
-            );
-            this.log(`[${new Date().toISOString()}]   Error: ${errorMsg}`);
+            this.log(`✗ ${engine} (${profile.name}) trial failed (${(duration / 1000).toFixed(1)}s): ${fileName}`);
+            this.log(`   Error: ${errorMsg}`);
 
             // Even if it failed, record the error result so we have details
             if (!bestTrialResult) {
@@ -483,18 +475,18 @@ export class ProcessingEngine extends EventEmitter {
         const scoreStr = scoreVal !== undefined ? `${scoreVal}%` : 'N/A';
         const warning = scoreVal !== undefined && scoreVal < 50 ? ' [LOW CONFIDENCE]' : '';
         this.log(
-          `[${new Date().toISOString()}] Winner determined! Primary file created: ${path.basename(primaryPath)} (Score: ${scoreStr})${warning}`,
+          `Winner determined! Primary file created: ${path.basename(primaryPath)} (Score: ${scoreStr})${warning}`,
         );
       }
 
       if (anyEngineSucceeded) {
-        this.log(`[${new Date().toISOString()}] ✓ Completed successfully for: ${fileName}`);
+        this.log(`✓ Completed successfully for: ${fileName}`);
         this.emit('file:completed', { srtPath });
       } else if (anyEngineSkipped) {
-        this.log(`[${new Date().toISOString()}] ⊘ All attempts skipped for: ${fileName}`);
+        this.log(`⊘ All attempts skipped for: ${fileName}`);
         this.emit('file:skipped', { srtPath, reason: 'engine_skipped' });
       } else {
-        this.log(`[${new Date().toISOString()}] ✗ All engines failed for: ${fileName}`);
+        this.log(`✗ All engines failed for: ${fileName}`);
         this.emit('file:failed', { srtPath });
       }
     } finally {
@@ -512,7 +504,7 @@ export class ProcessingEngine extends EventEmitter {
   }
 
   stopAllProcessing(allFiles: string[]): void {
-    this.log(`[${new Date().toISOString()}] Stop requested - cancelling all remaining files`);
+    this.log(`Stop requested - cancelling all remaining files`);
     this.globalStopRequested = true;
     allFiles.forEach((file) => this.cancelledFiles.add(file));
 
@@ -612,7 +604,7 @@ export class ProcessingEngine extends EventEmitter {
       }
     }
 
-    const maxConcurrent = parseInt(process.env.MAX_CONCURRENT_SYNC_TASKS || '1', 10);
+    const maxConcurrent = appConfig.maxConcurrentSyncTasks;
     results.estimatedMs = results.estimatedMs / maxConcurrent;
 
     return results;

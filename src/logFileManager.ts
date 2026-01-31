@@ -1,5 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
+import logger from './services/logger';
 
 export class LogFileManager {
   private logDir: string;
@@ -61,7 +62,7 @@ export class LogFileManager {
 
     this.currentLogStream.write(content, (err) => {
       if (err) {
-        console.error(`[${new Date().toISOString()}] Error writing to log file:`, err);
+        logger.error({ err }, 'Error writing to log file');
       }
     });
   }
@@ -101,7 +102,7 @@ export class LogFileManager {
     try {
       return fs.readFileSync(logFilePath, 'utf-8');
     } catch (error) {
-      console.error(`[${new Date().toISOString()}] Error reading log file:`, error);
+      logger.error({ error, runId }, 'Error reading log file');
       return '';
     }
   }
@@ -113,7 +114,7 @@ export class LogFileManager {
       try {
         fs.unlinkSync(logFilePath);
       } catch (error) {
-        console.error(`[${new Date().toISOString()}] Error deleting log file:`, error);
+        logger.error({ error, runId }, 'Error deleting log file');
       }
     }
   }
@@ -139,7 +140,7 @@ export class LogFileManager {
         }
       }
     } catch (error) {
-      console.error(`[${new Date().toISOString()}] Error cleaning up old log files:`, error);
+      logger.error({ error }, 'Error cleaning up old log files');
     }
 
     return deletedCount;

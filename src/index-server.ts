@@ -4,33 +4,33 @@ import { ProcessingCoordinator } from './coordinator';
 import { SubsyncarrPlusPlusServer } from './server';
 import { schedule } from 'node-cron';
 import { existsSync, renameSync } from 'fs';
+import { appConfig } from './config/appConfig';
+import logger from './services/logger';
 
 async function main() {
   const oldDefaultDbPath = '/app/data/subsyncarr-plus.db';
-  const newDefaultDbPath = '/app/data/subsyncarr-plus-plus.db';
-  const dbPath = process.env.DB_PATH || newDefaultDbPath;
+  const newDefaultDbPath = appConfig.dbPath;
+  const dbPath = appConfig.dbPath;
 
   // Migration: If user didn't specify a DB_PATH and we find the old one, rename it
-  if (!process.env.DB_PATH && existsSync(oldDefaultDbPath) && !existsSync(newDefaultDbPath)) {
-    console.log(
-      `[${new Date().toISOString()}] 📦 Migrating legacy database: ${oldDefaultDbPath} -> ${newDefaultDbPath}`,
-    );
+  if (!appConfig.get('DB_PATH') && existsSync(oldDefaultDbPath) && !existsSync(newDefaultDbPath)) {
+    logger.info({ oldDefaultDbPath, newDefaultDbPath }, '📦 Migrating legacy database');
     try {
       renameSync(oldDefaultDbPath, newDefaultDbPath);
       // Also migrate the logs directory if it exists
       const oldLogsDir = '/app/data/logs';
       if (existsSync(oldLogsDir)) {
-        console.log(`[${new Date().toISOString()}] 📦 Migrating legacy logs directory...`);
+        logger.info('📦 Migrating legacy logs directory...');
       }
     } catch (err) {
-      console.error(`[${new Date().toISOString()}] ❌ Database migration failed:`, err);
+      logger.error({ err }, '❌ Database migration failed');
     }
   }
 
-  const port = parseInt(process.env.WEB_PORT || '3000', 10);
-  const host = process.env.WEB_HOST || '127.0.0.1';
+  const port = appConfig.webPort;
+  const host = appConfig.webHost;
 
-  console.log(`[${new Date().toISOString()}] Initializing Subsyncarr++ Server...`);
+  logger.info('Initializing Subsyncarr++ Server...');
 
   const stateManager = new StateManager(dbPath);
   const engine = new ProcessingEngine();
@@ -41,29 +41,34 @@ async function main() {
   server.start(port, host);
 
   // Setup cron scheduler for automatic runs
-  const cronSchedule = process.env.CRON_SCHEDULE || '0 0 * * *';
+  const cronSchedule = appConfig.cronSchedule;
 
   if (cronSchedule !== 'disabled') {
     schedule(cronSchedule, async () => {
-      console.log(`[${new Date().toISOString()}] Starting scheduled run (${cronSchedule})`);
+      logger.info({ cronSchedule }, 'Starting scheduled run');
       try {
         await coordinator.startRun();
       } catch (error) {
-        console.error(`[${new Date().toISOString()}] Scheduled run failed:`, error);
+        logger.error({ error }, 'Scheduled run failed');
       }
     });
 
-    console.log(`[${new Date().toISOString()}] Scheduled runs: ${cronSchedule}`);
+    logger.info({ cronSchedule }, 'Scheduled runs configured');
   } else {
-    console.log(`[${new Date().toISOString()}] Automatic scheduling disabled`);
+    logger.info('Automatic scheduling disabled');
   }
 
   // Log memory usage periodically
   setInterval(
     () => {
       const usage = process.memoryUsage();
-      console.log(
-        `[${new Date().toISOString()}] Memory: RSS=${(usage.rss / 1024 / 1024).toFixed(1)}MB, Heap=${(usage.heapUsed / 1024 / 1024).toFixed(1)}MB/${(usage.heapTotal / 1024 / 1024).toFixed(1)}MB`,
+      logger.info(
+        {
+          rss: `${(usage.rss / 1024 / 1024).toFixed(1)}MB`,
+          heapUsed: `${(usage.heapUsed / 1024 / 1024).toFixed(1)}MB`,
+          heapTotal: `${(usage.heapTotal / 1024 / 1024).toFixed(1)}MB`,
+        },
+        'Memory usage',
       );
     },
     5 * 60 * 1000,
@@ -71,7 +76,7 @@ async function main() {
 
   // Graceful shutdown
   process.on('SIGTERM', () => {
-    console.log(`[${new Date().toISOString()}] SIGTERM received, shutting down gracefully...`);
+    logger.info('SIGTERM received, shutting down gracefully...');
     server.close();
     stateManager.close();
     process.exit(0);
@@ -79,6 +84,6 @@ async function main() {
 }
 
 main().catch((error) => {
-  console.error('Failed to start server:', error);
+  logger.fatal({ error }, 'Failed to start server');
   process.exit(1);
 });

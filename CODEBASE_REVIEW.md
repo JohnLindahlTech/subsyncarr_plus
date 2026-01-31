@@ -150,14 +150,19 @@ exec(command, ...)
 - [x] **Validation:** Ensure that arguments with spaces are handled correctly WITHOUT manual quotes.
 - [x] **Validation:** Verify `stdout` parsing still works (e.g., for `ffsubsync` scoring).
 
-### Task 2: Logging & Configuration
+### Task 2: Logging & Configuration - [COMPLETED]
 
-- [ ] **Objective:** Centralize config and implement **Pino** logging.
-- [ ] **Sub-task:** Install `pino`.
-- [ ] **Sub-task:** Create `src/services/logger.ts` and `src/config/appConfig.ts`.
-- [ ] **Sub-task:** Configure Pino to be silent if `NODE_ENV === 'test'`.
-- [ ] **Sub-task:** Replace all `process.env` calls with `appConfig.get(...)`.
-- [ ] **Sub-task:** Replace `console.log` with `logger.info`, ensuring arguments are passed correctly (object-first style).
+- [x] **Objective:** Centralize config and implement **Pino** logging.
+
+- [x] **Sub-task:** Install `pino`.
+
+- [x] **Sub-task:** Create `src/services/logger.ts` and `src/config/appConfig.ts`.
+
+- [x] **Sub-task:** Configure Pino to be silent if `NODE_ENV === 'test'`.
+
+- [x] **Sub-task:** Replace all `process.env` calls with `appConfig.get(...)`.
+
+- [x] **Sub-task:** Replace `console.log` with `logger.info`, ensuring arguments are passed correctly (object-first style).
 
 ### Task 3: Refactor ProcessingEngine
 

@@ -1,5 +1,6 @@
 import { execPromise, ProcessingResult, EngineProfile, getEngineOutputPath } from './helpers';
 import * as fs from 'fs';
+import logger from './services/logger';
 
 export async function generateAlassSubtitles(
   srtPath: string,
@@ -24,7 +25,7 @@ export async function generateAlassSubtitles(
     const profileArgs = profile ? profile.args : [];
     const args = [reference, srtPath, outputPath, ...profileArgs];
     const command = `alass ${args.join(' ')}`;
-    console.log(`${new Date().toLocaleString()} Processing: ${command}`);
+    logger.info({ command }, 'Processing alass');
     const { stdout, stderr } = await execPromise('alass', args, timeoutMs, signal);
 
     // Parse score from stdout: "Score: 12.34"

@@ -5,6 +5,7 @@ import { LogFileManager } from './logFileManager';
 import * as path from 'path';
 import cron from 'node-cron';
 import { getScanConfig } from './config';
+import logger from './services/logger';
 
 interface MaintenanceResult {
   success: boolean;
@@ -59,16 +60,14 @@ export class StateManager extends EventEmitter {
       this.db = new SubsyncarrPlusPlusDatabase(this.dbPath, true);
       this.maintenanceActive = false;
       this.emit('maintenance:finished');
-      console.log(`[${new Date().toISOString()}] Main database connection re-opened successfully.`);
+      logger.info('Main database connection re-opened successfully.');
     } catch (err) {
       if (attempt <= maxAttempts) {
-        console.warn(
-          `[${new Date().toISOString()}] Re-opening database failed (attempt ${attempt}/${maxAttempts}). Retrying in ${delay / 1000}s...`,
-        );
+        logger.warn({ attempt, maxAttempts, delay }, 'Re-opening database failed, retrying...');
         await new Promise((resolve) => setTimeout(resolve, delay));
         return this.tryReopenDatabase(attempt + 1);
       } else {
-        console.error(`[${new Date().toISOString()}] Fatal: Could not re-open database after ${maxAttempts} attempts.`);
+        logger.error({ attempt, maxAttempts }, 'Fatal: Could not re-open database after maximum attempts');
         // Last ditch effort: try one more time without skipping init
         this.db = new SubsyncarrPlusPlusDatabase(this.dbPath, false);
       }
@@ -81,12 +80,12 @@ export class StateManager extends EventEmitter {
     const incompleteRuns = history.filter((run) => run.status === 'running');
 
     incompleteRuns.forEach((run) => {
-      console.log(`[${new Date().toISOString()}] Found incomplete run from previous session: ${run.id}`);
+      logger.info({ runId: run.id }, 'Found incomplete run from previous session');
       this.db.updateRun(run.id, {
         status: 'cancelled',
         end_time: run.start_time, // Use start time since we don't know when it actually stopped
       });
-      console.log(`[${new Date().toISOString()}] Marked run ${run.id} as cancelled`);
+      logger.info({ runId: run.id }, 'Marked run as cancelled');
     });
   }
 
@@ -483,13 +482,13 @@ export class StateManager extends EventEmitter {
 
   performMaintenance(): void {
     if (this.currentRunId || this.maintenanceActive) {
-      console.log(`[${new Date().toISOString()}] Skipping maintenance: Run in progress or maintenance already active.`);
+      logger.info('Skipping maintenance: Run in progress or maintenance already active.');
       return;
     }
 
     this.maintenanceActive = true;
     this.emit('maintenance:started');
-    console.log(`[${new Date().toISOString()}] Starting off-thread database maintenance. Closing main connection...`);
+    logger.info('Starting off-thread database maintenance. Closing main connection...');
 
     // We must close the connection so the worker can get an exclusive lock for VACUUM
     this.db.close();
@@ -513,13 +512,11 @@ export class StateManager extends EventEmitter {
     });
 
     worker.on('error', (err: Error) => {
-      console.error(`[${new Date().toISOString()}] Maintenance worker thread error:`, err);
+      logger.error({ err }, 'Maintenance worker thread error');
     });
 
     worker.on('exit', async (code: number) => {
-      console.log(
-        `[${new Date().toISOString()}] Maintenance worker exited with code ${code}. Re-opening connection...`,
-      );
+      logger.info({ code }, 'Maintenance worker exited. Re-opening connection...');
 
       await this.tryReopenDatabase();
 
@@ -528,12 +525,16 @@ export class StateManager extends EventEmitter {
           this.logFileManager.deleteLog(id);
         });
         const orphanLogs = this.logFileManager.deleteOldLogs(30);
-        console.log(`[${new Date().toISOString()}] Off-thread maintenance complete:`);
-        console.log(`  - Deleted runs: ${resultData.deletedRunIds.length}`);
-        console.log(`  - Space reclaimed: ${(resultData.reclaimedBytes / 1024 / 1024).toFixed(2)} MB`);
-        console.log(`  - Orphan logs cleaned: ${orphanLogs}`);
+        logger.info(
+          {
+            deletedRuns: resultData.deletedRunIds.length,
+            spaceReclaimedMb: (resultData.reclaimedBytes / 1024 / 1024).toFixed(2),
+            orphanLogsCleaned: orphanLogs,
+          },
+          'Off-thread maintenance complete',
+        );
       } else if (resultData && !resultData.success) {
-        console.error(`[${new Date().toISOString()}] Maintenance worker reported failure: ${resultData.error}`);
+        logger.error({ error: resultData.error }, 'Maintenance worker reported failure');
       }
     });
   }
