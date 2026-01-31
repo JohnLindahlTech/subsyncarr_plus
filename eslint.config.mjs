@@ -4,7 +4,7 @@ import eslintPluginPrettierRecommended from 'eslint-plugin-prettier/recommended'
 
 export default [
   { files: ['**/*.{js,mjs,cjs,ts}'] },
-  { ignores: ['dist', 'node_modules'] },
+  { ignores: ['dist', 'node_modules', 'client'] },
   {
     languageOptions: {
       globals: {

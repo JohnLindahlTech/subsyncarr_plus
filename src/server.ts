@@ -5,7 +5,7 @@ import { getScanConfig } from './config.js';
 import cronstrue from 'cronstrue';
 import * as parser from 'cron-parser';
 import { checkDependency, validatePartialPath } from './helpers.js';
-import { FileResult } from './database.js';
+import { FileResult } from './shared/types.js';
 import express from 'express';
 import { WebSocketServer, WebSocket } from 'ws';
 import { createServer } from 'http';
@@ -69,7 +69,7 @@ export class SubsyncarrPlusPlusServer {
 
   private setupMiddleware() {
     this.app.use(express.json());
-    this.app.use(express.static(join(__dirname, '../public')));
+    this.app.use(express.static(join(__dirname, '../client/dist')));
 
     // Quality Fix: Return 503 while database is being vacuumed
     this.app.use((req, res, next) => {

@@ -1,12 +1,12 @@
 import EventEmitter from 'events';
-import { SubsyncarrPlusPlusDatabase, Run, FileResult } from './database.js';
+import { SubsyncarrPlusPlusDatabase } from './database.js';
+import { Run, FileResult, RunStatus, FileStatus, AgreementStatus, EngineResult, EngineName } from './shared/types.js';
 import { randomUUID } from 'crypto';
 import { LogFileManager } from './logFileManager.js';
 import * as path from 'path';
 import cron from 'node-cron';
 import { getScanConfig } from './config.js';
 import logger from './services/logger.js';
-import { RunStatus, FileStatus, AgreementStatus, EngineResult, EngineName } from './types.js';
 import { ScoreCalculator } from './services/ScoreCalculator.js';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';

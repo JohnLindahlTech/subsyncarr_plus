@@ -64,7 +64,7 @@ The critical "God Object" anti-pattern has been resolved by decomposing `Process
 
 While the codebase is now in excellent shape, the following minor optimizations could be considered for future sprints:
 
-- **Frontend Refactor:** The current refactor focused on the backend. The frontend (`public/js/*.js`) remains plain JavaScript. Migrating this to a build step (e.g., Vite + TypeScript) would improve maintainability.
+- **Frontend Refactor:** The current refactor focused on the backend. The frontend (`public/js/*.js`) remains plain JavaScript. **[PLAN CREATED: FE-refactor.md]** Migrating this to a build step (e.g., Vite + TypeScript) would improve maintainability.
 
 ## 6. Actionable Tasks Status
 

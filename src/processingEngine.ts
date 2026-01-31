@@ -21,7 +21,7 @@ import * as os from 'os';
 import { appConfig } from './config/appConfig.js';
 import logger from './services/logger.js';
 import PQueue from 'p-queue';
-import { EngineName } from './types.js';
+import { EngineName } from './shared/types.js';
 
 export class ProcessingEngine extends EventEmitter {
   private cancelledFiles: Set<string> = new Set();

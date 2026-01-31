@@ -11,7 +11,7 @@ const configSchema = z.object({
   SYNC_ENGINE_TIMEOUT_MS: z.coerce.number().int().positive().default(1800000),
   LOG_BUFFER_SIZE: z.coerce.number().int().positive().default(1000),
   WEB_PORT: z.coerce.number().int().positive().default(3000),
-  WEB_HOST: z.string().default('127.0.0.1'),
+  WEB_HOST: z.string().default('0.0.0.0'),
   DB_PATH: z.string().default('/app/data/subsyncarr-plus-plus.db'),
   NODE_ENV: z.enum(['development', 'test', 'production']).default('production'),
   SCAN_PATHS: z

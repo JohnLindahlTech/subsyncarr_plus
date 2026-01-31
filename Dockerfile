@@ -43,10 +43,14 @@ RUN python3 -m pip install --user pipx \
 
 # Copy package.json and package-lock.json (if available)
 COPY --chown=node:node package*.json ./
+# Copy client package files
+COPY --chown=node:node client/package*.json ./client/
 
 # Install Node.js dependencies while skipping husky installation
 ENV HUSKY=0
-RUN npm install --ignore-scripts && npm rebuild better-sqlite3
+RUN npm install --ignore-scripts && \
+    npm run client:install --ignore-scripts && \
+    npm rebuild better-sqlite3
 
 # Copy the rest of your application
 COPY --chown=node:node . .

@@ -2,11 +2,10 @@ import { ProcessingEngine } from './processingEngine.js';
 import { StateManager } from './stateManager.js';
 import { ScanConfig } from './config.js';
 import { findMatchingVideoFile } from './findMatchingVideoFile.js';
-import { Run } from './database.js';
+import { Run, FileStatus } from './shared/types.js';
 import { once } from 'events';
 import { appConfig } from './config/appConfig.js';
 import logger from './services/logger.js';
-import { FileStatus } from './types.js';
 
 export class ProcessingCoordinator {
   private processingPromise: Promise<void> | null = null;

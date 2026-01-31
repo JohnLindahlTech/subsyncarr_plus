@@ -1,40 +1,7 @@
 import Database from 'better-sqlite3';
-import { RunStatus, FileStatus, AgreementStatus } from './types.js';
+import { RunStatus, FileStatus, AgreementStatus, Run, FileResult } from './shared/types.js';
 import { MIGRATIONS } from './database/migrations.js';
 import logger from './services/logger.js';
-
-export interface Run {
-  id: string;
-  start_time: number;
-  end_time: number | null;
-  total_files: number;
-  completed: number;
-  skipped: number;
-  failed: number;
-  total_engines: number;
-  completed_engines: number;
-  total_videos: number;
-  completed_videos: number;
-  status: RunStatus;
-  logs: string;
-  current_video: string | null;
-}
-
-export interface FileResult {
-  id: number;
-  run_id: string;
-  file_path: string;
-  video_path: string | null;
-  status: FileStatus;
-  current_engine: string | null;
-  video_status: string | null;
-  engines: string; // JSON stringified { ffsubsync?: {...}, autosubsync?: {...}, alass?: {...} }
-  best_engine: string | null;
-  best_score: number | null;
-  agreement_status: AgreementStatus | null;
-  created_at: number;
-  updated_at: number;
-}
 
 export interface EngineFailureTracking {
   id: number;

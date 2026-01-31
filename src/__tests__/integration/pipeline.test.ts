@@ -4,7 +4,7 @@ import { ProcessingEngine } from '../../processingEngine.js';
 import { StateManager } from '../../stateManager.js';
 import { ScannerService } from '../../services/ScannerService.js';
 import { AudioExtractor } from '../../services/AudioExtractor.js';
-import { RunStatus, FileStatus, AgreementStatus } from '../../types.js';
+import { RunStatus, FileStatus, AgreementStatus } from '../../shared/types.js';
 import { appConfig } from '../../config/appConfig.js';
 import * as fs from 'fs';
 import * as path from 'path';
