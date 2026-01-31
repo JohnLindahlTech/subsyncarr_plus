@@ -75,12 +75,24 @@ async function main() {
   ); // Every 5 minutes
 
   // Graceful shutdown
-  process.on('SIGTERM', () => {
-    logger.info('SIGTERM received, shutting down gracefully...');
-    server.close();
-    stateManager.close();
-    process.exit(0);
-  });
+  const shutdown = async (signal: string) => {
+    logger.info(`${signal} received, shutting down gracefully...`);
+    try {
+      // 1. Stop processing and wait for active sync engines to be killed/cleaned up
+      await coordinator.shutdown();
+      // 2. Close servers and database
+      server.close();
+      stateManager.close();
+      logger.info('Graceful shutdown successful');
+      process.exit(0);
+    } catch (err) {
+      logger.error({ err }, 'Error during graceful shutdown');
+      process.exit(1);
+    }
+  };
+
+  process.on('SIGTERM', () => shutdown('SIGTERM'));
+  process.on('SIGINT', () => shutdown('SIGINT'));
 }
 
 main().catch((error) => {

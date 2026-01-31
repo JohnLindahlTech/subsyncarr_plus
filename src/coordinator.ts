@@ -306,6 +306,27 @@ export class ProcessingCoordinator {
     this.stateManager.cancelRun(run.id);
   }
 
+  /**
+   * Performs a graceful shutdown of the coordinator and its engine.
+   * Stops any active runs and waits for cleanup.
+   */
+  async shutdown(): Promise<void> {
+    logger.info('Coordinator shutdown initiated');
+    if (this.isRunning()) {
+      logger.info('Active run detected during shutdown. Stopping...');
+      this.stopRun();
+      // Wait for the processing promise to finish (which includes engine cleanup)
+      if (this.processingPromise) {
+        try {
+          await this.processingPromise;
+        } catch (err) {
+          // Ignore errors during shutdown
+        }
+      }
+    }
+    logger.info('Coordinator shutdown complete');
+  }
+
   isRunning(): boolean {
     return this.processingPromise !== null;
   }
