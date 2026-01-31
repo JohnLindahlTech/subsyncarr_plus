@@ -12,3 +12,4 @@ builds
 *.tar
 *.tar.gz
 testlogs
+.test-tmp

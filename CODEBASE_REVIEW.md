@@ -177,14 +177,14 @@ exec(command, ...)
 
 - [x] **Sub-task:** Ensure `StateManager` only handles DB reads/writes.
 
-### Task 5: Testing Improvements
+### Task 5: Testing Improvements - [COMPLETED]
 
-- [ ] **Objective:** Add integration tests.
-- [ ] **Sub-task:** Create `src/__tests__/integration/pipeline.test.ts`.
-- [ ] **Sub-task:** Use `better-sqlite3` with an in-memory DB (`:memory:`) for tests.
-- [ ] **Sub-task:** Use `mock-fs` to simulate a file scan.
-- [ ] **Sub-task:** Mock _only_ the `child_process.spawn` calls to avoid running real `ffmpeg`.
-- [ ] **Sub-task:** Verify that running tests produces zero console output from the logger.
+- [x] **Objective:** Add integration tests.
+- [x] **Sub-task:** Create `src/__tests__/integration/pipeline.test.ts`.
+- [x] **Sub-task:** Use `better-sqlite3` with an in-memory DB (or isolated temp file) for tests.
+- [x] **Sub-task:** Use real temp dirs to simulate a file scan.
+- [x] **Sub-task:** Mock _only_ the `child_process.execFile` calls to avoid running real `ffmpeg`.
+- [x] **Sub-task:** Verify that running tests produces zero console output from the logger.
 
 ### Task 6: Modernize Tooling (Vitest) & Migrate to ESM - [COMPLETED]
 

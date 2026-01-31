@@ -171,6 +171,7 @@ export class ProcessingEngine extends EventEmitter {
     }
 
     this.emit('run:init_progress', `Preparing ${groups.size} movie groups...`);
+    // Emit the split results so Coordinator can bulk-insert
     this.emit('run:files_found', {
       processing: filesToProcess,
       skipped: filesToSkip,
