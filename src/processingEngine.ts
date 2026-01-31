@@ -36,18 +36,17 @@ export class ProcessingEngine extends EventEmitter {
   private extractor: AudioExtractor;
   private queue: PQueue | null = null;
 
-  constructor(scanner?: ScannerService, extractor?: AudioExtractor) {
+  constructor(scanner: ScannerService, extractor: AudioExtractor) {
     super();
     this.enabledEngines = appConfig.includeEngines;
     this.maxLogBufferSize = appConfig.logBufferSize;
-    this.scanner = scanner || new ScannerService();
-    this.extractor = extractor || new AudioExtractor(this.stateManager);
+    this.scanner = scanner;
+    this.extractor = extractor;
   }
 
-  // Allow injecting stateManager into extractor if it was added later
+  // Inject stateManager for logic that requires it directly
   public setStateManager(stateManager: StateManager): void {
     this.stateManager = stateManager;
-    this.extractor = new AudioExtractor(stateManager);
   }
 
   private log(message: string): void {

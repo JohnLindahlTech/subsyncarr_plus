@@ -2,7 +2,10 @@ import { describe, it, expect, vi } from 'vitest';
 import { ProcessingCoordinator } from '../../coordinator.js';
 import { ProcessingEngine } from '../../processingEngine.js';
 import { StateManager } from '../../stateManager.js';
+import { ScannerService } from '../../services/ScannerService.js';
+import { AudioExtractor } from '../../services/AudioExtractor.js';
 import { RunStatus, FileStatus, AgreementStatus } from '../../types.js';
+import { appConfig } from '../../config/appConfig.js';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
@@ -32,10 +35,15 @@ describe('Pipeline Integration', () => {
     process.env.SCAN_PATHS = tempDir;
     process.env.INCLUDE_ENGINES = 'ffsubsync';
     process.env.DB_PATH = dbPath;
-    process.env.LOG_LEVEL = 'silent';
+    process.env.NODE_ENV = 'test';
+
+    // Reinitialize config to pick up the env changes
+    appConfig.reinitialize();
 
     const stateManager = new StateManager(dbPath);
-    const engine = new ProcessingEngine();
+    const scannerService = new ScannerService();
+    const audioExtractor = new AudioExtractor(stateManager);
+    const engine = new ProcessingEngine(scannerService, audioExtractor);
     const coordinator = new ProcessingCoordinator(engine, stateManager);
 
     // Mock execFile behavior to simulate external tools

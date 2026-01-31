@@ -2,6 +2,8 @@ import { ProcessingEngine } from './processingEngine.js';
 import { StateManager } from './stateManager.js';
 import { ProcessingCoordinator } from './coordinator.js';
 import { SubsyncarrPlusPlusServer } from './server.js';
+import { ScannerService } from './services/ScannerService.js';
+import { AudioExtractor } from './services/AudioExtractor.js';
 import { schedule } from 'node-cron';
 import { existsSync, renameSync } from 'fs';
 import { appConfig } from './config/appConfig.js';
@@ -13,7 +15,7 @@ async function main() {
   const dbPath = appConfig.dbPath;
 
   // Migration: If user didn't specify a DB_PATH and we find the old one, rename it
-  if (!appConfig.get('DB_PATH') && existsSync(oldDefaultDbPath) && !existsSync(newDefaultDbPath)) {
+  if (!process.env.DB_PATH && existsSync(oldDefaultDbPath) && !existsSync(newDefaultDbPath)) {
     logger.info({ oldDefaultDbPath, newDefaultDbPath }, '📦 Migrating legacy database');
     try {
       renameSync(oldDefaultDbPath, newDefaultDbPath);
@@ -33,7 +35,9 @@ async function main() {
   logger.info('Initializing Subsyncarr++ Server...');
 
   const stateManager = new StateManager(dbPath);
-  const engine = new ProcessingEngine();
+  const scannerService = new ScannerService();
+  const audioExtractor = new AudioExtractor(stateManager);
+  const engine = new ProcessingEngine(scannerService, audioExtractor);
   const coordinator = new ProcessingCoordinator(engine, stateManager);
   const server = new SubsyncarrPlusPlusServer(coordinator, stateManager);
 

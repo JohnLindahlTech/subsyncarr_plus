@@ -31,7 +31,8 @@
     "node-cron": "^4.2.1",
     "p-queue": "^9.1.0",
     "pino": "^10.3.0",
-    "ws": "^8.19.0"
+    "ws": "^8.19.0",
+    "zod": "^4.3.6"
   },
   "devDependencies": {
     "@tsconfig/node18": "^18.2.4",

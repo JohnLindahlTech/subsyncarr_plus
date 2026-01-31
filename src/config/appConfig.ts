@@ -1,9 +1,56 @@
-import { ScanConfig, RetentionConfig } from '../config.js';
+import { z } from 'zod';
+
+// Define the schema for configuration
+const configSchema = z.object({
+  INCLUDE_ENGINES: z
+    .string()
+    .default('ffsubsync,autosubsync,alass')
+    .transform((s) => s.split(',').filter(Boolean)),
+  MAX_CONCURRENT_SYNC_TASKS: z.coerce.number().int().positive().default(1),
+  CRON_SCHEDULE: z.string().default('0 0 * * *'),
+  SYNC_ENGINE_TIMEOUT_MS: z.coerce.number().int().positive().default(1800000),
+  LOG_BUFFER_SIZE: z.coerce.number().int().positive().default(1000),
+  WEB_PORT: z.coerce.number().int().positive().default(3000),
+  WEB_HOST: z.string().default('127.0.0.1'),
+  DB_PATH: z.string().default('/app/data/subsyncarr-plus-plus.db'),
+  NODE_ENV: z.enum(['development', 'test', 'production']).default('production'),
+  SCAN_PATHS: z
+    .string()
+    .default('/scan_dir')
+    .transform((s) => s.split(',').filter(Boolean)),
+  EXCLUDE_PATHS: z
+    .string()
+    .default('')
+    .transform((s) => s.split(',').filter(Boolean)),
+  ENABLE_CONTEXT_AWARE_MATCHING: z
+    .string()
+    .default('true')
+    .transform((s) => s.toLowerCase() !== 'false'),
+  RETENTION_KEEP_RUNS_DAYS: z.coerce.number().int().positive().default(30),
+  RETENTION_TRIM_LOGS_DAYS: z.coerce.number().int().positive().default(7),
+  RETENTION_MAX_LOG_SIZE: z.coerce.number().int().positive().default(10000),
+  RETENTION_CLEANUP_INTERVAL_HOURS: z.coerce.number().int().positive().default(24),
+});
+
+export type Config = z.infer<typeof configSchema>;
 
 export class AppConfig {
   private static instance: AppConfig;
+  private config: Config;
 
-  private constructor() {}
+  private constructor() {
+    try {
+      this.config = configSchema.parse(process.env);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        const issues = error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join(', ');
+        console.error(`❌ Invalid configuration: ${issues}`);
+      } else {
+        console.error('❌ Failed to parse configuration');
+      }
+      process.exit(1);
+    }
+  }
 
   public static getInstance(): AppConfig {
     if (!AppConfig.instance) {
@@ -12,83 +59,74 @@ export class AppConfig {
     return AppConfig.instance;
   }
 
-  public get(key: string, defaultValue?: string): string {
-    return process.env[key] || defaultValue || '';
+  /**
+   * Re-initializes the configuration from process.env.
+   * Useful for testing when environment variables change.
+   */
+  public reinitialize(): void {
+    this.config = configSchema.parse(process.env);
   }
 
-  public getNumber(key: string, defaultValue: number): number {
-    const value = process.env[key];
-    if (value === undefined) return defaultValue;
-    const parsed = parseInt(value, 10);
-    return isNaN(parsed) ? defaultValue : parsed;
+  public get<K extends keyof Config>(key: K): Config[K] {
+    return this.config[key];
   }
 
-  public getBoolean(key: string, defaultValue: boolean): boolean {
-    const value = process.env[key];
-    if (value === undefined) return defaultValue;
-    return value.toLowerCase() !== 'false';
+  // Backward compatibility for generic string access if still needed
+  public getRaw(key: string, defaultValue?: string): string {
+    return (process.env[key] as string) || defaultValue || '';
   }
 
-  public getArray(key: string, defaultValue: string[] = []): string[] {
-    const value = process.env[key];
-    if (!value) return defaultValue;
-    return value.split(',').filter(Boolean);
-  }
-
-  // Specialized config getters
+  // Typed getters
   public get includeEngines(): string[] {
-    return this.getArray('INCLUDE_ENGINES', ['ffsubsync', 'autosubsync', 'alass']);
+    return this.config.INCLUDE_ENGINES;
   }
 
   public get maxConcurrentSyncTasks(): number {
-    return this.getNumber('MAX_CONCURRENT_SYNC_TASKS', 1);
+    return this.config.MAX_CONCURRENT_SYNC_TASKS;
   }
 
   public get cronSchedule(): string {
-    return this.get('CRON_SCHEDULE', '0 0 * * *');
+    return this.config.CRON_SCHEDULE;
   }
 
   public get syncEngineTimeoutMs(): number {
-    return this.getNumber('SYNC_ENGINE_TIMEOUT_MS', 1800000); // 30 minutes
+    return this.config.SYNC_ENGINE_TIMEOUT_MS;
   }
 
   public get logBufferSize(): number {
-    return this.getNumber('LOG_BUFFER_SIZE', 1000);
+    return this.config.LOG_BUFFER_SIZE;
   }
 
   public get webPort(): number {
-    return this.getNumber('WEB_PORT', 3000);
+    return this.config.WEB_PORT;
   }
 
   public get webHost(): string {
-    return this.get('WEB_HOST', '127.0.0.1');
+    return this.config.WEB_HOST;
   }
 
   public get dbPath(): string {
-    return this.get('DB_PATH', '/app/data/subsyncarr-plus-plus.db');
+    return this.config.DB_PATH;
   }
 
   public get isTest(): boolean {
-    return process.env.NODE_ENV === 'test';
+    return this.config.NODE_ENV === 'test';
   }
 
-  public getScanConfig(): ScanConfig {
-    const scanPaths = this.getArray('SCAN_PATHS', ['/scan_dir']);
-    const excludePaths = this.getArray('EXCLUDE_PATHS', []);
-
+  public getScanConfig() {
     return {
-      includePaths: scanPaths,
-      excludePaths: excludePaths,
-      enableContextAwareMatching: this.getBoolean('ENABLE_CONTEXT_AWARE_MATCHING', true),
+      includePaths: this.config.SCAN_PATHS,
+      excludePaths: this.config.EXCLUDE_PATHS,
+      enableContextAwareMatching: this.config.ENABLE_CONTEXT_AWARE_MATCHING,
     };
   }
 
-  public getRetentionConfig(): RetentionConfig {
+  public getRetentionConfig() {
     return {
-      keepRunsDays: this.getNumber('RETENTION_KEEP_RUNS_DAYS', 30),
-      trimLogsDays: this.getNumber('RETENTION_TRIM_LOGS_DAYS', 7),
-      maxLogSizeBytes: this.getNumber('RETENTION_MAX_LOG_SIZE', 10000),
-      cleanupIntervalHours: this.getNumber('RETENTION_CLEANUP_INTERVAL_HOURS', 24),
+      keepRunsDays: this.config.RETENTION_KEEP_RUNS_DAYS,
+      trimLogsDays: this.config.RETENTION_TRIM_LOGS_DAYS,
+      maxLogSizeBytes: this.config.RETENTION_MAX_LOG_SIZE,
+      cleanupIntervalHours: this.config.RETENTION_CLEANUP_INTERVAL_HOURS,
     };
   }
 }

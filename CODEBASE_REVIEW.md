@@ -128,13 +128,13 @@ While the codebase is now in excellent shape, the following minor optimizations 
 
 **Recommendation:** Implement a `shutdown()` method in `Coordinator` that calls `engine.stopAllProcessing()`, waits for the queue to idle (with a timeout), and then closes the database.
 
-### 7.2. Strict Configuration Validation
+### 7.2. Strict Configuration Validation - [VERIFIED]
 
 **Issue:** `AppConfig` lacks runtime validation for environment variables.
 
 **Recommendation:** Use a library like `zod` to define a configuration schema. This ensures the application fails fast at startup if `CRON_SCHEDULE` or `DB_PATH` are malformed.
 
-### 7.3. True Dependency Injection
+### 7.3. True Dependency Injection - [VERIFIED]
 
 **Issue:** `ProcessingEngine` still has hard dependencies on service implementations in its constructor.
 
