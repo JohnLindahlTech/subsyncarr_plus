@@ -147,30 +147,25 @@ exec(command, ...)
 - [x] **Objective:** Replace `exec` with `spawn` or `execFile` in `src/helpers.ts`.
 - [x] **Sub-task:** Refactor `execPromise` to accept `args: string[]` instead of a command string.
 - [x] **Sub-task:** Update `generateFfsubsyncSubtitles.ts`, `generateAutosubsyncSubtitles.ts`, and `generateAlassSubtitles.ts` to pass arguments as arrays.
-- [x] **Validation:** Ensure that arguments with spaces are handled correctly WITHOUT manual quotes.
+- [x] **Validation:** Ensure that arguments with spaces (e.g., filename `"Movie Title (2020).mkv"`) are handled correctly WITHOUT manual quotes.
 - [x] **Validation:** Verify `stdout` parsing still works (e.g., for `ffsubsync` scoring).
 
 ### Task 2: Logging & Configuration - [COMPLETED]
 
 - [x] **Objective:** Centralize config and implement **Pino** logging.
-
 - [x] **Sub-task:** Install `pino`.
-
 - [x] **Sub-task:** Create `src/services/logger.ts` and `src/config/appConfig.ts`.
-
 - [x] **Sub-task:** Configure Pino to be silent if `NODE_ENV === 'test'`.
-
 - [x] **Sub-task:** Replace all `process.env` calls with `appConfig.get(...)`.
-
 - [x] **Sub-task:** Replace `console.log` with `logger.info`, ensuring arguments are passed correctly (object-first style).
 
-### Task 3: Refactor ProcessingEngine
+### Task 3: Refactor ProcessingEngine - [COMPLETED]
 
-- [ ] **Objective:** Break down the God Object using **p-queue**.
-- [ ] **Sub-task:** Create `ScannerService.ts` and move `findAllSrtFiles` logic there.
-- [ ] **Sub-task:** Create `AudioExtractor.ts` for ffmpeg audio extraction logic.
-- [ ] **Sub-task:** Introduce `p-queue` to replace the manual worker pool in `ProcessingEngine`.
-- [ ] **Constraint:** Maintain the `EventEmitter` interface of `ProcessingEngine` so `Coordinator` doesn't break.
+- [x] **Objective:** Break down the God Object using **p-queue**.
+- [x] **Sub-task:** Create `ScannerService.ts` and move `findAllSrtFiles` logic there.
+- [x] **Sub-task:** Create `AudioExtractor.ts` for ffmpeg audio extraction logic.
+- [x] **Sub-task:** Introduce `p-queue` to replace the manual worker pool in `ProcessingEngine`.
+- [x] **Constraint:** Maintain the `EventEmitter` interface of `ProcessingEngine` so `Coordinator` doesn't break.
 
 ### Task 4: State & Database Cleanup
 
@@ -187,3 +182,14 @@ exec(command, ...)
 - [ ] **Sub-task:** Use `mock-fs` or real temp dirs to simulate a file scan.
 - [ ] **Sub-task:** Mock _only_ the `child_process.spawn` calls to avoid running real `ffmpeg`.
 - [ ] **Sub-task:** Verify that running tests produces zero console output from the logger.
+
+### Task 6: Migrate to ESM & Update Dependencies
+
+- [ ] **Objective:** Modernize the project by migrating to ECMAScript Modules (ESM) and updating all dependencies to their latest versions.
+- [ ] **Sub-task:** Add `"type": "module"` to `package.json`.
+- [ ] **Sub-task:** Update `tsconfig.json` to use `"module": "NodeNext"` and `"moduleResolution": "NodeNext"`.
+- [ ] **Sub-task:** Update all imports in `.ts` files to include the `.js` file extension (e.g., `import { appConfig } from './config/appConfig.js'`).
+- [ ] **Sub-task:** Replace `__dirname` and `__filename` usage with `import.meta.url` based logic (e.g., using `fileURLToPath`).
+- [ ] **Sub-task:** Update `p-queue` to version 9+ and other dependencies to their latest stable versions.
+- [ ] **Sub-task:** Adjust `jest.config.mjs` and `eslint.config.mjs` to support ESM if necessary.
+- [ ] **Validation:** Ensure `npm run build`, `npm run lint`, and `npm test` all pass after the migration.

@@ -21,7 +21,7 @@ export class ProcessingCoordinator {
     this.enabledEngines = appConfig.includeEngines;
 
     // Inject stateManager into engine so it can check skip status
-    this.engine.stateManager = this.stateManager;
+    this.engine.setStateManager(this.stateManager);
 
     this.setupEventHandlers();
   }

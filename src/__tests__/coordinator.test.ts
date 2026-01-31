@@ -10,6 +10,7 @@ class MockEngine extends EventEmitter {
   stateManager: StateManager | undefined;
   skipFile = jest.fn();
   stopAllProcessing = jest.fn();
+  setStateManager = jest.fn();
 }
 
 class MockStateManager extends EventEmitter {
