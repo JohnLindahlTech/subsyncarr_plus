@@ -1,6 +1,7 @@
 import { basename, dirname, join } from 'path';
-import { execPromise, ProcessingResult } from './helpers';
+import { execPromise, ProcessingResult } from './helpers.js';
 import { existsSync } from 'fs';
+import logger from './services/logger.js';
 
 export async function generateAutosubsyncSubtitles(
   srtPath: string,
@@ -23,9 +24,10 @@ export async function generateAutosubsyncSubtitles(
 
   try {
     const reference = audioPath || videoPath;
-    const command = `autosubsync "${reference}" "${srtPath}" "${outputPath}"`;
-    console.log(`${new Date().toLocaleString()} Processing: ${command}`);
-    const { stdout, stderr } = await execPromise(command, timeoutMs, signal);
+    const args = [reference, srtPath, outputPath];
+    const command = `autosubsync ${args.join(' ')}`;
+    logger.info({ command }, 'Processing autosubsync');
+    const { stdout, stderr } = await execPromise('autosubsync', args, timeoutMs, signal);
     return {
       success: true,
       message: `Successfully processed: ${outputPath}`,

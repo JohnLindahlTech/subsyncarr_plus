@@ -1,10 +1,19 @@
 import EventEmitter from 'events';
-import { SubsyncarrPlusPlusDatabase, Run, FileResult } from './database';
+import { SubsyncarrPlusPlusDatabase, Run, FileResult } from './database.js';
 import { randomUUID } from 'crypto';
-import { LogFileManager } from './logFileManager';
+import { LogFileManager } from './logFileManager.js';
 import * as path from 'path';
 import cron from 'node-cron';
-import { getScanConfig } from './config';
+import { getScanConfig } from './config.js';
+import logger from './services/logger.js';
+import { RunStatus, FileStatus, AgreementStatus, EngineResult, EngineName } from './types.js';
+import { ScoreCalculator } from './services/ScoreCalculator.js';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+import { Worker } from 'worker_threads';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 interface MaintenanceResult {
   success: boolean;
@@ -59,16 +68,14 @@ export class StateManager extends EventEmitter {
       this.db = new SubsyncarrPlusPlusDatabase(this.dbPath, true);
       this.maintenanceActive = false;
       this.emit('maintenance:finished');
-      console.log(`[${new Date().toISOString()}] Main database connection re-opened successfully.`);
+      logger.info('Main database connection re-opened successfully.');
     } catch (err) {
       if (attempt <= maxAttempts) {
-        console.warn(
-          `[${new Date().toISOString()}] Re-opening database failed (attempt ${attempt}/${maxAttempts}). Retrying in ${delay / 1000}s...`,
-        );
+        logger.warn({ attempt, maxAttempts, delay }, 'Re-opening database failed, retrying...');
         await new Promise((resolve) => setTimeout(resolve, delay));
         return this.tryReopenDatabase(attempt + 1);
       } else {
-        console.error(`[${new Date().toISOString()}] Fatal: Could not re-open database after ${maxAttempts} attempts.`);
+        logger.error({ attempt, maxAttempts }, 'Fatal: Could not re-open database after maximum attempts');
         // Last ditch effort: try one more time without skipping init
         this.db = new SubsyncarrPlusPlusDatabase(this.dbPath, false);
       }
@@ -78,15 +85,15 @@ export class StateManager extends EventEmitter {
   private handleIncompleteRuns(): void {
     // Find any runs that are still marked as 'running' from a previous session
     const history = this.db.getRunHistory(100);
-    const incompleteRuns = history.filter((run) => run.status === 'running');
+    const incompleteRuns = history.filter((run) => run.status === RunStatus.RUNNING);
 
     incompleteRuns.forEach((run) => {
-      console.log(`[${new Date().toISOString()}] Found incomplete run from previous session: ${run.id}`);
+      logger.info({ runId: run.id }, 'Found incomplete run from previous session');
       this.db.updateRun(run.id, {
-        status: 'cancelled',
+        status: RunStatus.CANCELLED,
         end_time: run.start_time, // Use start time since we don't know when it actually stopped
       });
-      console.log(`[${new Date().toISOString()}] Marked run ${run.id} as cancelled`);
+      logger.info({ runId: run.id }, 'Marked run as cancelled');
     });
   }
 
@@ -94,7 +101,7 @@ export class StateManager extends EventEmitter {
   startRun(
     totalFiles: number,
     totalVideos: number,
-    enabledEngines: string[] = ['ffsubsync', 'autosubsync', 'alass'],
+    enabledEngines: string[] = [EngineName.FFSUBSYNC, EngineName.AUTOSUBSYNC, EngineName.ALASS],
   ): string {
     const runId = randomUUID();
     this.db.createRun(runId, totalFiles);
@@ -119,7 +126,7 @@ export class StateManager extends EventEmitter {
   completeRun(runId: string): void {
     this.db.updateRun(runId, {
       end_time: Date.now(),
-      status: 'completed',
+      status: RunStatus.COMPLETED,
     });
 
     // End log file for this run
@@ -136,11 +143,11 @@ export class StateManager extends EventEmitter {
   cancelRun(runId: string): void {
     this.db.updateRun(runId, {
       end_time: Date.now(),
-      status: 'cancelled',
+      status: RunStatus.CANCELLED,
     });
 
     // Bulk update all files that weren't finished to 'skipped'
-    this.db.updateAllFileResults(runId, { status: 'skipped' }, ['pending', 'processing']);
+    this.db.updateAllFileResults(runId, { status: FileStatus.SKIPPED }, [FileStatus.PENDING, FileStatus.PROCESSING]);
 
     // End log file for this run
     this.logFileManager.endRun(runId);
@@ -300,71 +307,23 @@ export class StateManager extends EventEmitter {
     this.emitFullStateUpdate(runId);
   }
 
-  reconcileFileResults(
-    runId: string,
-    filePath: string,
-  ): { bestEngine: string | null; status: 'verified' | 'suspicious' | 'low_confidence' } {
+  reconcileFileResults(runId: string, filePath: string): { bestEngine: string | null; status: AgreementStatus } {
     const file = this.db.getFileResults(runId).find((f) => f.file_path === filePath);
-    if (!file) return { bestEngine: null, status: 'low_confidence' };
-
-    interface EngineResult {
-      success: boolean;
-      score?: number;
-      message?: string;
-    }
+    if (!file) return { bestEngine: null, status: AgreementStatus.LOW_CONFIDENCE };
 
     const engines: Record<string, EngineResult> = JSON.parse(file.engines || '{}');
-    const successes = Object.entries(engines)
-      .filter(([, res]) => res.success)
-      .map(([name, res]) => ({
-        name,
-        score: res.score !== undefined ? res.score : 0,
-      }));
-
-    if (successes.length === 0) {
-      this.db.updateFileResult(runId, filePath, {
-        best_engine: null,
-        best_score: null,
-        agreement_status: 'low_confidence',
-      });
-      return { bestEngine: null, status: 'low_confidence' };
-    }
-
-    // Sort by score descending
-    successes.sort((a, b) => b.score - a.score);
-    const bestResult = successes[0];
-    const bestName = bestResult.name;
-
-    let status: 'verified' | 'suspicious' | 'low_confidence' = 'low_confidence';
-
-    if (successes.length >= 2) {
-      const secondScore = successes[1].score;
-      // If the top two engines agree within 5 points and are both high, it's verified
-      if (Math.abs(bestResult.score - secondScore) <= 5 && bestResult.score > 70) {
-        status = 'verified';
-      } else if (Math.abs(bestResult.score - secondScore) > 30) {
-        // High disagreement between engines
-        status = 'suspicious';
-      } else if (bestResult.score > 50) {
-        status = 'verified'; // General consensus with decent score
-      } else {
-        status = 'low_confidence'; // Consensus but both are low
-      }
-    } else {
-      // Only one engine succeeded
-      status = bestResult.score > 80 ? 'verified' : 'low_confidence';
-    }
+    const reconciliation = ScoreCalculator.reconcile(engines);
 
     const updates = {
-      best_engine: bestName,
-      best_score: bestResult.score,
-      agreement_status: status,
+      best_engine: reconciliation.bestEngine,
+      best_score: reconciliation.bestScore,
+      agreement_status: reconciliation.agreementStatus,
     };
 
     this.db.updateFileResult(runId, filePath, updates);
     this.emitFullStateUpdate(runId);
 
-    return { bestEngine: bestName, status };
+    return { bestEngine: reconciliation.bestEngine, status: reconciliation.agreementStatus };
   }
 
   updateFilesVideoStatus(runId: string, videoPath: string, videoStatus: string | null): void {
@@ -483,19 +442,18 @@ export class StateManager extends EventEmitter {
 
   performMaintenance(): void {
     if (this.currentRunId || this.maintenanceActive) {
-      console.log(`[${new Date().toISOString()}] Skipping maintenance: Run in progress or maintenance already active.`);
+      logger.info('Skipping maintenance: Run in progress or maintenance already active.');
       return;
     }
 
     this.maintenanceActive = true;
     this.emit('maintenance:started');
-    console.log(`[${new Date().toISOString()}] Starting off-thread database maintenance. Closing main connection...`);
+    logger.info('Starting off-thread database maintenance. Closing main connection...');
 
     // We must close the connection so the worker can get an exclusive lock for VACUUM
     this.db.close();
 
     const workerPath = path.join(__dirname, 'maintenanceWorker.js');
-    const { Worker } = require('worker_threads');
     const config = getScanConfig();
     const worker = new Worker(workerPath, {
       workerData: {
@@ -513,13 +471,11 @@ export class StateManager extends EventEmitter {
     });
 
     worker.on('error', (err: Error) => {
-      console.error(`[${new Date().toISOString()}] Maintenance worker thread error:`, err);
+      logger.error({ err }, 'Maintenance worker thread error');
     });
 
     worker.on('exit', async (code: number) => {
-      console.log(
-        `[${new Date().toISOString()}] Maintenance worker exited with code ${code}. Re-opening connection...`,
-      );
+      logger.info({ code }, 'Maintenance worker exited. Re-opening connection...');
 
       await this.tryReopenDatabase();
 
@@ -528,12 +484,16 @@ export class StateManager extends EventEmitter {
           this.logFileManager.deleteLog(id);
         });
         const orphanLogs = this.logFileManager.deleteOldLogs(30);
-        console.log(`[${new Date().toISOString()}] Off-thread maintenance complete:`);
-        console.log(`  - Deleted runs: ${resultData.deletedRunIds.length}`);
-        console.log(`  - Space reclaimed: ${(resultData.reclaimedBytes / 1024 / 1024).toFixed(2)} MB`);
-        console.log(`  - Orphan logs cleaned: ${orphanLogs}`);
+        logger.info(
+          {
+            deletedRuns: resultData.deletedRunIds.length,
+            spaceReclaimedMb: (resultData.reclaimedBytes / 1024 / 1024).toFixed(2),
+            orphanLogsCleaned: orphanLogs,
+          },
+          'Off-thread maintenance complete',
+        );
       } else if (resultData && !resultData.success) {
-        console.error(`[${new Date().toISOString()}] Maintenance worker reported failure: ${resultData.error}`);
+        logger.error({ error: resultData.error }, 'Maintenance worker reported failure');
       }
     });
   }

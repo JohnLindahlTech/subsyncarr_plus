@@ -1,45 +1,48 @@
-import { ProcessingCoordinator } from '../coordinator';
-import { ProcessingEngine } from '../processingEngine';
-import { StateManager } from '../stateManager';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { ProcessingCoordinator } from '../coordinator.js';
+import { ProcessingEngine } from '../processingEngine.js';
+import { StateManager } from '../stateManager.js';
 import { EventEmitter } from 'events';
 
 // Mock dependencies
 class MockEngine extends EventEmitter {
-  processRun = jest.fn();
-  reset = jest.fn();
+  processRun = vi.fn();
+  reset = vi.fn();
   stateManager: StateManager | undefined;
-  skipFile = jest.fn();
-  stopAllProcessing = jest.fn();
+  skipFile = vi.fn();
+  stopAllProcessing = vi.fn();
+  setStateManager = vi.fn();
 }
 
 class MockStateManager extends EventEmitter {
   dbPath = 'test.db';
-  getCurrentRun = jest.fn();
-  startRun = jest.fn();
-  appendLog = jest.fn();
-  addFile = jest.fn();
-  addFilesBulk = jest.fn();
-  updateFileStatus = jest.fn();
-  updateFileEngine = jest.fn();
-  incrementCompletedEngines = jest.fn();
-  incrementCompletedVideos = jest.fn();
-  incrementRunCounter = jest.fn();
-  incrementRunCountersBulk = jest.fn();
-  startExtraction = jest.fn();
-  stopExtraction = jest.fn();
-  getActiveExtractions = jest.fn().mockReturnValue([]);
-  setCurrentVideo = jest.fn();
-  updateFilesVideoStatus = jest.fn();
-  completeRun = jest.fn();
-  getFileResults = jest.fn();
-  getFileCount = jest.fn();
-  cancelRun = jest.fn();
-  getAverageEngineDuration = jest.fn().mockReturnValue(30000);
-  reconcileFileResults = jest.fn();
+  getCurrentRun = vi.fn();
+  startRun = vi.fn();
+  appendLog = vi.fn();
+  addFile = vi.fn();
+  addFilesBulk = vi.fn();
+  updateFileStatus = vi.fn();
+  updateFileEngine = vi.fn();
+  incrementCompletedEngines = vi.fn();
+  incrementCompletedVideos = vi.fn();
+  incrementRunCounter = vi.fn();
+  incrementRunCountersBulk = vi.fn();
+  startExtraction = vi.fn();
+  stopExtraction = vi.fn();
+  getActiveExtractions = vi.fn().mockReturnValue([]);
+  setCurrentVideo = vi.fn();
+  updateFilesVideoStatus = vi.fn();
+  completeRun = vi.fn();
+  getFileResults = vi.fn();
+  getFileCount = vi.fn();
+  cancelRun = vi.fn();
+  getAverageEngineDuration = vi.fn().mockReturnValue(30000);
+  reconcileFileResults = vi.fn();
+  isMaintenanceMode = vi.fn().mockReturnValue(false);
 }
 
-jest.mock('../findMatchingVideoFile', () => ({
-  findMatchingVideoFile: jest.fn().mockReturnValue({ videoPath: '/video/movie.mkv', reason: 'exact_match' }),
+vi.mock('../findMatchingVideoFile', () => ({
+  findMatchingVideoFile: vi.fn().mockReturnValue({ videoPath: '/video/movie.mkv', reason: 'exact_match' }),
 }));
 
 describe('ProcessingCoordinator', () => {

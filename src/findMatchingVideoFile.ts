@@ -1,7 +1,7 @@
 import { existsSync, readdirSync } from 'fs';
 import { basename, dirname, join, resolve, extname } from 'path';
 
-import { ScanConfig } from './config';
+import { ScanConfig } from './config.js';
 
 type VideoExtension = '.mkv' | '.mp4' | '.avi' | '.mov';
 const VIDEO_EXTENSIONS: VideoExtension[] = ['.mkv', '.mp4', '.avi', '.mov'];

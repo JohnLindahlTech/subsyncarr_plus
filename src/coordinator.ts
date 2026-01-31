@@ -1,9 +1,12 @@
-import { ProcessingEngine } from './processingEngine';
-import { StateManager } from './stateManager';
-import { ScanConfig } from './config';
-import { findMatchingVideoFile } from './findMatchingVideoFile';
-import { Run } from './database';
+import { ProcessingEngine } from './processingEngine.js';
+import { StateManager } from './stateManager.js';
+import { ScanConfig } from './config.js';
+import { findMatchingVideoFile } from './findMatchingVideoFile.js';
+import { Run } from './database.js';
 import { once } from 'events';
+import { appConfig } from './config/appConfig.js';
+import logger from './services/logger.js';
+import { FileStatus } from './types.js';
 
 export class ProcessingCoordinator {
   private processingPromise: Promise<void> | null = null;
@@ -16,10 +19,10 @@ export class ProcessingCoordinator {
     private engine: ProcessingEngine,
     private stateManager: StateManager,
   ) {
-    this.enabledEngines = process.env.INCLUDE_ENGINES?.split(',') || ['ffsubsync', 'autosubsync', 'alass'];
+    this.enabledEngines = appConfig.includeEngines;
 
     // Inject stateManager into engine so it can check skip status
-    this.engine.stateManager = this.stateManager;
+    this.engine.setStateManager(this.stateManager);
 
     this.setupEventHandlers();
   }
@@ -60,7 +63,7 @@ export class ProcessingCoordinator {
           return {
             filePath,
             videoPath: match.videoPath,
-            status: 'pending' as const,
+            status: FileStatus.PENDING,
           };
         });
         this.stateManager.addFilesBulk(runId, pendingFiles);
@@ -71,7 +74,7 @@ export class ProcessingCoordinator {
           return {
             filePath: item.path,
             videoPath: match.videoPath,
-            status: 'skipped' as const,
+            status: FileStatus.SKIPPED,
             isHidden: item.isHidden,
           };
         });
@@ -126,13 +129,13 @@ export class ProcessingCoordinator {
 
     this.engine.on('file:started', ({ srtPath }: { srtPath: string }) => {
       if (this.currentRunId) {
-        this.stateManager.updateFileStatus(this.currentRunId, srtPath, 'processing', null);
+        this.stateManager.updateFileStatus(this.currentRunId, srtPath, FileStatus.PROCESSING, null);
       }
     });
 
     this.engine.on('file:engine_started', ({ srtPath, engine }: { srtPath: string; engine: string }) => {
       if (this.currentRunId) {
-        this.stateManager.updateFileStatus(this.currentRunId, srtPath, 'processing', engine);
+        this.stateManager.updateFileStatus(this.currentRunId, srtPath, FileStatus.PROCESSING, engine);
       }
     });
 
@@ -164,14 +167,14 @@ export class ProcessingCoordinator {
 
     this.engine.on('file:completed', ({ srtPath }: { srtPath: string }) => {
       if (this.currentRunId) {
-        this.stateManager.updateFileStatus(this.currentRunId, srtPath, 'completed', null);
+        this.stateManager.updateFileStatus(this.currentRunId, srtPath, FileStatus.COMPLETED, null);
         this.stateManager.incrementRunCounter(this.currentRunId, 'completed');
       }
     });
 
     this.engine.on('file:skipped', ({ srtPath }: { srtPath: string }) => {
       if (this.currentRunId) {
-        this.stateManager.updateFileStatus(this.currentRunId, srtPath, 'skipped', null);
+        this.stateManager.updateFileStatus(this.currentRunId, srtPath, FileStatus.SKIPPED, null);
         this.stateManager.incrementRunCountersBulk(this.currentRunId, {
           skipped: 1,
           completed_engines: this.enabledEngines.length,
@@ -181,7 +184,7 @@ export class ProcessingCoordinator {
 
     this.engine.on('file:no_video', ({ srtPath }: { srtPath: string }) => {
       if (this.currentRunId) {
-        this.stateManager.updateFileStatus(this.currentRunId, srtPath, 'error', null);
+        this.stateManager.updateFileStatus(this.currentRunId, srtPath, FileStatus.ERROR, null);
 
         // Mark as permanent failure for all engines so it doesn't keep retrying every run
         for (const engine of this.enabledEngines) {
@@ -197,7 +200,7 @@ export class ProcessingCoordinator {
 
     this.engine.on('file:failed', ({ srtPath }: { srtPath: string }) => {
       if (this.currentRunId) {
-        this.stateManager.updateFileStatus(this.currentRunId, srtPath, 'error', null);
+        this.stateManager.updateFileStatus(this.currentRunId, srtPath, FileStatus.ERROR, null);
         this.stateManager.incrementRunCounter(this.currentRunId, 'failed');
       }
     });
@@ -205,11 +208,11 @@ export class ProcessingCoordinator {
 
   async startRun(config?: ScanConfig): Promise<string> {
     if (this.processingPromise) {
-      console.log(`[${new Date().toISOString()}] Cannot start run: Another run is already in progress`);
+      logger.warn('Cannot start run: Another run is already in progress');
       throw new Error('A run is already in progress');
     }
 
-    console.log(`[${new Date().toISOString()}] Starting new processing run...`);
+    logger.info('Starting new processing run...');
     this.engine.reset();
     this.currentRunId = null;
     this.stopRequested = false;
@@ -230,8 +233,15 @@ export class ProcessingCoordinator {
       this.processingPromise = null;
       const run = this.stateManager.getCurrentRun();
       if (run) {
-        console.log(
-          `[${new Date().toISOString()}] Run completed - Total: ${run.total_files}, Completed: ${run.completed}, Skipped: ${run.skipped}, Failed: ${run.failed}`,
+        logger.info(
+          {
+            runId: run.id,
+            total_files: run.total_files,
+            completed: run.completed,
+            skipped: run.skipped,
+            failed: run.failed,
+          },
+          'Run completed',
         );
         this.stateManager.completeRun(run.id);
       }
@@ -256,12 +266,12 @@ export class ProcessingCoordinator {
       ]);
 
       if (this.stopRequested) {
-        console.log(`[${new Date().toISOString()}] Stop was requested during scan. Cancelling run: ${runId}`);
+        logger.info({ runId }, 'Stop was requested during scan. Cancelling run');
         this.stopRun();
         throw new Error('Run was stopped during initialization');
       }
 
-      console.log(`[${new Date().toISOString()}] Run created with ID: ${runId}`);
+      logger.info({ runId }, 'Run created');
       return runId;
     } finally {
       // Clean up the event listener if it hasn't fired yet
@@ -271,16 +281,16 @@ export class ProcessingCoordinator {
 
   skipFile(filePath: string): void {
     const fileName = filePath.split('/').pop();
-    console.log(`[${new Date().toISOString()}] Skip requested for: ${fileName}`);
+    logger.info({ fileName }, 'Skip requested for file');
     this.engine.skipFile(filePath);
   }
 
   stopRun(): void {
-    console.log(`[${new Date().toISOString()}] Stop run requested`);
+    logger.info('Stop run requested');
     const run = this.stateManager.getCurrentRun();
     if (!run) {
       if (this.isRunning()) {
-        console.log(`[${new Date().toISOString()}] No run active yet (still scanning). Queuing stop...`);
+        logger.info('No run active yet (still scanning). Queuing stop...');
         this.stopRequested = true;
         return;
       }
@@ -294,6 +304,27 @@ export class ProcessingCoordinator {
 
     // Mark run as cancelled in bulk
     this.stateManager.cancelRun(run.id);
+  }
+
+  /**
+   * Performs a graceful shutdown of the coordinator and its engine.
+   * Stops any active runs and waits for cleanup.
+   */
+  async shutdown(): Promise<void> {
+    logger.info('Coordinator shutdown initiated');
+    if (this.isRunning()) {
+      logger.info('Active run detected during shutdown. Stopping...');
+      this.stopRun();
+      // Wait for the processing promise to finish (which includes engine cleanup)
+      if (this.processingPromise) {
+        try {
+          await this.processingPromise;
+        } catch (err) {
+          // Ignore errors during shutdown
+        }
+      }
+    }
+    logger.info('Coordinator shutdown complete');
   }
 
   isRunning(): boolean {

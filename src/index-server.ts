@@ -1,39 +1,43 @@
-import { ProcessingEngine } from './processingEngine';
-import { StateManager } from './stateManager';
-import { ProcessingCoordinator } from './coordinator';
-import { SubsyncarrPlusPlusServer } from './server';
+import { ProcessingEngine } from './processingEngine.js';
+import { StateManager } from './stateManager.js';
+import { ProcessingCoordinator } from './coordinator.js';
+import { SubsyncarrPlusPlusServer } from './server.js';
+import { ScannerService } from './services/ScannerService.js';
+import { AudioExtractor } from './services/AudioExtractor.js';
 import { schedule } from 'node-cron';
 import { existsSync, renameSync } from 'fs';
+import { appConfig } from './config/appConfig.js';
+import logger from './services/logger.js';
 
 async function main() {
   const oldDefaultDbPath = '/app/data/subsyncarr-plus.db';
-  const newDefaultDbPath = '/app/data/subsyncarr-plus-plus.db';
-  const dbPath = process.env.DB_PATH || newDefaultDbPath;
+  const newDefaultDbPath = appConfig.dbPath;
+  const dbPath = appConfig.dbPath;
 
   // Migration: If user didn't specify a DB_PATH and we find the old one, rename it
   if (!process.env.DB_PATH && existsSync(oldDefaultDbPath) && !existsSync(newDefaultDbPath)) {
-    console.log(
-      `[${new Date().toISOString()}] 📦 Migrating legacy database: ${oldDefaultDbPath} -> ${newDefaultDbPath}`,
-    );
+    logger.info({ oldDefaultDbPath, newDefaultDbPath }, '📦 Migrating legacy database');
     try {
       renameSync(oldDefaultDbPath, newDefaultDbPath);
       // Also migrate the logs directory if it exists
       const oldLogsDir = '/app/data/logs';
       if (existsSync(oldLogsDir)) {
-        console.log(`[${new Date().toISOString()}] 📦 Migrating legacy logs directory...`);
+        logger.info('📦 Migrating legacy logs directory...');
       }
     } catch (err) {
-      console.error(`[${new Date().toISOString()}] ❌ Database migration failed:`, err);
+      logger.error({ err }, '❌ Database migration failed');
     }
   }
 
-  const port = parseInt(process.env.WEB_PORT || '3000', 10);
-  const host = process.env.WEB_HOST || '127.0.0.1';
+  const port = appConfig.webPort;
+  const host = appConfig.webHost;
 
-  console.log(`[${new Date().toISOString()}] Initializing Subsyncarr++ Server...`);
+  logger.info('Initializing Subsyncarr++ Server...');
 
   const stateManager = new StateManager(dbPath);
-  const engine = new ProcessingEngine();
+  const scannerService = new ScannerService();
+  const audioExtractor = new AudioExtractor(stateManager);
+  const engine = new ProcessingEngine(scannerService, audioExtractor);
   const coordinator = new ProcessingCoordinator(engine, stateManager);
   const server = new SubsyncarrPlusPlusServer(coordinator, stateManager);
 
@@ -41,44 +45,61 @@ async function main() {
   server.start(port, host);
 
   // Setup cron scheduler for automatic runs
-  const cronSchedule = process.env.CRON_SCHEDULE || '0 0 * * *';
+  const cronSchedule = appConfig.cronSchedule;
 
   if (cronSchedule !== 'disabled') {
     schedule(cronSchedule, async () => {
-      console.log(`[${new Date().toISOString()}] Starting scheduled run (${cronSchedule})`);
+      logger.info({ cronSchedule }, 'Starting scheduled run');
       try {
         await coordinator.startRun();
       } catch (error) {
-        console.error(`[${new Date().toISOString()}] Scheduled run failed:`, error);
+        logger.error({ error }, 'Scheduled run failed');
       }
     });
 
-    console.log(`[${new Date().toISOString()}] Scheduled runs: ${cronSchedule}`);
+    logger.info({ cronSchedule }, 'Scheduled runs configured');
   } else {
-    console.log(`[${new Date().toISOString()}] Automatic scheduling disabled`);
+    logger.info('Automatic scheduling disabled');
   }
 
   // Log memory usage periodically
   setInterval(
     () => {
       const usage = process.memoryUsage();
-      console.log(
-        `[${new Date().toISOString()}] Memory: RSS=${(usage.rss / 1024 / 1024).toFixed(1)}MB, Heap=${(usage.heapUsed / 1024 / 1024).toFixed(1)}MB/${(usage.heapTotal / 1024 / 1024).toFixed(1)}MB`,
+      logger.info(
+        {
+          rss: `${(usage.rss / 1024 / 1024).toFixed(1)}MB`,
+          heapUsed: `${(usage.heapUsed / 1024 / 1024).toFixed(1)}MB`,
+          heapTotal: `${(usage.heapTotal / 1024 / 1024).toFixed(1)}MB`,
+        },
+        'Memory usage',
       );
     },
     5 * 60 * 1000,
   ); // Every 5 minutes
 
   // Graceful shutdown
-  process.on('SIGTERM', () => {
-    console.log(`[${new Date().toISOString()}] SIGTERM received, shutting down gracefully...`);
-    server.close();
-    stateManager.close();
-    process.exit(0);
-  });
+  const shutdown = async (signal: string) => {
+    logger.info(`${signal} received, shutting down gracefully...`);
+    try {
+      // 1. Stop processing and wait for active sync engines to be killed/cleaned up
+      await coordinator.shutdown();
+      // 2. Close servers and database
+      server.close();
+      stateManager.close();
+      logger.info('Graceful shutdown successful');
+      process.exit(0);
+    } catch (err) {
+      logger.error({ err }, 'Error during graceful shutdown');
+      process.exit(1);
+    }
+  };
+
+  process.on('SIGTERM', () => shutdown('SIGTERM'));
+  process.on('SIGINT', () => shutdown('SIGINT'));
 }
 
 main().catch((error) => {
-  console.error('Failed to start server:', error);
+  logger.fatal({ error }, 'Failed to start server');
   process.exit(1);
 });

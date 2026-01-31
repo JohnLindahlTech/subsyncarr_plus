@@ -1,5 +1,6 @@
-import { execPromise, ProcessingResult, EngineProfile, getEngineOutputPath } from './helpers';
+import { execPromise, ProcessingResult, EngineProfile, getEngineOutputPath } from './helpers.js';
 import * as fs from 'fs';
+import logger from './services/logger.js';
 
 export async function generateFfsubsyncSubtitles(
   srtPath: string,
@@ -21,10 +22,11 @@ export async function generateFfsubsyncSubtitles(
 
   try {
     const reference = audioPath || videoPath;
-    const profileArgs = profile ? profile.args.join(' ') : '';
-    const command = `ffsubsync "${reference}" -i "${srtPath}" -o "${outputPath}" ${profileArgs}`;
-    console.log(`${new Date().toLocaleString()} Processing: ${command}`);
-    const { stdout, stderr } = await execPromise(command, timeoutMs, signal);
+    const profileArgs = profile ? profile.args : [];
+    const args = [reference, '-i', srtPath, '-o', outputPath, ...profileArgs];
+    const command = `ffsubsync ${args.join(' ')}`;
+    logger.info({ command }, 'Processing ffsubsync');
+    const { stdout, stderr } = await execPromise('ffsubsync', args, timeoutMs, signal);
 
     // Parse score from stdout. ffsubsync can output "fit score: 0.85" or large alignment scores.
     let score: number | undefined;

@@ -1,3 +1,6 @@
+import { appConfig } from './config/appConfig.js';
+import logger from './services/logger.js';
+
 export interface ScanConfig {
   includePaths: string[];
   excludePaths: string[];
@@ -18,48 +21,45 @@ function validatePath(path: string): boolean {
 }
 
 export function getScanConfig(): ScanConfig {
-  const scanPaths = process.env.SCAN_PATHS?.split(',').filter(Boolean) || ['/scan_dir'];
-  const excludePaths = process.env.EXCLUDE_PATHS?.split(',').filter(Boolean) || [];
+  const config = appConfig.getScanConfig();
 
   // Validate paths
-  const validIncludePaths = scanPaths.filter((path) => {
+  const validIncludePaths = config.includePaths.filter((path) => {
     const isValid = validatePath(path);
     if (!isValid) {
-      console.warn(`${new Date().toLocaleString()} Invalid include path: ${path}`);
+      logger.warn({ path }, 'Invalid include path');
     }
     return isValid;
   });
 
-  const validExcludePaths = excludePaths.filter((path) => {
+  const validExcludePaths = config.excludePaths.filter((path) => {
     const isValid = validatePath(path);
     if (!isValid) {
-      console.warn(`${new Date().toLocaleString()} Invalid exclude path: ${path}`);
+      logger.warn({ path }, 'Invalid exclude path');
     }
     return isValid;
   });
 
   if (validIncludePaths.length === 0) {
-    console.warn(`${new Date().toLocaleString()} No valid scan paths provided, defaulting to /scan_dir`);
+    logger.warn('No valid scan paths provided, defaulting to /scan_dir');
     validIncludePaths.push('/scan_dir');
   }
 
-  console.log(`${new Date().toLocaleString()} Scan configuration:`, {
-    includePaths: validIncludePaths,
-    excludePaths: validExcludePaths,
-  });
+  logger.info(
+    {
+      includePaths: validIncludePaths,
+      excludePaths: validExcludePaths,
+    },
+    'Scan configuration',
+  );
 
   return {
     includePaths: validIncludePaths,
     excludePaths: validExcludePaths,
-    enableContextAwareMatching: process.env.ENABLE_CONTEXT_AWARE_MATCHING !== 'false',
+    enableContextAwareMatching: config.enableContextAwareMatching,
   };
 }
 
 export function getRetentionConfig(): RetentionConfig {
-  return {
-    keepRunsDays: parseInt(process.env.RETENTION_KEEP_RUNS_DAYS || '30', 10),
-    trimLogsDays: parseInt(process.env.RETENTION_TRIM_LOGS_DAYS || '7', 10),
-    maxLogSizeBytes: parseInt(process.env.RETENTION_MAX_LOG_SIZE || '10000', 10),
-    cleanupIntervalHours: parseInt(process.env.RETENTION_CLEANUP_INTERVAL_HOURS || '24', 10),
-  };
+  return appConfig.getRetentionConfig();
 }
