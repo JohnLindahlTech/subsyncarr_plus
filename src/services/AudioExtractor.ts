@@ -1,7 +1,7 @@
 import * as fs from 'fs';
-import { extractAudio as helpersExtractAudio } from '../helpers';
-import logger from './logger';
-import { StateManager } from '../stateManager';
+import { extractAudio as helpersExtractAudio } from '../helpers.js';
+import logger from './logger.js';
+import { StateManager } from '../stateManager.js';
 
 export class AudioExtractor {
   constructor(private stateManager?: StateManager) {}

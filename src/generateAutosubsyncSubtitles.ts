@@ -1,7 +1,7 @@
 import { basename, dirname, join } from 'path';
-import { execPromise, ProcessingResult } from './helpers';
+import { execPromise, ProcessingResult } from './helpers.js';
 import { existsSync } from 'fs';
-import logger from './services/logger';
+import logger from './services/logger.js';
 
 export async function generateAutosubsyncSubtitles(
   srtPath: string,

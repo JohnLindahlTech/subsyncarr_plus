@@ -1,7 +1,8 @@
-import { findMatchingVideoFile } from '../findMatchingVideoFile';
+import { describe, it, expect, beforeEach, vi, Mock } from 'vitest';
+import { findMatchingVideoFile } from '../findMatchingVideoFile.js';
 import * as fs from 'fs';
 
-jest.mock('fs');
+vi.mock('fs');
 
 describe('findMatchingVideoFile', () => {
   const mockSrtPath = '/media/Movies/Matrix/subs/sv.srt';
@@ -9,11 +10,11 @@ describe('findMatchingVideoFile', () => {
   const mockParentDir = '/media/Movies/Matrix';
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it('should find an exact match', () => {
-    (fs.existsSync as jest.Mock).mockImplementation((p) => p === '/media/Movies/Matrix/subs/sv.mkv');
+    (fs.existsSync as Mock).mockImplementation((p: string) => p === '/media/Movies/Matrix/subs/sv.mkv');
     const result = findMatchingVideoFile(mockSrtPath);
     expect(result.videoPath).toBe('/media/Movies/Matrix/subs/sv.mkv');
     expect(result.reason).toBe('exact_match');
@@ -21,19 +22,20 @@ describe('findMatchingVideoFile', () => {
 
   it('should find a match via progressive tag removal', () => {
     const srt = '/media/Movies/Movie.2024.1080p.srt';
-    (fs.existsSync as jest.Mock).mockImplementation((p) => p === '/media/Movies/Movie.2024.mkv');
+    (fs.existsSync as Mock).mockImplementation((p: string) => p === '/media/Movies/Movie.2024.mkv');
     const result = findMatchingVideoFile(srt);
     expect(result.videoPath).toBe('/media/Movies/Movie.2024.mkv');
     expect(result.reason).toBe('tag_match');
   });
 
   it('should fallback to solitary video in same directory', () => {
-    (fs.existsSync as jest.Mock).mockReturnValue(false);
-    (fs.readdirSync as jest.Mock).mockReturnValue([
+    (fs.existsSync as Mock).mockReturnValue(false);
+    (fs.readdirSync as Mock).mockReturnValue([
       { isFile: () => true, name: 'other_name.mkv' },
       { isFile: () => true, name: 'sv.srt' },
       { isFile: () => false, name: 'SubFolder' },
-    ]);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ] as any);
 
     const result = findMatchingVideoFile(mockSrtPath);
     expect(result.videoPath).toBe('/media/Movies/Matrix/subs/other_name.mkv');
@@ -41,8 +43,8 @@ describe('findMatchingVideoFile', () => {
   });
 
   it('should fallback to solitary video in parent directory', () => {
-    (fs.existsSync as jest.Mock).mockReturnValue(false);
-    (fs.readdirSync as jest.Mock).mockImplementation((dir) => {
+    (fs.existsSync as Mock).mockReturnValue(false);
+    (fs.readdirSync as Mock).mockImplementation((dir: string) => {
       if (dir === mockSrtDir) {
         return [{ isFile: () => true, name: 'sv.srt' }]; // No video here
       }
@@ -62,7 +64,7 @@ describe('findMatchingVideoFile', () => {
     fileIndex.set('/media/Movies', new Set(['movie.mkv', 'movie.srt']));
 
     // existsSync should NOT be called if index is working
-    const existsSpy = jest.spyOn(fs, 'existsSync');
+    const existsSpy = vi.spyOn(fs, 'existsSync');
 
     const result = findMatchingVideoFile('/media/Movies/movie.srt', undefined, fileIndex);
     expect(result.videoPath).toBe('/media/Movies/movie.mkv');
@@ -71,11 +73,12 @@ describe('findMatchingVideoFile', () => {
   });
 
   it('should return null if multiple videos exist in same directory (ambiguous)', () => {
-    (fs.existsSync as jest.Mock).mockReturnValue(false);
-    (fs.readdirSync as jest.Mock).mockReturnValue([
+    (fs.existsSync as Mock).mockReturnValue(false);
+    (fs.readdirSync as Mock).mockReturnValue([
       { isFile: () => true, name: 'video1.mkv' },
       { isFile: () => true, name: 'video2.mkv' },
-    ]);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    ] as any);
 
     const result = findMatchingVideoFile(mockSrtPath);
     expect(result.videoPath).toBeNull();

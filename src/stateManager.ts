@@ -1,13 +1,18 @@
 import EventEmitter from 'events';
-import { SubsyncarrPlusPlusDatabase, Run, FileResult } from './database';
+import { SubsyncarrPlusPlusDatabase, Run, FileResult } from './database.js';
 import { randomUUID } from 'crypto';
-import { LogFileManager } from './logFileManager';
+import { LogFileManager } from './logFileManager.js';
 import * as path from 'path';
 import cron from 'node-cron';
-import { getScanConfig } from './config';
-import logger from './services/logger';
-import { RunStatus, FileStatus, AgreementStatus, EngineResult, EngineName } from './types';
-import { ScoreCalculator } from './services/ScoreCalculator';
+import { getScanConfig } from './config.js';
+import logger from './services/logger.js';
+import { RunStatus, FileStatus, AgreementStatus, EngineResult, EngineName } from './types.js';
+import { ScoreCalculator } from './services/ScoreCalculator.js';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 interface MaintenanceResult {
   success: boolean;

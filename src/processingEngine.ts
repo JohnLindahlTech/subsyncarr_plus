@@ -1,27 +1,27 @@
 import EventEmitter from 'events';
-import { ScanConfig, getScanConfig } from './config';
-import { ScannerService } from './services/ScannerService';
-import { AudioExtractor } from './services/AudioExtractor';
-import { findMatchingVideoFile } from './findMatchingVideoFile';
-import { generateFfsubsyncSubtitles } from './generateFfsubsyncSubtitles';
-import { generateAutosubsyncSubtitles } from './generateAutosubsyncSubtitles';
-import { generateAlassSubtitles } from './generateAlassSubtitles';
-import { StateManager } from './stateManager';
+import { ScanConfig, getScanConfig } from './config.js';
+import { ScannerService } from './services/ScannerService.js';
+import { AudioExtractor } from './services/AudioExtractor.js';
+import { findMatchingVideoFile } from './findMatchingVideoFile.js';
+import { generateFfsubsyncSubtitles } from './generateFfsubsyncSubtitles.js';
+import { generateAutosubsyncSubtitles } from './generateAutosubsyncSubtitles.js';
+import { generateAlassSubtitles } from './generateAlassSubtitles.js';
+import { StateManager } from './stateManager.js';
 import {
   getVideoDuration,
   ENGINE_PROFILES,
   ProcessingResult,
   getPrimaryOutputPath,
   getEngineOutputPath,
-} from './helpers';
+} from './helpers.js';
 import * as fs from 'fs';
 import * as path from 'path';
 import { randomUUID } from 'crypto';
 import * as os from 'os';
-import { appConfig } from './config/appConfig';
-import logger from './services/logger';
+import { appConfig } from './config/appConfig.js';
+import logger from './services/logger.js';
 import PQueue from 'p-queue';
-import { EngineName } from './types';
+import { EngineName } from './types.js';
 
 export class ProcessingEngine extends EventEmitter {
   private cancelledFiles: Set<string> = new Set();

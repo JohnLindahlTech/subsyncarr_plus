@@ -1,7 +1,7 @@
 import { readdir } from 'fs/promises';
 import { extname, join } from 'path';
-import { ScanConfig } from '../config';
-import logger from './logger';
+import { ScanConfig } from '../config.js';
+import logger from './logger.js';
 
 export interface ScanResult {
   srtFiles: string[];

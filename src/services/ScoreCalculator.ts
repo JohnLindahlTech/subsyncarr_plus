@@ -1,4 +1,4 @@
-import { AgreementStatus, EngineResult } from '../types';
+import { AgreementStatus, EngineResult } from '../types.js';
 
 export interface ScoreReconciliation {
   bestEngine: string | null;

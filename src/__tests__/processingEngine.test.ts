@@ -1,45 +1,53 @@
-import { ProcessingEngine } from '../processingEngine';
-import { StateManager } from '../stateManager';
-import { ScannerService } from '../services/ScannerService';
-import { AudioExtractor } from '../services/AudioExtractor';
+import { describe, it, expect, beforeEach, vi, Mock } from 'vitest';
+import { ProcessingEngine } from '../processingEngine.js';
+import { StateManager } from '../stateManager.js';
+import { ScannerService } from '../services/ScannerService.js';
+import { AudioExtractor } from '../services/AudioExtractor.js';
 import * as fs from 'fs';
-import * as helpers from '../helpers';
-import * as ffsubsyncModule from '../generateFfsubsyncSubtitles';
-import * as findMatchingVideoFileModule from '../findMatchingVideoFile';
+import * as helpers from '../helpers.js';
+import * as ffsubsyncModule from '../generateFfsubsyncSubtitles.js';
+import * as findMatchingVideoFileModule from '../findMatchingVideoFile.js';
 
 // Mock external dependencies
-jest.mock('fs');
-jest.mock('../helpers', () => ({
-  ...jest.requireActual('../helpers'),
-  getEngineOutputPath: jest.fn(),
-  getVideoDuration: jest.fn().mockResolvedValue(1200),
-}));
-jest.mock('../services/ScannerService');
-jest.mock('../services/AudioExtractor');
-jest.mock('../generateFfsubsyncSubtitles');
-jest.mock('../generateAutosubsyncSubtitles');
-jest.mock('../generateAlassSubtitles');
-jest.mock('../findMatchingVideoFile');
+vi.mock('fs');
+vi.mock('../helpers.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../helpers.js')>();
+  return {
+    ...actual,
+    getEngineOutputPath: vi.fn(),
+    getVideoDuration: vi.fn().mockResolvedValue(1200),
+  };
+});
+vi.mock('../services/ScannerService.js');
+vi.mock('../services/AudioExtractor.js');
+vi.mock('../generateFfsubsyncSubtitles.js');
+vi.mock('../generateAutosubsyncSubtitles.js');
+vi.mock('../generateAlassSubtitles.js');
+vi.mock('../findMatchingVideoFile.js');
 
 describe('ProcessingEngine', () => {
   let engine: ProcessingEngine;
-  let mockScanner: jest.Mocked<ScannerService>;
-  let mockExtractor: jest.Mocked<AudioExtractor>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let mockScanner: any;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let mockExtractor: any;
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
 
-    mockScanner = new ScannerService() as jest.Mocked<ScannerService>;
-    mockExtractor = new AudioExtractor() as jest.Mocked<AudioExtractor>;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    mockScanner = new ScannerService() as any;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    mockExtractor = new AudioExtractor() as any;
 
     engine = new ProcessingEngine(mockScanner, mockExtractor);
 
     // Default mocks
-    (findMatchingVideoFileModule.findMatchingVideoFile as jest.Mock).mockReturnValue({
+    (findMatchingVideoFileModule.findMatchingVideoFile as Mock).mockReturnValue({
       videoPath: '/video/path/movie.mkv',
       reason: 'exact_match',
     });
-    (helpers.getEngineOutputPath as jest.Mock).mockImplementation((path, engine) => `${path}.${engine}.srt`);
+    (helpers.getEngineOutputPath as Mock).mockImplementation((path: string, engine: string) => `${path}.${engine}.srt`);
 
     mockScanner.findAllSrtFiles.mockResolvedValue({
       srtFiles: ['file1.srt', 'file2.srt'],
@@ -48,7 +56,7 @@ describe('ProcessingEngine', () => {
 
     mockExtractor.extract.mockResolvedValue(true);
 
-    (ffsubsyncModule.generateFfsubsyncSubtitles as jest.Mock).mockImplementation(() =>
+    (ffsubsyncModule.generateFfsubsyncSubtitles as Mock).mockImplementation(() =>
       Promise.resolve({
         success: true,
         message: 'Done',
@@ -63,7 +71,7 @@ describe('ProcessingEngine', () => {
       fileIndex: new Map([['.', new Set(['file1.srt', 'file2.srt'])]]),
     });
 
-    const filesFoundSpy = jest.fn();
+    const filesFoundSpy = vi.fn();
     engine.on('run:files_found', filesFoundSpy);
 
     await engine.processRun();
@@ -84,7 +92,7 @@ describe('ProcessingEngine', () => {
       ]),
     });
 
-    const filesFoundSpy = jest.fn();
+    const filesFoundSpy = vi.fn();
     engine.on('run:files_found', filesFoundSpy);
 
     await engine.processRun();
@@ -105,7 +113,7 @@ describe('ProcessingEngine', () => {
       ]),
     });
 
-    const filesFoundSpy = jest.fn();
+    const filesFoundSpy = vi.fn();
     engine.on('run:files_found', filesFoundSpy);
 
     await engine.processRun();
@@ -127,33 +135,32 @@ describe('ProcessingEngine', () => {
       ]),
     });
 
-    (ffsubsyncModule.generateFfsubsyncSubtitles as jest.Mock).mockImplementation(async () => {
+    (ffsubsyncModule.generateFfsubsyncSubtitles as Mock).mockImplementation(async () => {
       engine.stopAllProcessing([]);
       return { success: true };
     });
 
     await engine.processRun();
 
-    // With p-queue, if we stop after first file, second might already be enqueued
-    // but should skip execution if globalStopRequested is checked.
     expect(ffsubsyncModule.generateFfsubsyncSubtitles).toHaveBeenCalled();
   });
 
   it('should skip an engine if StateManager indicates it should be skipped', async () => {
-    (fs.existsSync as jest.Mock).mockReturnValue(false);
+    (fs.existsSync as Mock).mockReturnValue(false);
 
     const mockStateManager = {
-      shouldSkipEngine: jest.fn().mockReturnValue(true),
-      getSkippedEngines: jest.fn().mockReturnValue([]),
-      reconcileFileResults: jest.fn(),
-      getCurrentRun: jest.fn().mockReturnValue({ id: 'test-run' }),
-      incrementCompletedVideos: jest.fn(),
-      startExtraction: jest.fn(),
-      stopExtraction: jest.fn(),
+      shouldSkipEngine: vi.fn().mockReturnValue(true),
+      getSkippedEngines: vi.fn().mockReturnValue([]),
+      reconcileFileResults: vi.fn(),
+      getCurrentRun: vi.fn().mockReturnValue({ id: 'test-run' }),
+      incrementCompletedVideos: vi.fn(),
+      startExtraction: vi.fn(),
+      stopExtraction: vi.fn(),
+      setStateManager: vi.fn(),
     };
     engine.setStateManager(mockStateManager as unknown as StateManager);
 
-    const engineCompletedSpy = jest.fn();
+    const engineCompletedSpy = vi.fn();
     engine.on('file:engine_completed', engineCompletedSpy);
 
     await engine.processRun();
@@ -180,7 +187,7 @@ describe('ProcessingEngine', () => {
       ]),
     });
 
-    (findMatchingVideoFileModule.findMatchingVideoFile as jest.Mock).mockImplementation((srtPath) => {
+    (findMatchingVideoFileModule.findMatchingVideoFile as Mock).mockImplementation((srtPath: string) => {
       if (srtPath === 'file1.srt') return { videoPath: '/v1/movie1.mkv', reason: 'exact_match' };
       if (srtPath === 'file2.srt') return { videoPath: '/v2/movie2.mkv', reason: 'exact_match' };
       if (srtPath === 'file3.srt') return { videoPath: '/v3/movie3.mkv', reason: 'exact_match' };
@@ -192,7 +199,7 @@ describe('ProcessingEngine', () => {
 
     const engineWithQueue = new ProcessingEngine(mockScanner, mockExtractor);
 
-    (ffsubsyncModule.generateFfsubsyncSubtitles as jest.Mock).mockImplementation(async () => {
+    (ffsubsyncModule.generateFfsubsyncSubtitles as Mock).mockImplementation(async () => {
       activeWorkers++;
       maxActiveWorkers = Math.max(maxActiveWorkers, activeWorkers);
       await new Promise((resolve) => setTimeout(resolve, 50));

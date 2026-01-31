@@ -1,12 +1,12 @@
-import { ProcessingEngine } from './processingEngine';
-import { StateManager } from './stateManager';
-import { ScanConfig } from './config';
-import { findMatchingVideoFile } from './findMatchingVideoFile';
-import { Run } from './database';
+import { ProcessingEngine } from './processingEngine.js';
+import { StateManager } from './stateManager.js';
+import { ScanConfig } from './config.js';
+import { findMatchingVideoFile } from './findMatchingVideoFile.js';
+import { Run } from './database.js';
 import { once } from 'events';
-import { appConfig } from './config/appConfig';
-import logger from './services/logger';
-import { FileStatus } from './types';
+import { appConfig } from './config/appConfig.js';
+import logger from './services/logger.js';
+import { FileStatus } from './types.js';
 
 export class ProcessingCoordinator {
   private processingPromise: Promise<void> | null = null;

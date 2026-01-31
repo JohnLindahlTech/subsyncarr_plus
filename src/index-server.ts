@@ -1,11 +1,11 @@
-import { ProcessingEngine } from './processingEngine';
-import { StateManager } from './stateManager';
-import { ProcessingCoordinator } from './coordinator';
-import { SubsyncarrPlusPlusServer } from './server';
+import { ProcessingEngine } from './processingEngine.js';
+import { StateManager } from './stateManager.js';
+import { ProcessingCoordinator } from './coordinator.js';
+import { SubsyncarrPlusPlusServer } from './server.js';
 import { schedule } from 'node-cron';
 import { existsSync, renameSync } from 'fs';
-import { appConfig } from './config/appConfig';
-import logger from './services/logger';
+import { appConfig } from './config/appConfig.js';
+import logger from './services/logger.js';
 
 async function main() {
   const oldDefaultDbPath = '/app/data/subsyncarr-plus.db';

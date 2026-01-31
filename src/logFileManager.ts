@@ -1,6 +1,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
-import logger from './services/logger';
+import logger from './services/logger.js';
 
 export class LogFileManager {
   private logDir: string;

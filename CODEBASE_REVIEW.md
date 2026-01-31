@@ -182,17 +182,24 @@ exec(command, ...)
 - [ ] **Objective:** Add integration tests.
 - [ ] **Sub-task:** Create `src/__tests__/integration/pipeline.test.ts`.
 - [ ] **Sub-task:** Use `better-sqlite3` with an in-memory DB (`:memory:`) for tests.
-- [ ] **Sub-task:** Use `mock-fs` or real temp dirs to simulate a file scan.
+- [ ] **Sub-task:** Use `mock-fs` to simulate a file scan.
 - [ ] **Sub-task:** Mock _only_ the `child_process.spawn` calls to avoid running real `ffmpeg`.
 - [ ] **Sub-task:** Verify that running tests produces zero console output from the logger.
 
-### Task 6: Migrate to ESM & Update Dependencies
+### Task 6: Modernize Tooling (Vitest) & Migrate to ESM - [COMPLETED]
 
-- [ ] **Objective:** Modernize the project by migrating to ECMAScript Modules (ESM) and updating all dependencies to their latest versions.
-- [ ] **Sub-task:** Add `"type": "module"` to `package.json`.
-- [ ] **Sub-task:** Update `tsconfig.json` to use `"module": "NodeNext"` and `"moduleResolution": "NodeNext"`.
-- [ ] **Sub-task:** Update all imports in `.ts` files to include the `.js` file extension (e.g., `import { appConfig } from './config/appConfig.js'`).
-- [ ] **Sub-task:** Replace `__dirname` and `__filename` usage with `import.meta.url` based logic (e.g., using `fileURLToPath`).
-- [ ] **Sub-task:** Update `p-queue` to version 9+ and other dependencies to their latest stable versions.
-- [ ] **Sub-task:** Adjust `jest.config.mjs` and `eslint.config.mjs` to support ESM if necessary.
-- [ ] **Validation:** Ensure `npm run build`, `npm run lint`, and `npm test` all pass after the migration.
+- [x] **Sub-task (Tooling):** Remove Jest, Babel, and related dependencies.
+
+- [x] **Sub-task (Tooling):** Install Vitest and migrate existing tests (`jest.fn` -> `vi.fn`, `jest.mock` -> `vi.mock`).
+
+- [x] **Sub-task (ESM):** Add `"type": "module"` to `package.json`.
+
+- [x] **Sub-task (ESM):** Update `tsconfig.json` to use `"module": "NodeNext"` and `"moduleResolution": "NodeNext"`.
+
+- [x] **Sub-task (ESM):** Update all internal imports in `.ts` files to include the `.js` file extension (required for ESM).
+
+- [x] **Sub-task (ESM):** Replace `__dirname` and `__filename` with `import.meta.url` logic in `src/server.ts` and `src/stateManager.ts`.
+
+- [x] **Sub-task (Dependencies):** Update `p-queue` to version 9+ and all other dependencies to latest.
+
+- [x] **Validation:** Ensure `npm run build`, `npm run lint`, and `npm test` (now Vitest) all pass.

@@ -1,11 +1,11 @@
 import { basename } from 'path';
-import { findMatchingVideoFile } from './findMatchingVideoFile';
-import { generateAutosubsyncSubtitles } from './generateAutosubsyncSubtitles';
-import { generateFfsubsyncSubtitles } from './generateFfsubsyncSubtitles';
-import { generateAlassSubtitles } from './generateAlassSubtitles';
-import { ScanConfig } from './config';
-import { appConfig } from './config/appConfig';
-import logger from './services/logger';
+import { findMatchingVideoFile } from './findMatchingVideoFile.js';
+import { generateAutosubsyncSubtitles } from './generateAutosubsyncSubtitles.js';
+import { generateFfsubsyncSubtitles } from './generateFfsubsyncSubtitles.js';
+import { generateAlassSubtitles } from './generateAlassSubtitles.js';
+import { ScanConfig } from './config.js';
+import { appConfig } from './config/appConfig.js';
+import logger from './services/logger.js';
 
 export const processSrtFile = async (srtFile: string, config?: ScanConfig, fileIndex?: Map<string, Set<string>>) => {
   const matchResult = findMatchingVideoFile(srtFile, config, fileIndex);

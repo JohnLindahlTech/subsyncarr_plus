@@ -1,4 +1,4 @@
-import { ScanConfig, RetentionConfig } from '../config';
+import { ScanConfig, RetentionConfig } from '../config.js';
 
 export class AppConfig {
   private static instance: AppConfig;

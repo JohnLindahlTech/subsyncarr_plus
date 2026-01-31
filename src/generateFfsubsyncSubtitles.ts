@@ -1,6 +1,6 @@
-import { execPromise, ProcessingResult, EngineProfile, getEngineOutputPath } from './helpers';
+import { execPromise, ProcessingResult, EngineProfile, getEngineOutputPath } from './helpers.js';
 import * as fs from 'fs';
-import logger from './services/logger';
+import logger from './services/logger.js';
 
 export async function generateFfsubsyncSubtitles(
   srtPath: string,

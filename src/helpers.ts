@@ -1,8 +1,8 @@
 import { execFile } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
-import { appConfig } from './config/appConfig';
-import logger from './services/logger';
+import { appConfig } from './config/appConfig.js';
+import logger from './services/logger.js';
 
 export interface ProcessingResult {
   success: boolean;

@@ -1,8 +1,8 @@
-import { ScannerService } from './services/ScannerService';
-import { getScanConfig } from './config';
-import { processSrtFile } from './processSrtFile';
-import { appConfig } from './config/appConfig';
-import logger from './services/logger';
+import { ScannerService } from './services/ScannerService.js';
+import { getScanConfig } from './config.js';
+import { processSrtFile } from './processSrtFile.js';
+import { appConfig } from './config/appConfig.js';
+import logger from './services/logger.js';
 
 async function main(): Promise<void> {
   try {

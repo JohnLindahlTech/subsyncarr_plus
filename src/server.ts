@@ -1,16 +1,21 @@
+import { ProcessingCoordinator } from './coordinator.js';
+import { StateManager } from './stateManager.js';
 import { join } from 'path';
+import { getScanConfig } from './config.js';
 import cronstrue from 'cronstrue';
-import parseExpression from 'cron-parser';
-import { appConfig } from './config/appConfig';
-import logger from './services/logger';
-import { checkDependency, validatePartialPath } from './helpers';
-import { FileResult } from './database';
-import { ProcessingCoordinator } from './coordinator';
-import { StateManager } from './stateManager';
+import * as parser from 'cron-parser';
+import { checkDependency, validatePartialPath } from './helpers.js';
+import { FileResult } from './database.js';
 import express from 'express';
 import { WebSocketServer, WebSocket } from 'ws';
 import { createServer } from 'http';
-import { getScanConfig } from './config';
+import { appConfig } from './config/appConfig.js';
+import logger from './services/logger.js';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 interface HealthStatus {
   timestamp: number;
@@ -99,7 +104,8 @@ export class SubsyncarrPlusPlusServer {
       if (cronSchedule !== 'disabled') {
         try {
           scheduleDescription = cronstrue.toString(cronSchedule);
-          const interval = parseExpression.parse(cronSchedule);
+          // @ts-expect-error - cron-parser ESM types are tricky
+          const interval = (parser.default || parser).parseExpression(cronSchedule);
           nextRun = interval.next().toDate().getTime();
         } catch (error) {
           logger.error({ error, cronSchedule }, 'Error parsing cron schedule');

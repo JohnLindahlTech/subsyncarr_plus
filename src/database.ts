@@ -1,5 +1,5 @@
 import Database from 'better-sqlite3';
-import { RunStatus, FileStatus, AgreementStatus } from './types';
+import { RunStatus, FileStatus, AgreementStatus } from './types.js';
 
 export interface Run {
   id: string;
