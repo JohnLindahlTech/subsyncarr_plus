@@ -372,7 +372,7 @@ export class SubsyncarrPlusPlusServer {
     });
 
     // Get skip status for specific file
-    this.app.get('/api/skip-status/:filePath(*)', (req, res) => {
+    this.app.get('/api/skip-status/:filePath(.*)', (req, res) => {
       const filePath = decodeURIComponent(req.params.filePath);
       const skippedEngines = this.stateManager.getSkippedEngines(filePath);
       res.json({ filePath, skippedEngines });
