@@ -105,7 +105,7 @@ export interface ConfigResponse {
   };
 }
 
-export interface DashboardResponse {
+export interface StatisticsResponse {
   stats: {
     total_files: number;
     success_count: number;

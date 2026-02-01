@@ -8,7 +8,7 @@ import Button from './ui/Button';
 const viewTitles: Record<ViewType, string> = {
   live: 'Live Run',
   explorer: 'Library Explorer',
-  dashboard: 'Statistics Dashboard',
+  statistics: 'Statistics Dashboard',
   history: 'Run History',
   system: 'System Health & Config',
   docs: 'How It Works',

@@ -8,7 +8,7 @@ const Sidebar = () => {
   const navItems = [
     { to: '/', icon: '⚡', label: 'Live Run' },
     { to: '/explorer', icon: '📂', label: 'Library Explorer' },
-    { to: '/dashboard', icon: '📊', label: 'Dashboard' },
+    { to: '/statistics', icon: '📊', label: 'Statistics' },
     { to: '/history', icon: '📜', label: 'Run History' },
     { to: '/system', icon: '⚙️', label: 'System Health' },
     { to: '/docs', icon: '📚', label: 'How It Works' },

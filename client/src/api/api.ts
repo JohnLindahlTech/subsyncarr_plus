@@ -1,4 +1,4 @@
-import { Run, StatusResponse, ConfigResponse, DashboardResponse, LogsResponse, DryRunResponse } from '@shared/types';
+import { Run, StatusResponse, ConfigResponse, StatisticsResponse, LogsResponse, DryRunResponse } from '@shared/types';
 import { useAppStore } from '../store/useAppStore';
 
 /**
@@ -6,7 +6,7 @@ import { useAppStore } from '../store/useAppStore';
  * Ported from public/js/api.js
  */
 
-export type { ConfigResponse, DashboardResponse, DryRunResponse };
+export type { ConfigResponse, StatisticsResponse, DryRunResponse };
 
 // We will use a more React-friendly way to handle 503s later (e.g., via the store)
 // For now, this helper just checks the status.
@@ -46,14 +46,14 @@ export const API = {
     return res.json();
   },
 
-  async fetchDashboard(): Promise<DashboardResponse> {
+  async fetchStatistics(): Promise<StatisticsResponse> {
     const [s, e] = await Promise.all([
       fetch('/api/stats/global').then(handleResponse),
       fetch('/api/stats/errors').then(handleResponse),
     ]);
     return {
-      stats: (await s.json()) as DashboardResponse['stats'],
-      errors: (await e.json()) as DashboardResponse['errors'],
+      stats: (await s.json()) as StatisticsResponse['stats'],
+      errors: (await e.json()) as StatisticsResponse['errors'],
     };
   },
 

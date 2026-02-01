@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { Run, FileResult, HealthStatus, DryRunResponse, ConfigResponse } from '@shared/types';
 
-export type ViewType = 'live' | 'explorer' | 'dashboard' | 'history' | 'system' | 'docs';
+export type ViewType = 'live' | 'explorer' | 'statistics' | 'history' | 'system' | 'docs';
 
 interface AppState {
   currentRun: Run | null;

@@ -51,7 +51,8 @@ const LiveView: React.FC = () => {
     updateState({ files: [] }, 'replace');
   };
 
-  const processing = files.filter((f) => f.status === 'processing');
+  // Only show processing files if a run is actually active
+  const processing = isRunning ? files.filter((f) => f.status === 'processing') : [];
   const completed = files.filter((f) => ['completed', 'skipped', 'error'].includes(f.status)).slice(0, 10);
 
   const progress =

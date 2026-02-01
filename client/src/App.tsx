@@ -6,7 +6,7 @@ import { API } from './api/api';
 import Layout from './components/Layout';
 import LiveView from './views/LiveView';
 import ExplorerView from './views/ExplorerView';
-import DashboardView from './views/DashboardView';
+import StatisticsView from './views/StatisticsView';
 import HistoryView from './views/HistoryView';
 import SystemView from './views/SystemView';
 import DocsView from './views/DocsView';
@@ -45,7 +45,7 @@ function App() {
     const path = location.pathname;
     let view: ViewType = 'live';
     if (path === '/explorer') view = 'explorer';
-    else if (path === '/dashboard') view = 'dashboard';
+    else if (path === '/statistics') view = 'statistics';
     else if (path === '/history') view = 'history';
     else if (path === '/system') view = 'system';
     else if (path === '/docs') view = 'docs';
@@ -65,7 +65,7 @@ function App() {
       <Routes>
         <Route path="/" element={<LiveView />} />
         <Route path="/explorer" element={<ExplorerView />} />
-        <Route path="/dashboard" element={<DashboardView />} />
+        <Route path="/statistics" element={<StatisticsView />} />
         <Route path="/history" element={<HistoryView />} />
         <Route path="/system" element={<SystemView />} />
         <Route path="/docs" element={<DocsView />} />

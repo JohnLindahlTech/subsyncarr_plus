@@ -1,30 +1,30 @@
 import React, { useEffect, useState } from 'react';
-import { API, DashboardResponse } from '../api/api';
+import { API, StatisticsResponse } from '../api/api';
 import { Card, CardHeader, CardContent } from '../components/ui/Card';
 import StatItem from '../components/ui/StatItem';
 import { Subheading } from '../components/ui/Typography';
 import ViewContainer from '../components/ui/ViewContainer';
 
-type ErrorGroup = DashboardResponse['errors'][0];
-type EngineStat = DashboardResponse['stats']['engines'][0];
+type ErrorGroup = StatisticsResponse['errors'][0];
+type EngineStat = StatisticsResponse['stats']['engines'][0];
 
-const DashboardView: React.FC = () => {
-  const [data, setData] = useState<DashboardResponse | null>(null);
+const StatisticsView: React.FC = () => {
+  const [data, setData] = useState<StatisticsResponse | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchDashboard = async () => {
+    const fetchStatistics = async () => {
       try {
-        const dashboardData = await API.fetchDashboard();
-        setData(dashboardData);
+        const statsData = await API.fetchStatistics();
+        setData(statsData);
       } catch (err) {
-        console.error('Failed to fetch dashboard', err);
+        console.error('Failed to fetch statistics', err);
       } finally {
         setLoading(false);
       }
     };
 
-    fetchDashboard();
+    fetchStatistics();
   }, []);
 
   if (loading) {
@@ -107,4 +107,4 @@ const DashboardView: React.FC = () => {
   );
 };
 
-export default DashboardView;
+export default StatisticsView;

@@ -73,13 +73,20 @@ export const useWebSocket = () => {
           case 'extraction:stopped':
             updateState({ activeExtractions: activeExtractions.filter((p) => p !== msg.data) });
             break;
-          case 'run:updated':
           case 'run:completed':
           case 'run:cancelled':
-            updateState({ currentRun: msg.data });
+            updateState({
+              currentRun: msg.data,
+              isRunning: false,
+              activeExtractions: [],
+              initMessage: '',
+            });
             break;
           case 'health:updated':
             updateState({ health: msg.data });
+            break;
+          case 'files:cleared':
+            updateState({ files: msg.data.files, currentRun: msg.data.currentRun }, 'replace');
             break;
           default:
             console.warn('Unknown WebSocket message type:', msg.type);
