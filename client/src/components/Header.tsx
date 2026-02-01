@@ -116,28 +116,28 @@ const Header = () => {
             <span className="opacity-60">⏰</span>
             <span className="text-foreground-secondary font-medium uppercase tracking-wider">{scheduleLabel}</span>
           </div>
-          {isScanning && (
+          {isScanning ? (
             <div className="flex items-center gap-2 bg-primary/10 text-primary px-3 py-1 rounded-full animate-pulse">
               <span className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin"></span>
               <span className="font-bold uppercase tracking-widest text-xxs">
                 {initMessage || (isDryRunning ? 'Dry Run: Scanning...' : 'Scanning Library...')}
               </span>
             </div>
-          )}
-          {isMaintenance && (
+          ) : null}
+          {isMaintenance ? (
             <div className="flex items-center gap-2 bg-warning/10 text-warning px-3 py-1 rounded-full">
               <span className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin"></span>
               <span className="font-bold uppercase tracking-widest text-xxs">Database Maintenance...</span>
             </div>
-          )}
+          ) : null}
         </div>
       </div>
       <div className="flex items-center gap-3">
-        {isRunning && (
+        {isRunning ? (
           <Button variant="danger" size="sm" onClick={handleStopRun}>
             ⏹ Stop
           </Button>
-        )}
+        ) : null}
 
         <div className="relative inline-flex items-center" ref={dropdownRef}>
           <Button
@@ -158,7 +158,7 @@ const Header = () => {
             ></span>
           </Button>
 
-          {isMenuOpen && (
+          {isMenuOpen ? (
             <div className="absolute right-0 top-full mt-2 w-56 bg-surface border border-border shadow-md rounded-lg overflow-hidden py-1 z-20 animate-in fade-in slide-in-from-top-2 duration-200">
               <button
                 className="w-full text-left px-4 py-2.5 text-sm hover:bg-secondary transition-colors text-foreground flex items-center gap-3"
@@ -183,7 +183,7 @@ const Header = () => {
                 <span>📁</span> Partial Folder Sync
               </button>
             </div>
-          )}
+          ) : null}
         </div>
       </div>
     </header>

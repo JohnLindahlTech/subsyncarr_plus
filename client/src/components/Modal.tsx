@@ -33,11 +33,11 @@ const Modal: React.FC<ModalProps> = ({ isOpen, onClose, title, children, maxWidt
           </button>
         </div>
         <div className="p-6 overflow-y-auto max-h-[80vh]">{children}</div>
-        {footer && (
+        {footer ? (
           <div className="flex items-center justify-end gap-3 p-6 border-t border-border bg-background-alt">
             {footer}
           </div>
-        )}
+        ) : null}
       </div>
     </div>
   );

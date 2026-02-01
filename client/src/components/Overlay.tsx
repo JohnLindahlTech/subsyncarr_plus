@@ -26,9 +26,9 @@ const Overlay: React.FC<OverlayProps> = ({ isOpen, onClose, title, tabs, childre
               </button>
               <h3 className="text-xl font-bold text-foreground">{title}</h3>
             </div>
-            {headerActions && <div className="flex gap-3">{headerActions}</div>}
+            {headerActions ? <div className="flex gap-3">{headerActions}</div> : null}
           </div>
-          {tabs && <nav className="flex gap-1 px-6 border-t border-border bg-background-alt/50">{tabs}</nav>}
+          {tabs ? <nav className="flex gap-1 px-6 border-t border-border bg-background-alt/50">{tabs}</nav> : null}
         </header>
         <div className="flex-1 overflow-hidden flex flex-col bg-background">{children}</div>
       </div>

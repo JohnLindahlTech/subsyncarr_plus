@@ -55,12 +55,12 @@ function App() {
 
   return (
     <Layout>
-      {health && !health.allOk && (
+      {health && !health.allOk ? (
         <div id="healthWarning" className="health-warning">
           <span className="warning-icon">⚠️</span>
           <span>System issues detected. Check System Health.</span>
         </div>
-      )}
+      ) : null}
 
       <Routes>
         <Route path="/" element={<LiveView />} />

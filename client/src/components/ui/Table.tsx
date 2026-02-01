@@ -52,11 +52,11 @@ export const TH: React.FC<THProps> = ({ children, className, sortable, active, o
   >
     <div className="flex items-center gap-2">
       {children}
-      {sortable && (
+      {sortable ? (
         <span className={clsx('transition-opacity', active ? 'opacity-100' : 'opacity-0 group-hover/th:opacity-40')}>
           {active && order === 'DESC' ? '↓' : '↑'}
         </span>
-      )}
+      ) : null}
     </div>
   </th>
 );

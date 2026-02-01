@@ -19,7 +19,7 @@ const CodeBlock: React.FC<CodeBlockProps> = ({
 }) => {
   return (
     <div className={clsx('space-y-2', className)}>
-      {label && <Label>{label}</Label>}
+      {label ? <Label>{label}</Label> : null}
       <pre 
         style={{ maxHeight }}
         className={clsx(

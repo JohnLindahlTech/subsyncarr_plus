@@ -48,24 +48,24 @@ const DetailsOverlay: React.FC = () => {
               )}
             >
               <span>{activeEngineData.success ? '✓ Successfully Synced' : '✗ Sync Failed'}</span>
-              {activeEngineData.score !== undefined && (
+              {activeEngineData.score !== undefined ? (
                 <span className="px-3 py-1 bg-current/10 rounded-full text-sm">
                   Confidence: {activeEngineData.score}%
                 </span>
-              )}
+              ) : null}
             </div>
-            {activeEngineData.duration && (
+            {activeEngineData.duration ? (
               <div className="text-sm font-bold text-foreground-secondary italic">
                 Duration: {(activeEngineData.duration / 1000).toFixed(1)}s
               </div>
-            )}
+            ) : null}
           </div>
 
           <CodeBlock label="Executed Command" code={activeEngineData.command || '-'} />
 
-          {activeEngineData.stderr && (
+          {activeEngineData.stderr ? (
             <CodeBlock label="Error Output (stderr)" code={activeEngineData.stderr} className="text-danger" />
-          )}
+          ) : null}
 
           <CodeBlock label="Standard Output (stdout)" code={activeEngineData.stdout || '-'} variant="ghost" />
         </div>

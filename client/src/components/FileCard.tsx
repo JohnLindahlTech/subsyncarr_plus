@@ -18,7 +18,7 @@ const FileCard: React.FC<FileCardProps> = ({ file }) => {
         <div className="font-semibold text-sm truncate text-foreground" title={basename(file.file_path)}>
           {basename(file.file_path)}
         </div>
-        {file.agreement_status && <Badge status={file.agreement_status} />}
+        {file.agreement_status ? <Badge status={file.agreement_status} /> : null}
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
         {Object.entries(engines).map(([name, result]) => (

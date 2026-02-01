@@ -98,7 +98,7 @@ const PartialRunModal: React.FC = () => {
             value={path}
             onChange={(e) => setPath(e.target.value)}
           />
-          {error && <p className="text-xs font-bold text-danger animate-in shake-1">{error}</p>}
+          {error ? <p className="text-xs font-bold text-danger animate-in shake-1">{error}</p> : null}
         </div>
       </div>
     </Modal>

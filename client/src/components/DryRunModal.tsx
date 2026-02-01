@@ -51,7 +51,7 @@ const DryRunModal: React.FC = () => {
           <div className="text-xl font-black text-primary font-mono">{formatDuration(d.estimatedMs)}</div>
         </div>
 
-        {d.missingVideo.length > 0 && (
+        {d.missingVideo.length > 0 ? (
           <div className="space-y-3">
             <Label>Files with Missing Videos</Label>
             <div className="max-h-48 overflow-y-auto border border-border rounded-xl bg-background-alt divide-y divide-border custom-scrollbar">
@@ -63,7 +63,7 @@ const DryRunModal: React.FC = () => {
               ))}
             </div>
           </div>
-        )}
+        ) : null}
       </div>
     </Modal>
   );

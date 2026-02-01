@@ -62,7 +62,7 @@ const Badge: React.FC<BadgeProps> = ({ children, variant, status, className }) =
         className,
       )}
     >
-      {children || status}
+      {children ?? status}
     </span>
   );
 };

@@ -95,11 +95,11 @@ const StatisticsView: React.FC = () => {
                 </div>
               </div>
             ))}
-            {errors.length === 0 && (
+            {errors.length === 0 ? (
               <div className="p-12 text-center text-foreground-secondary italic font-medium">
                 No common failure patterns detected.
               </div>
-            )}
+            ) : null}
           </div>
         </CardContent>
       </Card>

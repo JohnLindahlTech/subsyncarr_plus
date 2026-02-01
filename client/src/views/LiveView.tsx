@@ -54,7 +54,7 @@ const LiveView: React.FC = () => {
   return (
     <ViewContainer className="space-y-8">
       {/* Progress Section - Fixed at top */}
-      {showProgress && (
+      {showProgress ? (
         <div className="bg-surface border border-border shadow-sm rounded-xl p-6 shrink-0">
           <div className="flex items-center justify-between mb-4">
             <div className="space-y-1">
@@ -84,7 +84,7 @@ const LiveView: React.FC = () => {
             ></div>
           </div>
         </div>
-      )}
+      ) : null}
 
       {/* Main Grid - Fills remaining height */}
       <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-8 min-h-0">
@@ -92,7 +92,7 @@ const LiveView: React.FC = () => {
         <div className="flex flex-col min-h-0 space-y-4">
           <div className="flex items-center justify-between px-1">
             <Subheading>Active Processing</Subheading>
-            <Badge status="processing">{activeExtractions.length + processing.length}</Badge>
+            {showProgress ? <Badge status="processing">{activeExtractions.length + processing.length}</Badge> : null}
           </div>
 
           <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-3">
@@ -116,11 +116,11 @@ const LiveView: React.FC = () => {
               </div>
             ))}
 
-            {activeExtractions.length === 0 && processing.length === 0 && (
+            {activeExtractions.length === 0 && processing.length === 0 ? (
               <div className="p-12 text-center border-2 border-dashed border-border rounded-xl">
                 <p className="text-foreground-secondary font-medium italic">No active tasks.</p>
               </div>
-            )}
+            ) : null}
           </div>
         </div>
 

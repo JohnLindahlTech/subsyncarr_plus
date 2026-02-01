@@ -185,12 +185,12 @@ const ExplorerView: React.FC = () => {
                     </TD>
                     <TD>
                       <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        {['completed', 'error', 'skipped'].includes(f.status) && (
+                        {['completed', 'error', 'skipped'].includes(f.status) ? (
                           <Button variant="ghost" size="sm" onClick={() => openDetails(f)} className="h-8">
                             🔍 Details
                           </Button>
-                        )}
-                        {f.status === 'completed' && f.agreement_status !== 'verified' && (
+                        ) : null}
+                        {f.status === 'completed' && f.agreement_status !== 'verified' ? (
                           <Button
                             variant="ghost"
                             size="sm"
@@ -199,7 +199,7 @@ const ExplorerView: React.FC = () => {
                           >
                             ✅ Verify
                           </Button>
-                        )}
+                        ) : null}
                       </div>
                     </TD>
                   </TR>
