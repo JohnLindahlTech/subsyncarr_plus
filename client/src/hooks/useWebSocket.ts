@@ -62,7 +62,7 @@ export const useWebSocket = () => {
             updateState({ isMaintenance: false });
             break;
           case 'run:started':
-            updateState({ currentRun: msg.data, isRunning: true, files: [] });
+            updateState({ currentRun: msg.data, isRunning: true, liveFiles: [] });
             break;
           case 'run:progress':
             updateState({ initMessage: msg.data.message });
@@ -86,7 +86,7 @@ export const useWebSocket = () => {
             updateState({ health: msg.data });
             break;
           case 'files:cleared':
-            updateState({ files: msg.data.files, currentRun: msg.data.currentRun }, 'replace');
+            updateState({ liveFiles: msg.data.files, currentRun: msg.data.currentRun }, 'replace');
             break;
           default:
             console.warn('Unknown WebSocket message type:', msg.type);

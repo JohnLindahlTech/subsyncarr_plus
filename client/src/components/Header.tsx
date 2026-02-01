@@ -59,7 +59,7 @@ const Header = () => {
     updateState({
       isRunning: true,
       currentRun: null,
-      files: [],
+      liveFiles: [],
       initMessage: 'Initializing scan...',
     });
 

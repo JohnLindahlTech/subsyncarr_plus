@@ -40,7 +40,7 @@ interface AppState {
   activeLogsTitle: string;
 
   // Actions
-  updateState: (deltas: Partial<AppState>, mode?: 'replace' | 'merge') => void;
+  updateState: (deltas: Partial<AppState> & { files?: FileResult[] }, mode?: 'replace' | 'merge') => void;
   setSearchQuery: (query: string) => void;
   setFilters: (
     filters: Partial<Pick<AppState, 'agreementFilter' | 'statusFilter' | 'sortColumn' | 'sortOrder'>>,
@@ -150,7 +150,7 @@ export const useAppStore = create<AppState>((set) => ({
       let newExplorerFiles = state.explorerFiles;
 
       // Handle raw files array in deltas (legacy from server response)
-      const incomingFiles = (deltas as any).files as FileResult[] | undefined;
+      const incomingFiles = deltas.files;
 
       if (incomingFiles) {
         if (mode === 'replace') {
@@ -202,15 +202,19 @@ export const useAppStore = create<AppState>((set) => ({
 
           // Apply sorting to both
           const factor = sortOrder === 'ASC' ? 1 : -1;
-          const sortFn = (a: any, b: any) => {
+          const sortFn = (a: FileResult, b: FileResult) => {
             const valA = a[sortColumn];
             const valB = b[sortColumn];
-            if (typeof valA === 'number' && typeof valB === 'number') return (valA - valB) * factor;
-            return (
-              String(valA || '')
-                .toLowerCase()
-                .localeCompare(String(valB || '').toLowerCase(), undefined, { numeric: true }) * factor
-            );
+
+            // Primary: Numeric comparison
+            if (typeof valA === 'number' && typeof valB === 'number') {
+              return (valA - valB) * factor;
+            }
+
+            // Secondary: String comparison with numeric awareness
+            const strA = String(valA || '').toLowerCase();
+            const strB = String(valB || '').toLowerCase();
+            return strA.localeCompare(strB, undefined, { numeric: true }) * factor;
           };
 
           newLiveFiles.sort((a, b) => {
@@ -224,8 +228,8 @@ export const useAppStore = create<AppState>((set) => ({
       }
 
       // Cleanup: delete the temporary 'files' property from the final state object
-      const cleanDeltas = { ...deltas };
-      delete (cleanDeltas as any).files;
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { files: _, ...cleanDeltas } = deltas;
 
       return {
         ...state,

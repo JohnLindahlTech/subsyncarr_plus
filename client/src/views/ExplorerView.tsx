@@ -12,7 +12,7 @@ const basename = (path: string) => path.split('/').pop() || '';
 
 const ExplorerView: React.FC = () => {
   const {
-    files,
+    explorerFiles,
     pagination,
     searchQuery,
     agreementFilter,
@@ -34,16 +34,13 @@ const ExplorerView: React.FC = () => {
         const data = await API.fetchStatus(page, 50, searchQuery, agreementFilter, statusFilter, sortColumn, sortOrder);
 
         if (append) {
-          const currentFiles = useAppStore.getState().files;
+          const currentFiles = useAppStore.getState().explorerFiles;
           updateState({
-            files: [...currentFiles, ...data.files],
+            explorerFiles: [...currentFiles, ...data.files],
             pagination: data.pagination,
           });
         } else {
-          updateState({
-            files: data.files,
-            pagination: data.pagination,
-          });
+          updateState(data);
         }
       } catch (err) {
         console.error('Failed to fetch explorer data', err);
@@ -161,8 +158,8 @@ const ExplorerView: React.FC = () => {
               </TR>
             </THead>
             <TBody>
-              {files.length > 0 ? (
-                files.map((f) => (
+              {explorerFiles.length > 0 ? (
+                explorerFiles.map((f: FileResult) => (
                   <TR key={`${f.run_id}-${f.file_path}`}>
                     <TD className="truncate max-w-md" title={f.file_path}>
                       {basename(f.file_path)}
@@ -179,10 +176,12 @@ const ExplorerView: React.FC = () => {
                     </TD>
                     <TD>
                       {f.best_score !== null && f.best_score !== undefined ? (
-                        <span className={clsx("font-bold", f.best_score < 50 ? "text-danger" : "text-success")}>
+                        <span className={clsx('font-bold', f.best_score < 50 ? 'text-danger' : 'text-success')}>
                           {f.best_score}%
                         </span>
-                      ) : <span className="opacity-30">—</span>}
+                      ) : (
+                        <span className="opacity-30">—</span>
+                      )}
                     </TD>
                     <TD>
                       <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
