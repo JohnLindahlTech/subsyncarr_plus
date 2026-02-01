@@ -207,7 +207,7 @@ const ExplorerView: React.FC = () => {
                 ))
               ) : (
                 <TR>
-                  <TD colSpan={6} className="px-6 py-12 text-center text-foreground-secondary italic font-medium">
+                  <TD colSpan={5} className="px-6 py-12 text-center text-foreground-secondary italic font-medium">
                     No files found matching your search.
                   </TD>
                 </TR>

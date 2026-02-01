@@ -5,7 +5,8 @@ export type ViewType = 'live' | 'explorer' | 'statistics' | 'history' | 'system'
 
 interface AppState {
   currentRun: Run | null;
-  files: FileResult[];
+  liveFiles: FileResult[];
+  explorerFiles: FileResult[];
   isRunning: boolean;
   pagination: {
     page: number;
@@ -61,7 +62,8 @@ interface AppState {
 
 export const useAppStore = create<AppState>((set) => ({
   currentRun: null,
-  files: [],
+  liveFiles: [],
+  explorerFiles: [],
   isRunning: false,
   pagination: { page: 1, limit: 50, total: 0, totalPages: 0 },
   searchQuery: '',
@@ -141,79 +143,95 @@ export const useAppStore = create<AppState>((set) => ({
 
   updateState: (deltas, mode = 'replace') => {
     set((state) => {
-      let newFiles = deltas.files || state.files;
+      // 1. Identify which collections are being updated
+      // WebSocket 'state' full update provides files for BOTH Live and Explorer
+      // but they are conceptually different slices of data.
+      let newLiveFiles = state.liveFiles;
+      let newExplorerFiles = state.explorerFiles;
 
-      if (deltas.files && mode === 'merge') {
-        const { searchQuery, agreementFilter, statusFilter, sortColumn, sortOrder, activeView } = state;
-        const mergedFiles = [...state.files];
+      // Handle raw files array in deltas (legacy from server response)
+      const incomingFiles = (deltas as any).files as FileResult[] | undefined;
 
-        deltas.files.forEach((newFile) => {
-          const matchesAgreement = !agreementFilter || newFile.agreement_status === agreementFilter;
-          const matchesStatus = !statusFilter || newFile.status === statusFilter;
-          const matchesSearch = !searchQuery || newFile.file_path.toLowerCase().includes(searchQuery.toLowerCase());
-
-          const idx = mergedFiles.findIndex((f) => f.file_path === newFile.file_path);
-
-          if (idx >= 0) {
-            // Update existing entry if it's newer or same run
-            if (newFile.updated_at >= mergedFiles[idx].updated_at) {
-              mergedFiles[idx] = { ...mergedFiles[idx], ...newFile };
-            }
-
-            // If it no longer matches filters, remove it
-            if (!(matchesAgreement && matchesStatus && matchesSearch)) {
-              mergedFiles.splice(idx, 1);
-            }
+      if (incomingFiles) {
+        if (mode === 'replace') {
+          // 'replace' usually comes from an API fetch for a specific view
+          if (state.activeView === 'live') {
+            newLiveFiles = incomingFiles;
           } else {
-            // New entry: add if it matches filters
-            if (matchesAgreement && matchesStatus && matchesSearch) {
-              mergedFiles.unshift(newFile);
-            }
+            newExplorerFiles = incomingFiles;
           }
-        });
+        } else if (mode === 'merge') {
+          // 'merge' usually comes from WebSockets
+          const { searchQuery, agreementFilter, statusFilter, sortColumn, sortOrder } = state;
 
-        // Apply sorting based on view
-        if (activeView === 'live') {
-          // Live view: Processing first (ASC), then Completed/Error/Skipped (DESC updated_at)
-          newFiles = mergedFiles.sort((a, b) => {
-            const isAProc = a.status === 'processing';
-            const isBProc = b.status === 'processing';
+          // Helper to patch an array with incoming updates
+          const patchArray = (current: FileResult[], updates: FileResult[], applyFilters: boolean) => {
+            const merged = [...current];
+            updates.forEach((newFile) => {
+              const idx = merged.findIndex((f) => f.file_path === newFile.file_path);
 
-            if (isAProc && !isBProc) return -1;
-            if (!isAProc && isBProc) return 1;
+              if (idx >= 0) {
+                // Update existing
+                if (newFile.updated_at >= merged[idx].updated_at) {
+                  merged[idx] = { ...merged[idx], ...newFile };
+                }
 
-            if (isAProc && isBProc) {
-              return a.file_path.localeCompare(b.file_path, undefined, { numeric: true });
-            }
+                // Optional: remove if it no longer matches local filters
+                if (applyFilters) {
+                  const matches =
+                    (!agreementFilter || newFile.agreement_status === agreementFilter) &&
+                    (!statusFilter || newFile.status === statusFilter) &&
+                    (!searchQuery || newFile.file_path.toLowerCase().includes(searchQuery.toLowerCase()));
+                  if (!matches) merged.splice(idx, 1);
+                }
+              } else if (applyFilters) {
+                // New entry: add if it matches filters
+                const matches =
+                  (!agreementFilter || newFile.agreement_status === agreementFilter) &&
+                  (!statusFilter || newFile.status === statusFilter) &&
+                  (!searchQuery || newFile.file_path.toLowerCase().includes(searchQuery.toLowerCase()));
+                if (matches) merged.unshift(newFile);
+              }
+            });
+            return merged;
+          };
 
-            // Both are finished
-            return b.updated_at - a.updated_at;
-          });
-        } else {
-          // Explorer view: use configured sort
+          // Update both collections from the single stream of incoming file status updates
+          newLiveFiles = patchArray(state.liveFiles, incomingFiles, false); // Live view typically doesn't filter out active files
+          newExplorerFiles = patchArray(state.explorerFiles, incomingFiles, true);
+
+          // Apply sorting to both
           const factor = sortOrder === 'ASC' ? 1 : -1;
-
-          newFiles = mergedFiles.sort((a, b) => {
+          const sortFn = (a: any, b: any) => {
             const valA = a[sortColumn];
             const valB = b[sortColumn];
+            if (typeof valA === 'number' && typeof valB === 'number') return (valA - valB) * factor;
+            return (
+              String(valA || '')
+                .toLowerCase()
+                .localeCompare(String(valB || '').toLowerCase(), undefined, { numeric: true }) * factor
+            );
+          };
 
-            // Primary: Numeric comparison
-            if (typeof valA === 'number' && typeof valB === 'number') {
-              return (valA - valB) * factor;
-            }
-
-            // Secondary: String comparison with numeric awareness
-            const strA = String(valA || '').toLowerCase();
-            const strB = String(valB || '').toLowerCase();
-            return strA.localeCompare(strB, undefined, { numeric: true }) * factor;
+          newLiveFiles.sort((a, b) => {
+            if (a.status === 'processing' && b.status !== 'processing') return -1;
+            if (a.status !== 'processing' && b.status === 'processing') return 1;
+            return b.updated_at - a.updated_at;
           });
+
+          newExplorerFiles.sort(sortFn);
         }
       }
 
+      // Cleanup: delete the temporary 'files' property from the final state object
+      const cleanDeltas = { ...deltas };
+      delete (cleanDeltas as any).files;
+
       return {
         ...state,
-        ...deltas,
-        files: newFiles,
+        ...cleanDeltas,
+        liveFiles: newLiveFiles,
+        explorerFiles: newExplorerFiles,
       };
     });
   },

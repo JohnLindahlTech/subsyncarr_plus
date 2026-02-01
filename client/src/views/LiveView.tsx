@@ -12,7 +12,7 @@ const basename = (path: string) => path.split('/').pop() || '';
 const LiveView: React.FC = () => {
   const {
     currentRun,
-    files,
+    liveFiles,
     isRunning,
     initMessage,
     activeExtractions,
@@ -20,7 +20,7 @@ const LiveView: React.FC = () => {
     openDetails,
     searchQuery,
     agreementFilter,
-    statusFilter,
+    statusFilter
   } = useAppStore();
 
   useEffect(() => {
@@ -28,16 +28,7 @@ const LiveView: React.FC = () => {
       // In Live View, we specifically want the files for the current run if it exists
       const runId = currentRun?.id;
       try {
-        const data = await API.fetchStatus(
-          1,
-          50,
-          searchQuery,
-          agreementFilter,
-          statusFilter,
-          'file_path',
-          'ASC',
-          runId,
-        );
+        const data = await API.fetchStatus(1, 50, searchQuery, agreementFilter, statusFilter, 'file_path', 'ASC', runId);
         updateState(data);
       } catch (err) {
         console.error('LiveView fetch failed', err);
@@ -48,12 +39,12 @@ const LiveView: React.FC = () => {
 
   const handleClearCompleted = async () => {
     await API.clearCompleted();
-    updateState({ files: [] }, 'replace');
+    updateState({ liveFiles: [] }, 'replace');
   };
 
   // Only show processing files if a run is actually active
-  const processing = isRunning ? files.filter((f) => f.status === 'processing') : [];
-  const completed = files.filter((f) => ['completed', 'skipped', 'error'].includes(f.status)).slice(0, 10);
+  const processing = isRunning ? liveFiles.filter((f) => f.status === 'processing') : [];
+  const completed = liveFiles.filter((f) => ['completed', 'skipped', 'error'].includes(f.status)).slice(0, 10);
 
   const progress =
     currentRun && currentRun.total_engines > 0 ? (currentRun.completed_engines / currentRun.total_engines) * 100 : 0;
