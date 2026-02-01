@@ -3,7 +3,7 @@ import { StateManager } from './stateManager.js';
 import { join } from 'path';
 import { getScanConfig } from './config.js';
 import cronstrue from 'cronstrue';
-import * as parser from 'cron-parser';
+import { CronExpressionParser } from 'cron-parser';
 import { checkDependency, validatePartialPath } from './helpers.js';
 import { FileResult } from './shared/types.js';
 import express from 'express';
@@ -104,8 +104,7 @@ export class SubsyncarrPlusPlusServer {
       if (cronSchedule !== 'disabled') {
         try {
           scheduleDescription = cronstrue.toString(cronSchedule);
-          // @ts-expect-error - cron-parser ESM types are tricky
-          const interval = (parser.default || parser).parseExpression(cronSchedule);
+          const interval = CronExpressionParser.parse(cronSchedule);
           nextRun = interval.next().toDate().getTime();
         } catch (error) {
           logger.error({ error, cronSchedule }, 'Error parsing cron schedule');
