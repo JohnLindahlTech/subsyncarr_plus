@@ -288,7 +288,7 @@ export class StateManager extends EventEmitter {
       score?: number;
     },
   ): void {
-    const file = this.db.getFileResults(runId).find((f) => f.file_path === filePath);
+    const file = this.db.getFileResultByPath(runId, filePath);
     if (!file) return;
 
     // Record success/failure for strike-tracking logic
@@ -308,7 +308,7 @@ export class StateManager extends EventEmitter {
   }
 
   reconcileFileResults(runId: string, filePath: string): { bestEngine: string | null; status: AgreementStatus } {
-    const file = this.db.getFileResults(runId).find((f) => f.file_path === filePath);
+    const file = this.db.getFileResultByPath(runId, filePath);
     if (!file) return { bestEngine: null, status: AgreementStatus.LOW_CONFIDENCE };
 
     const engines: Record<string, EngineResult> = JSON.parse(file.engines || '{}');

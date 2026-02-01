@@ -130,6 +130,13 @@ export class SubsyncarrPlusPlusDatabase {
     return result ? (result as Run) : null;
   }
 
+  getFileResultByPath(runId: string, filePath: string): FileResult | null {
+    const result = this.db
+      .prepare('SELECT * FROM file_results WHERE run_id = ? AND file_path = ?')
+      .get(runId, filePath);
+    return result ? (result as FileResult) : null;
+  }
+
   getRunHistory(limit: number = 50): Run[] {
     return this.db
       .prepare(
@@ -361,14 +368,12 @@ export class SubsyncarrPlusPlusDatabase {
     const actualSortColumn = allowedSortColumns.includes(sortColumn) ? sortColumn : 'file_path';
     const actualSortOrder = sortOrder === 'DESC' ? 'DESC' : 'ASC';
 
-    // Optimization: Group by file_path but prefer the record with the highest ID
-    // that actually matches our filters if provided.
+    // Step 1: Subquery to get the latest ID for every unique file_path
+    // Step 2: Outer query to filter and sort that specific set of latest records
     let sql = `
-      SELECT * FROM file_results 
-      WHERE id IN (
-        SELECT MAX(id) FROM file_results 
-        WHERE 1=1
-    `;
+        SELECT * FROM file_results 
+        WHERE id IN (SELECT MAX(id) FROM file_results GROUP BY file_path)
+      `;
     const params: unknown[] = [];
 
     if (search) {
@@ -377,7 +382,7 @@ export class SubsyncarrPlusPlusDatabase {
     }
 
     if (agreementFilter) {
-      sql += ' AND agreement_status LIKE ?';
+      sql += ' AND agreement_status = ?';
       params.push(agreementFilter);
     }
 
@@ -386,7 +391,6 @@ export class SubsyncarrPlusPlusDatabase {
       params.push(statusFilter);
     }
 
-    sql += ' GROUP BY file_path) ';
     sql += ` ORDER BY ${actualSortColumn} ${actualSortOrder}`;
 
     if (limit !== undefined && offset !== undefined) {
@@ -399,9 +403,9 @@ export class SubsyncarrPlusPlusDatabase {
 
   getGlobalFileCount(search?: string, agreementFilter?: string, statusFilter?: string): number {
     let sql = `
-      SELECT COUNT(DISTINCT file_path) as count FROM file_results 
-      WHERE 1=1
-    `;
+        SELECT COUNT(*) as count FROM file_results 
+        WHERE id IN (SELECT MAX(id) FROM file_results GROUP BY file_path)
+      `;
     const params: unknown[] = [];
 
     if (search) {
@@ -410,7 +414,7 @@ export class SubsyncarrPlusPlusDatabase {
     }
 
     if (agreementFilter) {
-      sql += ' AND agreement_status LIKE ?';
+      sql += ' AND agreement_status = ?';
       params.push(agreementFilter);
     }
 
@@ -422,7 +426,6 @@ export class SubsyncarrPlusPlusDatabase {
     const result = this.db.prepare(sql).get(...params) as { count: number };
     return result.count;
   }
-
   /**
    * Gets a specialized set of files for the Live View:
    * 1. All currently processing files
