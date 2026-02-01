@@ -1,5 +1,4 @@
-import React, { useEffect, useState } from 'react';
-import { API, ConfigResponse } from '../api/api';
+import React from 'react';
 import { useAppStore } from '../store/useAppStore';
 import clsx from 'clsx';
 

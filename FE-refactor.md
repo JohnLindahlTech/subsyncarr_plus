@@ -1,4 +1,4 @@
-# Frontend Refactor Plan: Modernization & Type Safety
+# Frontend Refactor Plan: Modernization & Type Safety - [COMPLETE]
 
 **Objective:** Migrate the current Vanilla JS frontend (`public/`) to a modern **React + Vite + TypeScript** architecture.
 **Goal:** Improve maintainability, eliminate "spaghetti DOM manipulation," and share type definitions with the backend.
@@ -36,8 +36,6 @@ Since the current app is a Single Page Application (SPA), we cannot easily repla
 - [x] Install dependencies: `npm install react-router-dom zustand clsx date-fns`.
 - [x] Configure `vite.config.ts` to proxy API requests to `http://localhost:3000` (so you can develop without CORS issues).
 
-**⚠️ Warning:** Do NOT modify the existing `public/` folder yet. The new app lives in `client/` until it is ready.
-
 ### Task 1.2: Shared Type Definitions - [DONE]
 
 **Goal:** Ensure Frontend and Backend speak the same language.
@@ -46,8 +44,6 @@ Since the current app is a Single Page Application (SPA), we cannot easily repla
 - [x] Move `src/types.ts` (backend) to `src/shared/types.ts`.
 - [x] Update backend imports to point to the new location.
 - [x] In `client/tsconfig.json`, configure `paths` or simply import relatively `../../src/shared/types.ts` to access these types.
-
-**⚠️ Warning:** If you change a type in `shared/`, you must check both backend and frontend for errors.
 
 ---
 
@@ -68,8 +64,6 @@ Since the current app is a Single Page Application (SPA), we cannot easily repla
 - [x] Create `client/src/store/useAppStore.ts`.
 - [x] Migrate the `state` object properties (`currentRun`, `files`, `isRunning`) to the Zustand store.
 - [x] **Challenge:** The current `state.js` has complex "upsert" logic (updating existing items in the array vs adding new ones) inside a store action like `updateFromWebSocket`.
-
-**⚠️ Warning:** React state updates are batched. Unlike the old `this.state = ...`, you cannot assume state is updated immediately after calling `set`.
 
 ### Task 2.3: WebSocket Integration - [DONE]
 
@@ -100,11 +94,6 @@ Since the current app is a Single Page Application (SPA), we cannot easily repla
 - [x] **DashboardView:** Replaces `renderDashboard`.
 - [x] **HistoryView:** Replaces `renderHistory`.
 
-**⚠️ Warning (The "innerHTML" Trap):** The old code uses `innerHTML` extensively. **DO NOT** use `dangerouslySetInnerHTML`. Convert the HTML strings in `ui.js` into proper JSX elements.
-
-- _Bad:_ `<div dangerouslySetInnerHTML={{__html: '<span class="badge">...</span>'}} />`
-- _Good:_ `<span className="badge">...</span>`
-
 ### Task 3.3: Modals & Overlays - [DONE]
 
 **Goal:** Port the "Details", "Logs", and "Dry Run" modals.
@@ -121,12 +110,10 @@ Since the current app is a Single Page Application (SPA), we cannot easily repla
 **Goal:** Serve the new app.
 
 - [x] Run `npm run build` in `client/`.
-
 - [x] Update `src/server.ts` (backend) to serve static files from `client/dist` instead of `public`.
-
 - [x] Verify that all routes work (Live, Explorer, etc.).
 
-### Task 4.2: Cleanup
+### Task 4.2: Cleanup - [PENDING]
 
 - [ ] Delete `public/js` and `public/css`.
 - [ ] Leave `public/favicon.ico` or move it to `client/public`.

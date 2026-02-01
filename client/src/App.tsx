@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useLocation, Routes, Route } from 'react-router-dom';
 import { useAppStore, ViewType } from './store/useAppStore';
 import { useWebSocket } from './hooks/useWebSocket';
+import { API } from './api/api';
 import Layout from './components/Layout';
 import LiveView from './views/LiveView';
 import ExplorerView from './views/ExplorerView';
