@@ -1,6 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import { API, DashboardResponse } from '../api/api';
 import { Card, CardHeader, CardContent } from '../components/ui/Card';
+import StatItem from '../components/ui/StatItem';
+import { Subheading } from '../components/ui/Typography';
+import ViewContainer from '../components/ui/ViewContainer';
 
 type ErrorGroup = DashboardResponse['errors'][0];
 type EngineStat = DashboardResponse['stats']['engines'][0];
@@ -26,12 +29,12 @@ const DashboardView: React.FC = () => {
 
   if (loading) {
     return (
-      <section className="flex items-center justify-center min-h-[400px]">
+      <ViewContainer className="items-center justify-center">
         <div className="flex flex-col items-center gap-4">
           <span className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></span> 
           <span className="text-foreground-secondary font-medium animate-pulse">Analyzing library statistics...</span>
         </div>
-      </section>
+      </ViewContainer>
     );
   }
 
@@ -40,54 +43,43 @@ const DashboardView: React.FC = () => {
   const { stats, errors } = data;
 
   return (
-    <section id="view-dashboard" className="space-y-8 animate-in fade-in duration-500">
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+    <ViewContainer className="overflow-y-auto custom-scrollbar pr-2 space-y-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8 shrink-0">
         <Card>
           <CardHeader>
-            <h4 className="font-bold text-foreground">Library Statistics</h4>
+            <Subheading>Library Statistics</Subheading>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-3 gap-4">
-              <div className="p-4 bg-background-alt rounded-lg border border-border space-y-1">
-                <label className="text-xxs uppercase font-bold tracking-wider text-foreground-secondary">Total Files</label>
-                <div className="text-2xl font-black text-foreground">{stats.total_files}</div>
-              </div>
-              <div className="p-4 bg-success/5 rounded-lg border border-success/10 space-y-1">
-                <label className="text-xxs uppercase font-bold tracking-wider text-success/70">Success</label>
-                <div className="text-2xl font-black text-success">{stats.success_count}</div>
-              </div>
-              <div className="p-4 bg-danger/5 rounded-lg border border-danger/10 space-y-1">
-                <label className="text-xxs uppercase font-bold tracking-wider text-danger/70">Errors</label>
-                <div className="text-2xl font-black text-danger">{stats.error_count}</div>
-              </div>
+              <StatItem label="Total Files" value={stats.total_files} />
+              <StatItem label="Success" value={stats.success_count} variant="success" />
+              <StatItem label="Errors" value={stats.error_count} variant="danger" />
             </div>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
-            <h4 className="font-bold text-foreground">Engine Performance</h4>
+            <Subheading>Engine Performance</Subheading>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-3 gap-4">
               {stats.engines.map((e: EngineStat) => (
-                <div key={e.engine} className="p-4 bg-background-alt rounded-lg border border-border space-y-1">
-                  <label className="text-xxs uppercase font-bold tracking-wider text-foreground-secondary truncate block" title={e.engine}>
-                    {e.engine}
-                  </label>
-                  <div className="text-2xl font-black text-primary">
-                    {e.total > 0 ? Math.round((e.success / e.total) * 100) : 0}%
-                  </div>
-                </div>
+                <StatItem 
+                  key={e.engine} 
+                  label={e.engine} 
+                  value={`${e.total > 0 ? Math.round((e.success / e.total) * 100) : 0}%`} 
+                  variant="primary"
+                />
               ))}
             </div>
           </CardContent>
         </Card>
       </div>
 
-      <Card className="w-full">
+      <Card className="w-full shrink-0">
         <CardHeader>
-          <h4 className="font-bold text-foreground">Common Failure Patterns</h4>
+          <Subheading>Common Failure Patterns</Subheading>
         </CardHeader>
         <CardContent>
           <div className="divide-y divide-border -mx-6 -my-4">
@@ -111,7 +103,7 @@ const DashboardView: React.FC = () => {
           </div>
         </CardContent>
       </Card>
-    </section>
+    </ViewContainer>
   );
 };
 

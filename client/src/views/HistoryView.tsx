@@ -4,6 +4,8 @@ import { Run } from '@shared/types';
 import { useAppStore } from '../store/useAppStore';
 import Badge from '../components/ui/Badge';
 import Button from '../components/ui/Button';
+import ViewContainer from '../components/ui/ViewContainer';
+import { THead, TBody, TR, TH, TD } from '../components/ui/Table';
 
 const HistoryView: React.FC = () => {
   const [history, setHistory] = useState<Run[]>([]);
@@ -34,67 +36,65 @@ const HistoryView: React.FC = () => {
     }
   };
 
-  const getStatusVariant = (status: string) => {
-    if (status === 'completed') return 'success';
-    if (status === 'cancelled') return 'warning';
-    return 'secondary';
-  };
-
   return (
-    <section id="view-history" className="bg-surface border border-border rounded-xl shadow-sm overflow-hidden animate-in fade-in duration-500">
-      <table className="w-full text-left border-collapse">
-        <thead>
-          <tr className="bg-background-alt/50 border-b border-border">
-            <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-foreground-secondary">Date</th>
-            <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-foreground-secondary">Status</th>
-            <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-foreground-secondary">Files</th>
-            <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-foreground-secondary">Success</th>
-            <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-foreground-secondary">Failed</th>
-            <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-foreground-secondary">Engines</th>
-            <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-foreground-secondary">Time</th>
-            <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-foreground-secondary">Action</th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-border">
-          {loading ? (
-            <tr>
-              <td colSpan={8} className="px-6 py-12 text-center text-foreground-secondary animate-pulse italic font-medium">
-                Loading history...
-              </td>
-            </tr>
-          ) : history.length > 0 ? (
-            history.map((r) => (
-              <tr key={r.id} className="hover:bg-primary/5 transition-colors group">
-                <td className="px-6 py-4 text-sm font-medium text-foreground">
-                  {new Date(r.start_time).toLocaleString()}
-                </td>
-                <td className="px-6 py-4">
-                  <Badge variant={getStatusVariant(r.status)}>{r.status}</Badge>
-                </td>
-                <td className="px-6 py-4 text-sm font-medium text-foreground-secondary">{r.total_files}</td>
-                <td className="px-6 py-4 text-sm font-bold text-success">{r.completed}</td>
-                <td className="px-6 py-4 text-sm font-bold text-danger">{r.failed}</td>
-                <td className="px-6 py-4 text-sm font-medium text-foreground-secondary">
-                  {r.completed_engines}/{r.total_engines}
-                </td>
-                <td className="px-6 py-4 text-sm text-foreground-secondary font-medium italic">
-                  {r.end_time ? Math.round((r.end_time - r.start_time) / 1000) + 's' : '...'}
-                </td>
-                <td className="px-6 py-4">
-                  <Button variant="ghost" size="sm" onClick={() => handleViewLogs(r.id)} className="h-8">📄 Logs</Button>
-                </td>
-              </tr>
-            ))
-          ) : (
-            <tr>
-              <td colSpan={8} className="px-6 py-12 text-center text-foreground-secondary italic font-medium">
-                No history found.
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
-    </section>
+    <ViewContainer>
+      <div className="flex-1 min-h-0 bg-surface border border-border rounded-xl shadow-sm overflow-hidden flex flex-col">
+        <div className="flex-1 overflow-y-auto custom-scrollbar">
+          <table className="w-full text-left border-collapse">
+            <THead className="sticky top-0 z-10 shadow-sm">
+              <TR>
+                <TH>Date</TH>
+                <TH>Status</TH>
+                <TH>Files</TH>
+                <TH>Success</TH>
+                <TH>Failed</TH>
+                <TH>Engines</TH>
+                <TH>Time</TH>
+                <TH>Action</TH>
+              </TR>
+            </THead>
+            <TBody>
+              {loading ? (
+                <TR>
+                  <TD colSpan={8} className="px-6 py-12 text-center text-foreground-secondary animate-pulse italic font-medium">
+                    Loading history...
+                  </TD>
+                </TR>
+              ) : history.length > 0 ? (
+                history.map((r) => (
+                  <TR key={r.id}>
+                    <TD>
+                      {new Date(r.start_time).toLocaleString()}
+                    </TD>
+                    <TD>
+                      <Badge status={r.status} />
+                    </TD>
+                    <TD className="text-foreground-secondary font-medium">{r.total_files}</TD>
+                    <TD className="font-bold text-success">{r.completed}</TD>
+                    <TD className="font-bold text-danger">{r.failed}</TD>
+                    <TD className="text-foreground-secondary font-medium">
+                      {r.completed_engines}/{r.total_engines}
+                    </TD>
+                    <TD className="text-foreground-secondary font-medium italic">
+                      {r.end_time ? Math.round((r.end_time - r.start_time) / 1000) + 's' : '...'}
+                    </TD>
+                    <TD>
+                      <Button variant="ghost" size="sm" onClick={() => handleViewLogs(r.id)} className="h-8">📄 Logs</Button>
+                    </TD>
+                  </TR>
+                ))
+              ) : (
+                <TR>
+                  <TD colSpan={8} className="px-6 py-12 text-center text-foreground-secondary italic font-medium">
+                    No history found.
+                  </TD>
+                </TR>
+              )}
+            </TBody>
+          </table>
+        </div>
+      </div>
+    </ViewContainer>
   );
 };
 

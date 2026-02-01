@@ -194,17 +194,18 @@ export const useAppStore = create<AppState>((set) => ({
           const factor = sortOrder === 'ASC' ? 1 : -1;
 
           newFiles = mergedFiles.sort((a, b) => {
-            const valA = String(a[sortColumn] || '').toLowerCase();
-            const valB = String(b[sortColumn] || '').toLowerCase();
+            const valA = a[sortColumn];
+            const valB = b[sortColumn];
 
-            // Handle numeric values
-            const numA = Number(a[sortColumn]);
-            const numB = Number(b[sortColumn]);
-            if (!isNaN(numA) && !isNaN(numB)) {
-              return (numA - numB) * factor;
+            // Primary: Numeric comparison
+            if (typeof valA === 'number' && typeof valB === 'number') {
+              return (valA - valB) * factor;
             }
 
-            return valA.localeCompare(valB, undefined, { numeric: true }) * factor;
+            // Secondary: String comparison with numeric awareness
+            const strA = String(valA || '').toLowerCase();
+            const strB = String(valB || '').toLowerCase();
+            return strA.localeCompare(strB, undefined, { numeric: true }) * factor;
           });
         }
       }

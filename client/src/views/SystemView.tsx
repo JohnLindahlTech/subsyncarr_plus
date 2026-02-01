@@ -2,15 +2,18 @@ import React from 'react';
 import { useAppStore } from '../store/useAppStore';
 import clsx from 'clsx';
 import { Card, CardHeader, CardContent } from '../components/ui/Card';
+import ViewContainer from '../components/ui/ViewContainer';
+import { Subheading, Label } from '../components/ui/Typography';
+import Badge from '../components/ui/Badge';
 
 const SystemView: React.FC = () => {
   const { config, health } = useAppStore();
 
   return (
-    <section id="view-system" className="grid grid-cols-1 md:grid-cols-2 gap-8 animate-in fade-in duration-500">
+    <ViewContainer className="grid grid-cols-1 md:grid-cols-2 gap-8 overflow-y-auto custom-scrollbar pr-2">
       <Card>
         <CardHeader>
-          <h4 className="font-bold text-foreground">Environment Dependencies</h4>
+          <Subheading>Environment Dependencies</Subheading>
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
@@ -25,7 +28,7 @@ const SystemView: React.FC = () => {
                 >
                   <div className="flex flex-col">
                     <span className="text-sm font-bold text-foreground">{d.name}</span>
-                    <span className="text-xs text-foreground-secondary font-medium uppercase tracking-tighter opacity-70">
+                    <span className="text-xxs text-foreground-secondary font-medium uppercase tracking-tighter opacity-70">
                       {d.version || (d.found ? 'Detected' : 'Not Found')}
                     </span>
                   </div>
@@ -43,14 +46,14 @@ const SystemView: React.FC = () => {
 
       <Card>
         <CardHeader>
-          <h4 className="font-bold text-foreground">Media Configuration</h4>
+          <Subheading>Media Configuration</Subheading>
         </CardHeader>
         <CardContent>
           <div className="space-y-6">
             {config ? (
               <>
                 <div className="space-y-2">
-                  <label className="text-xxs uppercase font-bold tracking-widest text-foreground-secondary">Scan Paths</label>
+                  <Label>Scan Paths</Label>
                   <div className="flex flex-wrap gap-2">
                     {config.paths.map(p => (
                       <code key={p} className="px-3 py-1.5 bg-background-alt border border-border rounded text-xs font-mono text-primary font-bold">
@@ -61,7 +64,7 @@ const SystemView: React.FC = () => {
                 </div>
                 
                 <div className="space-y-2">
-                  <label className="text-xxs uppercase font-bold tracking-widest text-foreground-secondary">Exclusions</label>
+                  <Label>Exclusions</Label>
                   <div className="flex flex-wrap gap-2">
                     {config.excludePaths.length > 0 ? (
                       config.excludePaths.map(p => (
@@ -78,7 +81,7 @@ const SystemView: React.FC = () => {
                 <div className="pt-4 border-t border-border space-y-4">
                   <div className="flex items-center justify-between">
                     <label className="text-sm font-bold text-foreground-secondary">Schedule</label>
-                    <Badge variant={config.schedule.enabled ? 'success' : 'secondary'}>
+                    <Badge status={config.schedule.enabled ? 'completed' : 'pending'}>
                       {config.schedule.enabled ? 'Enabled' : 'Disabled'}
                     </Badge>
                   </div>
@@ -99,18 +102,8 @@ const SystemView: React.FC = () => {
           </div>
         </CardContent>
       </Card>
-    </section>
+    </ViewContainer>
   );
 };
-
-// Internal Helper for SystemView
-const Badge: React.FC<{ children: React.ReactNode, variant?: 'success' | 'secondary' }> = ({ children, variant = 'secondary' }) => (
-  <span className={clsx(
-    'px-2 py-0.5 rounded text-xxs font-black uppercase tracking-widest',
-    variant === 'success' ? 'bg-success/10 text-success' : 'bg-foreground-secondary/10 text-foreground-secondary'
-  )}>
-    {children}
-  </span>
-);
 
 export default SystemView;

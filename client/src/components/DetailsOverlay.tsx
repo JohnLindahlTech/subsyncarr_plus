@@ -3,6 +3,7 @@ import { useAppStore } from '../store/useAppStore';
 import { EngineResult } from '@shared/types';
 import Overlay from './Overlay';
 import clsx from 'clsx';
+import CodeBlock from './ui/CodeBlock';
 
 const basename = (path: string) => path.split('/').pop() || '';
 
@@ -58,28 +59,24 @@ const DetailsOverlay: React.FC = () => {
             )}
           </div>
 
-          <div className="space-y-3">
-            <label className="text-[10px] font-black uppercase tracking-[0.2em] text-foreground-secondary opacity-60">Executed Command</label>
-            <pre className="p-4 bg-code-bg text-code-text rounded-lg font-mono text-xs overflow-x-auto border border-white/5 shadow-inner leading-relaxed">
-              {activeEngineData.command || '-'}
-            </pre>
-          </div>
+          <CodeBlock 
+            label="Executed Command" 
+            code={activeEngineData.command || '-'} 
+          />
 
           {activeEngineData.stderr && (
-            <div className="space-y-3">
-              <label className="text-[10px] font-black uppercase tracking-[0.2em] text-danger opacity-80">Error Output (stderr)</label>
-              <pre className="p-4 bg-danger/5 text-danger border border-danger/10 rounded-lg font-mono text-xs overflow-x-auto leading-relaxed whitespace-pre-wrap">
-                {activeEngineData.stderr}
-              </pre>
-            </div>
+            <CodeBlock 
+              label="Error Output (stderr)" 
+              code={activeEngineData.stderr} 
+              className="text-danger"
+            />
           )}
 
-          <div className="space-y-3">
-            <label className="text-[10px] font-black uppercase tracking-[0.2em] text-foreground-secondary opacity-60">Standard Output (stdout)</label>
-            <pre className="p-4 bg-background-alt border border-border rounded-lg font-mono text-xs overflow-x-auto leading-relaxed text-foreground-secondary italic">
-              {activeEngineData.stdout || '-'}
-            </pre>
-          </div>
+          <CodeBlock 
+            label="Standard Output (stdout)" 
+            code={activeEngineData.stdout || '-'} 
+            variant="ghost"
+          />
         </div>
       ) : (
         <div className="flex-1 flex items-center justify-center italic text-foreground-secondary opacity-50">

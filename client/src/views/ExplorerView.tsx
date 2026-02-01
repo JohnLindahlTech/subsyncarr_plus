@@ -5,6 +5,8 @@ import { FileResult } from '@shared/types';
 import clsx from 'clsx';
 import Badge from '../components/ui/Badge';
 import Button from '../components/ui/Button';
+import ViewContainer from '../components/ui/ViewContainer';
+import { THead, TBody, TR, TH, TD } from '../components/ui/Table';
 
 const basename = (path: string) => path.split('/').pop() || '';
 
@@ -17,7 +19,6 @@ const ExplorerView: React.FC = () => {
     statusFilter,
     sortColumn,
     sortOrder,
-    currentRun,
     updateState,
     setSearchQuery,
     setFilters,
@@ -51,9 +52,8 @@ const ExplorerView: React.FC = () => {
     [searchQuery, agreementFilter, statusFilter, sortColumn, sortOrder, updateState],
   );
 
-  const handleVerify = async (filePath: string) => {
-    if (!currentRun) return;
-    await API.verifyFile(currentRun.id, filePath);
+  const handleVerify = async (runId: string, filePath: string) => {
+    await API.verifyFile(runId, filePath);
     fetchData(1, false);
   };
 
@@ -100,16 +100,9 @@ const ExplorerView: React.FC = () => {
     setFilters({ sortColumn: column, sortOrder: newOrder });
   };
 
-  const getStatusVariant = (status: string): 'success' | 'danger' | 'processing' | 'secondary' => {
-    if (status === 'completed') return 'success';
-    if (status === 'error') return 'danger';
-    if (status === 'processing') return 'processing';
-    return 'secondary';
-  };
-
   return (
-    <section className="space-y-6 animate-in fade-in duration-500">
-      <div className="flex flex-wrap gap-4 p-4 bg-surface border border-border rounded-xl shadow-sm">
+    <ViewContainer className="space-y-6">
+      <div className="flex flex-wrap gap-4 p-4 bg-surface border border-border rounded-xl shadow-sm shrink-0">
         <div className="flex-1 min-w-filter-search">
           <input
             type="text"
@@ -143,79 +136,74 @@ const ExplorerView: React.FC = () => {
         </select>
       </div>
 
-      <div className="bg-surface border border-border rounded-xl shadow-sm overflow-hidden">
-        <table className="w-full text-left border-collapse">
-          <thead>
-            <tr className="bg-background-alt/50 border-b border-border">
-              {[
-                { key: 'file_path', label: 'File Name' },
-                { key: 'status', label: 'Status' },
-                { key: 'best_engine', label: 'Best Engine' },
-                { key: 'best_score', label: 'Score' }
-              ].map((col) => (
-                <th 
-                  key={col.key}
-                  className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-foreground-secondary cursor-pointer hover:text-primary transition-colors group"
-                  onClick={() => handleSort(col.key as keyof FileResult)}
-                >
-                  <div className="flex items-center gap-2">
+      <div className="flex-1 min-h-0 bg-surface border border-border rounded-xl shadow-sm overflow-hidden flex flex-col">
+        <div className="flex-1 overflow-y-auto custom-scrollbar">
+          <table className="w-full text-left border-collapse">
+            <THead className="sticky top-0 z-10 shadow-sm">
+              <TR>
+                {[
+                  { key: 'file_path', label: 'File Name' },
+                  { key: 'status', label: 'Status' },
+                  { key: 'best_engine', label: 'Best Engine' },
+                  { key: 'best_score', label: 'Score' }
+                ].map((col) => (
+                  <TH 
+                    key={col.key}
+                    sortable
+                    active={sortColumn === col.key}
+                    order={sortOrder}
+                    onClick={() => handleSort(col.key as keyof FileResult)}
+                  >
                     {col.label}
-                    <span className={clsx(
-                      "text-primary transition-opacity",
-                      sortColumn === col.key ? "opacity-100" : "opacity-0 group-hover:opacity-40"
-                    )}>
-                      {sortColumn === col.key && sortOrder === 'DESC' ? '↓' : '↑'}
-                    </span>
-                  </div>
-                </th>
-              ))}
-              <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-foreground-secondary">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {files.length > 0 ? (
-              files.map((f) => (
-                <tr key={`${f.run_id}-${f.file_path}`} className="hover:bg-primary/5 transition-colors group">
-                  <td className="px-6 py-4 text-sm font-medium text-foreground truncate max-w-md" title={f.file_path}>
-                    {basename(f.file_path)}
-                  </td>
-                  <td className="px-6 py-4">
-                    <Badge variant={getStatusVariant(f.status)}>{f.status}</Badge>
-                  </td>
-                  <td className="px-6 py-4 text-sm text-foreground-secondary font-medium">
-                    {f.best_engine || <span className="opacity-30">—</span>}
-                  </td>
-                  <td className="px-6 py-4 text-sm font-bold text-foreground">
-                    {f.best_score ? (
-                      <span className={clsx(f.best_score < 50 ? "text-danger" : "text-success")}>
-                        {f.best_score}%
-                      </span>
-                    ) : <span className="opacity-30">—</span>}
-                  </td>
-                  <td className="px-6 py-4 text-sm">
-                    <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      {['completed', 'error', 'skipped'].includes(f.status) && (
-                        <Button variant="ghost" size="sm" onClick={() => openDetails(f)} className="h-8">🔍 Details</Button>
-                      )}
-                      {f.status === 'completed' && f.agreement_status !== 'verified' && (
-                        <Button variant="ghost" size="sm" onClick={() => handleVerify(f.file_path)} className="h-8 text-success hover:bg-success/10">✅ Verify</Button>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))
-            ) : (
-              <tr>
-                <td colSpan={5} className="px-6 py-12 text-center text-foreground-secondary italic font-medium">
-                  No files found matching your search.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-        <div ref={sentinelRef} className="h-10"></div>
+                  </TH>
+                ))}
+                <TH>Actions</TH>
+              </TR>
+            </THead>
+            <TBody>
+              {files.length > 0 ? (
+                files.map((f) => (
+                  <TR key={`${f.run_id}-${f.file_path}`}>
+                    <TD className="truncate max-w-md" title={f.file_path}>
+                      {basename(f.file_path)}
+                    </TD>
+                    <TD>
+                      <Badge status={f.status} />
+                    </TD>
+                    <TD className="text-foreground-secondary font-medium">
+                      {f.best_engine || <span className="opacity-30">—</span>}
+                    </TD>
+                    <TD>
+                      {f.best_score ? (
+                        <span className={clsx(f.best_score < 50 ? "text-danger" : "text-success")}>
+                          {f.best_score}%
+                        </span>
+                      ) : <span className="opacity-30">—</span>}
+                    </TD>
+                    <TD>
+                      <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        {['completed', 'error', 'skipped'].includes(f.status) && (
+                          <Button variant="ghost" size="sm" onClick={() => openDetails(f)} className="h-8">🔍 Details</Button>
+                        )}
+                                            {f.status === 'completed' && f.agreement_status !== 'verified' && (
+                                              <Button variant="ghost" size="sm" onClick={() => handleVerify(f.run_id, f.file_path)} className="h-8 text-success hover:bg-success/10">✅ Verify</Button>
+                                            )}                      </div>
+                    </TD>
+                  </TR>
+                ))
+              ) : (
+                <TR>
+                  <TD colSpan={5} className="px-6 py-12 text-center text-foreground-secondary italic font-medium">
+                    No files found matching your search.
+                  </TD>
+                </TR>
+              )}
+            </TBody>
+          </table>
+          <div ref={sentinelRef} className="h-10"></div>
+        </div>
       </div>
-    </section>
+    </ViewContainer>
   );
 };
 

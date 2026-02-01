@@ -4,6 +4,8 @@ import FileCard from '../components/FileCard';
 import { API } from '../api/api';
 import Button from '../components/ui/Button';
 import Badge from '../components/ui/Badge';
+import ViewContainer from '../components/ui/ViewContainer';
+import { Heading, Subheading } from '../components/ui/Typography';
 
 const basename = (path: string) => path.split('/').pop() || '';
 
@@ -46,12 +48,13 @@ const LiveView: React.FC = () => {
   const showProgress = isRunning || (currentRun && currentRun.status === 'running');
 
   return (
-    <section className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-500">
+    <ViewContainer className="space-y-8">
+      {/* Progress Section - Fixed at top */}
       {showProgress && (
-        <div className="bg-surface border border-border shadow-sm rounded-xl p-6">
+        <div className="bg-surface border border-border shadow-sm rounded-xl p-6 shrink-0">
           <div className="flex items-center justify-between mb-4">
             <div className="space-y-1">
-              <h3 className="font-bold text-lg">Active Run Progress</h3>
+              <Heading>Active Run Progress</Heading>
               <div className="flex gap-4 text-sm text-foreground-secondary font-medium">
                 {currentRun ? (
                   <>
@@ -74,20 +77,23 @@ const LiveView: React.FC = () => {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="font-bold text-foreground">Active Processing</h3>
-            <Badge variant="primary">{activeExtractions.length + processing.length}</Badge>
+      {/* Main Grid - Fills remaining height */}
+      <div className="flex-1 grid grid-cols-1 lg:grid-cols-2 gap-8 min-h-0">
+        {/* Left Column: Active Processing */}
+        <div className="flex flex-col min-h-0 space-y-4">
+          <div className="flex items-center justify-between px-1">
+            <Subheading>Active Processing</Subheading>
+            <Badge status="processing">{activeExtractions.length + processing.length}</Badge>
           </div>
-          <div className="grid gap-3">
+          
+          <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-3">
             {activeExtractions.map((path) => (
               <div key={path} className="p-4 bg-primary/5 border border-primary/10 rounded-lg animate-pulse">
                 <div className="flex items-center justify-between mb-2">
-                  <div className="font-semibold text-sm text-primary flex items-center gap-2">
+                  <div className="font-semibold text-sm text-primary flex items-center gap-2 truncate pr-2">
                     <span>🎬</span> {basename(path)}
                   </div>
-                  <Badge variant="processing">Extracting Audio</Badge>
+                  <Badge status="processing" className="shrink-0">Extracting Audio</Badge>
                 </div>
                 <div className="text-xs text-primary/60 font-medium">Preparing reference audio via FFmpeg...</div>
               </div>
@@ -107,12 +113,14 @@ const LiveView: React.FC = () => {
           </div>
         </div>
 
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="font-bold text-foreground">Recently Completed</h3>
+        {/* Right Column: Recently Completed */}
+        <div className="flex flex-col min-h-0 space-y-4">
+          <div className="flex items-center justify-between px-1">
+            <Subheading>Recently Completed</Subheading>
             <Button variant="link" size="sm" onClick={handleClearCompleted}>Clear</Button>
           </div>
-          <div className="grid gap-3">
+          
+          <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-3">
             {completed.length > 0 ? (
               completed.map((f) => (
                 <div key={f.file_path} onClick={() => openDetails(f)} className="cursor-pointer">
@@ -127,7 +135,7 @@ const LiveView: React.FC = () => {
           </div>
         </div>
       </div>
-    </section>
+    </ViewContainer>
   );
 };
 

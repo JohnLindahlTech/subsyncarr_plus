@@ -39,7 +39,6 @@ export const useWebSocket = () => {
       ws.current = new WebSocket(socketUrl);
 
       ws.current.onopen = () => {
-        console.log('WebSocket Connected');
         if (reconnectTimeout.current) {
           clearTimeout(reconnectTimeout.current);
           reconnectTimeout.current = null;
@@ -88,7 +87,6 @@ export const useWebSocket = () => {
       };
 
       ws.current.onclose = () => {
-        console.log('WebSocket Disconnected, reconnecting...');
         reconnectTimeout.current = window.setTimeout(() => {
           connect();
         }, 3000);

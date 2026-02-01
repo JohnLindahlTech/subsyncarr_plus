@@ -12,14 +12,6 @@ const basename = (path: string) => path.split('/').pop() || '';
 const FileCard: React.FC<FileCardProps> = ({ file }) => {
   const engines: Record<string, EngineResult> = JSON.parse(file.engines || '{}');
 
-  const getAgreementVariant = (status: string) => {
-    switch (status) {
-      case 'verified': return 'success';
-      case 'suspicious': return 'warning';
-      default: return 'secondary';
-    }
-  };
-
   return (
     <div className="p-4 bg-surface border border-border shadow-sm rounded-lg hover:shadow-md transition-shadow">
       <div className="flex items-center justify-between mb-3 gap-4">
@@ -27,9 +19,7 @@ const FileCard: React.FC<FileCardProps> = ({ file }) => {
           {basename(file.file_path)}
         </div>
         {file.agreement_status && (
-          <Badge variant={getAgreementVariant(file.agreement_status)}>
-            {file.agreement_status.toUpperCase()}
-          </Badge>
+          <Badge status={file.agreement_status} />
         )}
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
