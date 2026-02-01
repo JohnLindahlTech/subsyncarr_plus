@@ -113,10 +113,10 @@ Since the current app is a Single Page Application (SPA), we cannot easily repla
 - [x] Update `src/server.ts` (backend) to serve static files from `client/dist` instead of `public`.
 - [x] Verify that all routes work (Live, Explorer, etc.).
 
-### Task 4.2: Cleanup - [PENDING]
+### Task 4.2: Cleanup - [DONE]
 
-- [ ] Delete `public/js` and `public/css`.
-- [ ] Leave `public/favicon.ico` or move it to `client/public`.
+- [x] Delete `public/js` and `public/css`.
+- [x] Removed legacy `public/` directory as it no longer contains unique assets.
 
 ## 6. Common Pitfalls for Implementors
 
