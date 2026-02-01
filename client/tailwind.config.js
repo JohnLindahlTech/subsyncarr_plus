@@ -46,6 +46,10 @@ export default {
             text: 'var(--engine-error-text)',
           }
         },
+        'engine-success-bg': 'var(--engine-success-bg)',
+        'engine-error-bg': 'var(--engine-error-bg)',
+        'engine-success-text': 'var(--engine-success-text)',
+        'engine-error-text': 'var(--engine-error-text)',
         code: {
           bg: 'var(--code-bg)',
           text: 'var(--code-text)',
