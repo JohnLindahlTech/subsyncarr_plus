@@ -178,13 +178,11 @@ const ExplorerView: React.FC = () => {
                       )}
                     </TD>
                     <TD>
-                      {f.best_score ? (
-                        <span className={clsx('font-bold', f.best_score < 50 ? 'text-danger' : 'text-success')}>
+                      {f.best_score !== null && f.best_score !== undefined ? (
+                        <span className={clsx("font-bold", f.best_score < 50 ? "text-danger" : "text-success")}>
                           {f.best_score}%
                         </span>
-                      ) : (
-                        <span className="opacity-30">—</span>
-                      )}
+                      ) : <span className="opacity-30">—</span>}
                     </TD>
                     <TD>
                       <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
