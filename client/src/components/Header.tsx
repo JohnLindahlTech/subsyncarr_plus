@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useAppStore, ViewType } from '../store/useAppStore';
 import { API } from '../api/api';
 import { RunStatus, Run } from '@shared/types';
+import clsx from 'clsx';
 
 const viewTitles: Record<ViewType, string> = {
   live: 'Live Run',
@@ -20,15 +21,37 @@ const Header = () => {
     isMaintenance,
     initMessage,
     currentRun,
+    config,
     updateState,
     openDryRun,
     openPartialRun,
   } = useAppStore();
 
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   const title = viewTitles[activeView] || 'Subsyncarr++';
   const isScanning = (isRunning && (!currentRun || currentRun.status === RunStatus.COMPLETED)) || isDryRunning;
+
+  // Parity with old UI labels
+  const pathsLabel = config?.isConfigured ? config.paths.join(', ') : 'Default (/scan_dir)';
+  const scheduleLabel = config?.schedule.description || 'Manual only';
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsMenuOpen(false);
+      }
+    };
+
+    if (isMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isMenuOpen]);
 
   const handleStartRun = async (force = false) => {
     setIsMenuOpen(false);
@@ -78,10 +101,14 @@ const Header = () => {
         <h2 id="viewTitle">{title}</h2>
         <div className="top-info-area">
           <div className="top-info-item">
-            <div id="statusLight" className="status-light-sm active"></div>
+            <div id="statusLight" className={clsx('status-light-sm', config?.isConfigured ? 'active' : 'inactive')}></div>
             <span id="statusPaths" className="top-info-text">
-              Folders Loaded
+              {pathsLabel}
             </span>
+          </div>
+          <div className="top-info-item">
+            <span className="top-info-icon">⏰</span>
+            <span id="scheduleTime" className="top-info-text">{scheduleLabel}</span>
           </div>
           {isScanning && (
             <div className="top-info-badge">
@@ -107,7 +134,7 @@ const Header = () => {
             </button>
           )}
 
-          <div className="main-actions-group">
+          <div className="main-actions-group" ref={dropdownRef}>
             <button className="btn btn-primary" onClick={() => handleStartRun(false)} disabled={isScanning}>
               {isScanning ? (
                 <>

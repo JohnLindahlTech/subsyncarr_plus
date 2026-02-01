@@ -4,20 +4,7 @@ import { useAppStore } from '../store/useAppStore';
 import clsx from 'clsx';
 
 const SystemView: React.FC = () => {
-  const [config, setConfig] = useState<ConfigResponse | null>(null);
-  const health = useAppStore((state) => state.health);
-
-  useEffect(() => {
-    const fetchConfig = async () => {
-      try {
-        const data = await API.fetchConfig();
-        setConfig(data);
-      } catch (err) {
-        console.error('Failed to fetch config', err);
-      }
-    };
-    fetchConfig();
-  }, []);
+  const { config, health } = useAppStore();
 
   return (
     <section id="view-system" className="view">

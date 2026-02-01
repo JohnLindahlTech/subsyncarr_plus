@@ -1,4 +1,5 @@
 import { Run, StatusResponse, ConfigResponse, DashboardResponse, LogsResponse, DryRunResponse } from '@shared/types';
+import { useAppStore } from '../store/useAppStore';
 
 /**
  * api.ts - All network requests and external communication
@@ -11,8 +12,7 @@ export type { ConfigResponse, DashboardResponse, DryRunResponse };
 // For now, this helper just checks the status.
 const handleResponse = async (res: Response) => {
   if (res.status === 503) {
-    // In the new app, the state manager will handle this via a hook or store update
-    // For now we just throw so the caller knows it failed
+    useAppStore.getState().setMaintenance(true);
     throw new Error('MAINTENANCE_MODE');
   }
   return res;

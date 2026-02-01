@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { useAppStore } from '../store/useAppStore';
 import FileCard from '../components/FileCard';
 import { API } from '../api/api';
@@ -6,7 +6,29 @@ import { API } from '../api/api';
 const basename = (path: string) => path.split('/').pop() || '';
 
 const LiveView: React.FC = () => {
-  const { currentRun, files, isRunning, initMessage, activeExtractions, updateState, openDetails } = useAppStore();
+  const { 
+    currentRun, 
+    files, 
+    isRunning, 
+    initMessage, 
+    activeExtractions,
+    updateState,
+    openDetails
+  } = useAppStore();
+
+  useEffect(() => {
+    const fetchData = async () => {
+      // In Live View, we specifically want the files for the current run if it exists
+      const runId = currentRun?.id;
+      try {
+        const data = await API.fetchStatus(1, 50, '', '', '', 'file_path', 'ASC', runId);
+        updateState(data);
+      } catch (err) {
+        console.error('LiveView fetch failed', err);
+      }
+    };
+    fetchData();
+  }, [currentRun?.id, updateState]);
 
   const handleClearCompleted = async () => {
     await API.clearCompleted();
@@ -17,8 +39,9 @@ const LiveView: React.FC = () => {
   const completed = files.filter((f) => ['completed', 'skipped', 'error'].includes(f.status)).slice(0, 10);
 
   // Progress calculation
-  const progress =
-    currentRun && currentRun.total_engines > 0 ? (currentRun.completed_engines / currentRun.total_engines) * 100 : 0;
+  const progress = currentRun && currentRun.total_engines > 0 
+    ? (currentRun.completed_engines / currentRun.total_engines) * 100 
+    : 0;
 
   const showProgress = isRunning || (currentRun && currentRun.status === 'running');
 
@@ -28,16 +51,17 @@ const LiveView: React.FC = () => {
         <div id="currentRun" className="progress-section">
           <div className="progress-wrapper">
             <div className="progress-bar">
-              <div className="progress-fill" style={{ width: `${progress}%` }}></div>
+              <div 
+                className="progress-fill" 
+                style={{ width: `${progress}%` }}
+              ></div>
             </div>
             <div className="progress-text">{Math.round(progress)}%</div>
           </div>
           <div className="progress-details">
             {currentRun ? (
               <>
-                <div className="progress-stat">
-                  Movies: {currentRun.completed_videos} / {currentRun.total_videos}
-                </div>
+                <div className="progress-stat">Movies: {currentRun.completed_videos} / {currentRun.total_videos}</div>
                 <div className="progress-stat">
                   Subtitles: {currentRun.completed + currentRun.skipped + currentRun.failed} / {currentRun.total_files}
                 </div>
@@ -67,7 +91,7 @@ const LiveView: React.FC = () => {
                 <div className="current-task-status">Preparing reference audio via FFmpeg...</div>
               </div>
             ))}
-
+            
             {processing.map((f) => (
               <div key={f.file_path} onClick={() => openDetails(f)} style={{ cursor: 'pointer' }}>
                 <FileCard file={f} />
@@ -83,9 +107,7 @@ const LiveView: React.FC = () => {
         <div className="live-recent">
           <div className="section-header">
             <h3>Recently Completed</h3>
-            <button onClick={handleClearCompleted} className="btn-link">
-              Clear
-            </button>
+            <button onClick={handleClearCompleted} className="btn-link">Clear</button>
           </div>
           <div className="file-list">
             {completed.length > 0 ? (

@@ -1,11 +1,36 @@
 import { useEffect, useRef } from 'react';
 import { useAppStore } from '../store/useAppStore';
+import { API } from '../api/api';
 
 export const useWebSocket = () => {
   const ws = useRef<WebSocket | null>(null);
   const reconnectTimeout = useRef<number | null>(null);
+  const reconcileInterval = useRef<number | null>(null);
 
   useEffect(() => {
+    const reconcileState = async () => {
+      const { activeView, currentRun, searchQuery, agreementFilter, statusFilter, sortColumn, sortOrder, updateState } =
+        useAppStore.getState();
+
+      const runId = activeView === 'live' && currentRun ? currentRun.id : undefined;
+
+      try {
+        const data = await API.fetchStatus(
+          1,
+          50,
+          searchQuery,
+          agreementFilter,
+          statusFilter,
+          sortColumn,
+          sortOrder,
+          runId,
+        );
+        updateState(data);
+      } catch (err) {
+        console.error('State reconciliation failed', err);
+      }
+    };
+
     const connect = () => {
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
       const host = window.location.host;
@@ -19,6 +44,8 @@ export const useWebSocket = () => {
           clearTimeout(reconnectTimeout.current);
           reconnectTimeout.current = null;
         }
+        // Reconciliation on connect (parity with vanilla app)
+        reconcileState();
       };
 
       ws.current.onmessage = (event) => {
@@ -75,6 +102,14 @@ export const useWebSocket = () => {
 
     connect();
 
+    // Background reconciliation (parity with vanilla app)
+    reconcileInterval.current = window.setInterval(() => {
+      const { isRunning } = useAppStore.getState();
+      if (isRunning || document.visibilityState === 'visible') {
+        reconcileState();
+      }
+    }, 30000);
+
     return () => {
       if (ws.current) {
         ws.current.onclose = null;
@@ -82,6 +117,9 @@ export const useWebSocket = () => {
       }
       if (reconnectTimeout.current) {
         clearTimeout(reconnectTimeout.current);
+      }
+      if (reconcileInterval.current) {
+        clearInterval(reconcileInterval.current);
       }
     };
   }, []);

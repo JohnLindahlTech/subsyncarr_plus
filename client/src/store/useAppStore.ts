@@ -19,6 +19,7 @@ interface AppState {
   sortColumn: keyof FileResult;
   sortOrder: 'ASC' | 'DESC';
   health: HealthStatus | null;
+  config: ConfigResponse | null;
   activeView: ViewType;
   activeDebugFile: FileResult | null;
   activeDebugEngine: string | null;
@@ -54,6 +55,8 @@ interface AppState {
   closeDryRun: () => void;
   openPartialRun: () => void;
   closePartialRun: () => void;
+  setMaintenance: (isMaintenance: boolean) => void;
+  setConfig: (config: ConfigResponse) => void;
 }
 
 export const useAppStore = create<AppState>((set) => ({
@@ -67,6 +70,7 @@ export const useAppStore = create<AppState>((set) => ({
   sortColumn: 'file_path',
   sortOrder: 'ASC',
   health: null,
+  config: null,
   activeView: 'live',
   activeDebugFile: null,
   activeDebugEngine: null,
@@ -89,6 +93,10 @@ export const useAppStore = create<AppState>((set) => ({
   setFilters: (filters) => set(filters),
 
   setActiveView: (view) => set({ activeView: view }),
+
+  setMaintenance: (isMaintenance) => set({ isMaintenance }),
+
+  setConfig: (config) => set({ config }),
 
   initTheme: () => {
     const savedTheme = localStorage.getItem('theme') as 'light' | 'dark' | null;

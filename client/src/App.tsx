@@ -18,15 +18,26 @@ function App() {
   const location = useLocation();
   const initTheme = useAppStore((state) => state.initTheme);
   const setActiveView = useAppStore((state) => state.setActiveView);
+  const setConfig = useAppStore((state) => state.setConfig);
   const health = useAppStore((state) => state.health);
 
   // Initialize WebSocket connection
   useWebSocket();
 
-  // Initialize theme on mount
+  // Initialize theme and fetch config on mount
   useEffect(() => {
     initTheme();
-  }, [initTheme]);
+    
+    const fetchAppConfig = async () => {
+      try {
+        const data = await API.fetchConfig();
+        setConfig(data);
+      } catch (err) {
+        console.error('Failed to fetch initial config', err);
+      }
+    };
+    fetchAppConfig();
+  }, [initTheme, setConfig]);
 
   // Sync activeView with router
   useEffect(() => {
