@@ -146,7 +146,7 @@ const Header = () => {
             onClick={() => setIsMenuOpen(!isMenuOpen)}
           >
             <span className={clsx(
-              "w-0 h-0 border-l-[4px] border-l-transparent border-r-[4px] border-r-transparent border-t-[4px] border-t-white transition-transform",
+              "w-0 h-0 border-l-[4px] border-l-transparent border-r-[4px] border-r-transparent border-t-[4px] border-t-primary-foreground transition-transform",
               isMenuOpen && "rotate-180"
             )}></span>
           </Button>

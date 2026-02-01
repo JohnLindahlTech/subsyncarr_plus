@@ -73,5 +73,5 @@ export default {
     },
   },
   plugins: [],
-  darkMode: ['class', '[data-theme="dark"]'], // Support both methods
+  darkMode: ['selector', '[data-theme="dark"]'],
 }
