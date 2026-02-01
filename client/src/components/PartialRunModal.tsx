@@ -61,20 +61,20 @@ const PartialRunModal: React.FC = () => {
           <Button variant="secondary" onClick={closePartialRun}>
             Cancel
           </Button>
-          <Button onClick={handleConfirm}>
-            🚀 Start Partial Sync
-          </Button>
+          <Button onClick={handleConfirm}>🚀 Start Partial Sync</Button>
         </>
       }
     >
       <div className="space-y-6">
         <p className="text-sm text-foreground-secondary leading-relaxed font-medium">
-          Enter a sub-directory path relative to your library roots. The system will only scan and sync files within this
-          path.
+          Enter a sub-directory path relative to your library roots. The system will only scan and sync files within
+          this path.
         </p>
 
         <div className="p-4 bg-background-alt border border-border rounded-xl space-y-3">
-          <label className="text-[10px] font-black uppercase tracking-widest text-foreground-secondary opacity-60">Authorized Library Roots</label>
+          <label className="text-[10px] font-black uppercase tracking-widest text-foreground-secondary opacity-60">
+            Authorized Library Roots
+          </label>
           <ul className="space-y-1">
             {config?.paths.map((p) => (
               <li key={p}>
@@ -98,11 +98,7 @@ const PartialRunModal: React.FC = () => {
             value={path}
             onChange={(e) => setPath(e.target.value)}
           />
-          {error && (
-            <p className="text-xs font-bold text-danger animate-in shake-1">
-              {error}
-            </p>
-          )}
+          {error && <p className="text-xs font-bold text-danger animate-in shake-1">{error}</p>}
         </div>
       </div>
     </Modal>

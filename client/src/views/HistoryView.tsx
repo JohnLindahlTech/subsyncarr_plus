@@ -56,16 +56,17 @@ const HistoryView: React.FC = () => {
             <TBody>
               {loading ? (
                 <TR>
-                  <TD colSpan={8} className="px-6 py-12 text-center text-foreground-secondary animate-pulse italic font-medium">
+                  <TD
+                    colSpan={8}
+                    className="px-6 py-12 text-center text-foreground-secondary animate-pulse italic font-medium"
+                  >
                     Loading history...
                   </TD>
                 </TR>
               ) : history.length > 0 ? (
                 history.map((r) => (
                   <TR key={r.id}>
-                    <TD>
-                      {new Date(r.start_time).toLocaleString()}
-                    </TD>
+                    <TD>{new Date(r.start_time).toLocaleString()}</TD>
                     <TD>
                       <Badge status={r.status} />
                     </TD>
@@ -79,7 +80,9 @@ const HistoryView: React.FC = () => {
                       {r.end_time ? Math.round((r.end_time - r.start_time) / 1000) + 's' : '...'}
                     </TD>
                     <TD>
-                      <Button variant="ghost" size="sm" onClick={() => handleViewLogs(r.id)} className="h-8">📄 Logs</Button>
+                      <Button variant="ghost" size="sm" onClick={() => handleViewLogs(r.id)} className="h-8">
+                        📄 Logs
+                      </Button>
                     </TD>
                   </TR>
                 ))

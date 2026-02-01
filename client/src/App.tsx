@@ -28,7 +28,7 @@ function App() {
   // Initialize theme and fetch config on mount
   useEffect(() => {
     initTheme();
-    
+
     const fetchAppConfig = async () => {
       try {
         const data = await API.fetchConfig();

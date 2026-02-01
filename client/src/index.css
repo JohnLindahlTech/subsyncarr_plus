@@ -64,7 +64,8 @@
 }
 
 @layer base {
-  html, body {
+  html,
+  body {
     height: 100%;
     overflow: hidden;
     background: var(--background);

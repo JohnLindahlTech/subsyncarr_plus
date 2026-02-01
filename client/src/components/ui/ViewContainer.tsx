@@ -12,10 +12,12 @@ interface ViewContainerProps {
  */
 const ViewContainer: React.FC<ViewContainerProps> = ({ children, className }) => {
   return (
-    <section className={clsx(
-      'flex flex-col h-full p-8 animate-in fade-in slide-in-from-bottom-2 duration-500 min-h-0', 
-      className
-    )}>
+    <section
+      className={clsx(
+        'flex flex-col h-full p-8 animate-in fade-in slide-in-from-bottom-2 duration-500 min-h-0',
+        className,
+      )}
+    >
       {children}
     </section>
   );

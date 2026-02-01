@@ -144,10 +144,10 @@ const ExplorerView: React.FC = () => {
                 {[
                   { key: 'file_path', label: 'File Name' },
                   { key: 'status', label: 'Status' },
-                  { key: 'best_engine', label: 'Best Engine' },
-                  { key: 'best_score', label: 'Score' }
+                  { key: 'agreement_status', label: 'Confidence' },
+                  { key: 'best_score', label: 'Score' },
                 ].map((col) => (
-                  <TH 
+                  <TH
                     key={col.key}
                     sortable
                     active={sortColumn === col.key}
@@ -170,30 +170,46 @@ const ExplorerView: React.FC = () => {
                     <TD>
                       <Badge status={f.status} />
                     </TD>
-                    <TD className="text-foreground-secondary font-medium">
-                      {f.best_engine || <span className="opacity-30">—</span>}
+                    <TD>
+                      {f.agreement_status ? (
+                        <Badge status={f.agreement_status} />
+                      ) : (
+                        <span className="text-xs text-foreground-secondary opacity-30 italic">Not Reconciled</span>
+                      )}
                     </TD>
                     <TD>
                       {f.best_score ? (
-                        <span className={clsx(f.best_score < 50 ? "text-danger" : "text-success")}>
+                        <span className={clsx('font-bold', f.best_score < 50 ? 'text-danger' : 'text-success')}>
                           {f.best_score}%
                         </span>
-                      ) : <span className="opacity-30">—</span>}
+                      ) : (
+                        <span className="opacity-30">—</span>
+                      )}
                     </TD>
                     <TD>
                       <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                         {['completed', 'error', 'skipped'].includes(f.status) && (
-                          <Button variant="ghost" size="sm" onClick={() => openDetails(f)} className="h-8">🔍 Details</Button>
+                          <Button variant="ghost" size="sm" onClick={() => openDetails(f)} className="h-8">
+                            🔍 Details
+                          </Button>
                         )}
-                                            {f.status === 'completed' && f.agreement_status !== 'verified' && (
-                                              <Button variant="ghost" size="sm" onClick={() => handleVerify(f.run_id, f.file_path)} className="h-8 text-success hover:bg-success/10">✅ Verify</Button>
-                                            )}                      </div>
+                        {f.status === 'completed' && f.agreement_status !== 'verified' && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleVerify(f.run_id, f.file_path)}
+                            className="h-8 text-success hover:bg-success/10"
+                          >
+                            ✅ Verify
+                          </Button>
+                        )}
+                      </div>
                     </TD>
                   </TR>
                 ))
               ) : (
                 <TR>
-                  <TD colSpan={5} className="px-6 py-12 text-center text-foreground-secondary italic font-medium">
+                  <TD colSpan={6} className="px-6 py-12 text-center text-foreground-secondary italic font-medium">
                     No files found matching your search.
                   </TD>
                 </TR>

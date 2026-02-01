@@ -20,11 +20,7 @@ const LogsOverlay: React.FC = () => {
   return (
     <Overlay isOpen={isLogsOpen} onClose={closeLogs} title={activeLogsTitle} headerActions={headerActions}>
       <div className="flex-1 overflow-hidden flex flex-col p-8 bg-code-bg">
-        <CodeBlock 
-          code={activeLogs || 'No logs found.'} 
-          className="flex-1"
-          maxHeight="100%"
-        />
+        <CodeBlock code={activeLogs || 'No logs found.'} className="flex-1" maxHeight="100%" />
       </div>
     </Overlay>
   );

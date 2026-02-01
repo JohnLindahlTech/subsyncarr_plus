@@ -19,11 +19,11 @@ const SystemView: React.FC = () => {
           <div className="space-y-3">
             {health ? (
               health.dependencies.map((d) => (
-                <div 
-                  key={d.name} 
+                <div
+                  key={d.name}
                   className={clsx(
                     'flex items-center justify-between p-4 rounded-lg border transition-colors',
-                    d.found ? 'bg-success/5 border-success/10' : 'bg-danger/5 border-danger/10'
+                    d.found ? 'bg-success/5 border-success/10' : 'bg-danger/5 border-danger/10',
                   )}
                 >
                   <div className="flex flex-col">
@@ -55,25 +55,33 @@ const SystemView: React.FC = () => {
                 <div className="space-y-2">
                   <Label>Scan Paths</Label>
                   <div className="flex flex-wrap gap-2">
-                    {config.paths.map(p => (
-                      <code key={p} className="px-3 py-1.5 bg-background-alt border border-border rounded text-xs font-mono text-primary font-bold">
+                    {config.paths.map((p) => (
+                      <code
+                        key={p}
+                        className="px-3 py-1.5 bg-background-alt border border-border rounded text-xs font-mono text-primary font-bold"
+                      >
                         {p}
                       </code>
                     ))}
                   </div>
                 </div>
-                
+
                 <div className="space-y-2">
                   <Label>Exclusions</Label>
                   <div className="flex flex-wrap gap-2">
                     {config.excludePaths.length > 0 ? (
-                      config.excludePaths.map(p => (
-                        <code key={p} className="px-3 py-1.5 bg-background-alt border border-border rounded text-xs font-mono text-danger font-bold">
+                      config.excludePaths.map((p) => (
+                        <code
+                          key={p}
+                          className="px-3 py-1.5 bg-background-alt border border-border rounded text-xs font-mono text-danger font-bold"
+                        >
                           {p}
                         </code>
                       ))
                     ) : (
-                      <span className="text-sm font-medium text-foreground-secondary italic opacity-50">None configured</span>
+                      <span className="text-sm font-medium text-foreground-secondary italic opacity-50">
+                        None configured
+                      </span>
                     )}
                   </div>
                 </div>
@@ -89,7 +97,9 @@ const SystemView: React.FC = () => {
                     <span className="text-2xl grayscale brightness-125">⏰</span>
                     <div>
                       <div className="text-sm font-bold text-foreground">{config.schedule.description}</div>
-                      <div className="text-xxs font-mono font-bold text-foreground-secondary opacity-60 tracking-widest">{config.schedule.cron}</div>
+                      <div className="text-xxs font-mono font-bold text-foreground-secondary opacity-60 tracking-widest">
+                        {config.schedule.cron}
+                      </div>
                     </div>
                   </div>
                 </div>

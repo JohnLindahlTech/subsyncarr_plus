@@ -102,7 +102,14 @@ const Header = () => {
         <h2 className="text-xl font-bold text-foreground">{title}</h2>
         <div className="flex items-center gap-4 text-xs">
           <div className="flex items-center gap-2">
-            <div className={clsx('w-2.5 h-2.5 rounded-full', config?.isConfigured ? 'bg-success shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-foreground-secondary/30')}></div>
+            <div
+              className={clsx(
+                'w-2.5 h-2.5 rounded-full',
+                config?.isConfigured
+                  ? 'bg-success shadow-[0_0_8px_rgba(16,185,129,0.5)]'
+                  : 'bg-foreground-secondary/30',
+              )}
+            ></div>
             <span className="text-foreground-secondary font-medium uppercase tracking-wider">{pathsLabel}</span>
           </div>
           <div className="flex items-center gap-2 border-l border-border pl-4">
@@ -127,48 +134,51 @@ const Header = () => {
       </div>
       <div className="flex items-center gap-3">
         {isRunning && (
-          <Button variant="danger" size="sm" onClick={handleStopRun}>⏹ Stop</Button>
+          <Button variant="danger" size="sm" onClick={handleStopRun}>
+            ⏹ Stop
+          </Button>
         )}
 
         <div className="relative inline-flex items-center" ref={dropdownRef}>
-          <Button 
-            size="sm" 
-            onClick={() => handleStartRun(false)} 
+          <Button
+            size="sm"
+            onClick={() => handleStartRun(false)}
             disabled={isScanning}
             className="rounded-r-none border-r border-primary-hover/30"
           >
             {isScanning ? 'Scanning...' : '▶ Start Run'}
           </Button>
 
-          <Button
-            size="sm"
-            className="rounded-l-none px-2"
-            onClick={() => setIsMenuOpen(!isMenuOpen)}
-          >
-            <span className={clsx(
-              "w-0 h-0 border-x-4 border-x-transparent border-t-4 border-t-primary-foreground transition-transform",
-              isMenuOpen && "rotate-180"
-            )}></span>
+          <Button size="sm" className="rounded-l-none px-2" onClick={() => setIsMenuOpen(!isMenuOpen)}>
+            <span
+              className={clsx(
+                'w-0 h-0 border-x-4 border-x-transparent border-t-4 border-t-primary-foreground transition-transform',
+                isMenuOpen && 'rotate-180',
+              )}
+            ></span>
           </Button>
 
           {isMenuOpen && (
             <div className="absolute right-0 top-full mt-2 w-56 bg-surface border border-border shadow-md rounded-lg overflow-hidden py-1 z-20 animate-in fade-in slide-in-from-top-2 duration-200">
-              <button 
+              <button
                 className="w-full text-left px-4 py-2.5 text-sm hover:bg-secondary transition-colors text-foreground flex items-center gap-3"
                 onClick={handleDryRun}
               >
                 <span>🔍</span> Dry Run Impact
               </button>
-              <button 
+              <button
                 className="w-full text-left px-4 py-2.5 text-sm hover:bg-danger/10 text-danger transition-colors border-t border-border flex items-center gap-3"
                 onClick={() => handleStartRun(true)}
               >
                 <span>🔥</span> Force Full Rerun
               </button>
               <div className="border-t border-border"></div>
-              <button 
+              <button
                 className="w-full text-left px-4 py-2.5 text-sm hover:bg-secondary transition-colors text-foreground flex items-center gap-3"
-                onClick={() => { setIsMenuOpen(false); openPartialRun(); }}
+                onClick={() => {
+                  setIsMenuOpen(false);
+                  openPartialRun();
+                }}
               >
                 <span>📁</span> Partial Folder Sync
               </button>

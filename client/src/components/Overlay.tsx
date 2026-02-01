@@ -9,14 +9,7 @@ interface OverlayProps {
   headerActions?: React.ReactNode;
 }
 
-const Overlay: React.FC<OverlayProps> = ({ 
-  isOpen, 
-  onClose, 
-  title, 
-  tabs,
-  children,
-  headerActions
-}) => {
+const Overlay: React.FC<OverlayProps> = ({ isOpen, onClose, title, tabs, children, headerActions }) => {
   if (!isOpen) return null;
 
   return (
@@ -25,24 +18,19 @@ const Overlay: React.FC<OverlayProps> = ({
         <header className="flex flex-col border-b border-border">
           <div className="flex items-center justify-between p-6">
             <div className="flex items-center gap-4">
-              <button className="p-2 hover:bg-secondary rounded-full transition-colors text-foreground-secondary hover:text-foreground" onClick={onClose}>✕</button>
+              <button
+                className="p-2 hover:bg-secondary rounded-full transition-colors text-foreground-secondary hover:text-foreground"
+                onClick={onClose}
+              >
+                ✕
+              </button>
               <h3 className="text-xl font-bold text-foreground">{title}</h3>
             </div>
-            {headerActions && (
-              <div className="flex gap-3">
-                {headerActions}
-              </div>
-            )}
+            {headerActions && <div className="flex gap-3">{headerActions}</div>}
           </div>
-          {tabs && (
-            <nav className="flex gap-1 px-6 border-t border-border bg-background-alt/50">
-              {tabs}
-            </nav>
-          )}
+          {tabs && <nav className="flex gap-1 px-6 border-t border-border bg-background-alt/50">{tabs}</nav>}
         </header>
-        <div className="flex-1 overflow-hidden flex flex-col bg-background">
-          {children}
-        </div>
+        <div className="flex-1 overflow-hidden flex flex-col bg-background">{children}</div>
       </div>
     </div>
   );

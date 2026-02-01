@@ -190,6 +190,8 @@ export class ProcessingCoordinator {
           this.stateManager.recordEngineFailure(srtPath, engine, true);
         }
 
+        this.stateManager.reconcileFileResults(this.currentRunId, srtPath);
+
         this.stateManager.incrementRunCountersBulk(this.currentRunId, {
           failed: 1,
           completed_engines: this.enabledEngines.length,
@@ -200,6 +202,7 @@ export class ProcessingCoordinator {
     this.engine.on('file:failed', ({ srtPath }: { srtPath: string }) => {
       if (this.currentRunId) {
         this.stateManager.updateFileStatus(this.currentRunId, srtPath, FileStatus.ERROR, null);
+        this.stateManager.reconcileFileResults(this.currentRunId, srtPath);
         this.stateManager.incrementRunCounter(this.currentRunId, 'failed');
       }
     });

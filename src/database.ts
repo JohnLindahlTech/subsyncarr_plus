@@ -361,9 +361,13 @@ export class SubsyncarrPlusPlusDatabase {
     const actualSortColumn = allowedSortColumns.includes(sortColumn) ? sortColumn : 'file_path';
     const actualSortOrder = sortOrder === 'DESC' ? 'DESC' : 'ASC';
 
+    // Optimization: Group by file_path but prefer the record with the highest ID
+    // that actually matches our filters if provided.
     let sql = `
       SELECT * FROM file_results 
-      WHERE id IN (SELECT MAX(id) FROM file_results GROUP BY file_path)
+      WHERE id IN (
+        SELECT MAX(id) FROM file_results 
+        WHERE 1=1
     `;
     const params: unknown[] = [];
 
@@ -373,7 +377,7 @@ export class SubsyncarrPlusPlusDatabase {
     }
 
     if (agreementFilter) {
-      sql += ' AND agreement_status = ?';
+      sql += ' AND agreement_status LIKE ?';
       params.push(agreementFilter);
     }
 
@@ -382,6 +386,7 @@ export class SubsyncarrPlusPlusDatabase {
       params.push(statusFilter);
     }
 
+    sql += ' GROUP BY file_path) ';
     sql += ` ORDER BY ${actualSortColumn} ${actualSortOrder}`;
 
     if (limit !== undefined && offset !== undefined) {
@@ -394,8 +399,8 @@ export class SubsyncarrPlusPlusDatabase {
 
   getGlobalFileCount(search?: string, agreementFilter?: string, statusFilter?: string): number {
     let sql = `
-      SELECT COUNT(*) as count FROM file_results 
-      WHERE id IN (SELECT MAX(id) FROM file_results GROUP BY file_path)
+      SELECT COUNT(DISTINCT file_path) as count FROM file_results 
+      WHERE 1=1
     `;
     const params: unknown[] = [];
 
@@ -405,7 +410,7 @@ export class SubsyncarrPlusPlusDatabase {
     }
 
     if (agreementFilter) {
-      sql += ' AND agreement_status = ?';
+      sql += ' AND agreement_status LIKE ?';
       params.push(agreementFilter);
     }
 

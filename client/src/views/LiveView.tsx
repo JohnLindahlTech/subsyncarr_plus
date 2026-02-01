@@ -10,28 +10,41 @@ import { Heading, Subheading } from '../components/ui/Typography';
 const basename = (path: string) => path.split('/').pop() || '';
 
 const LiveView: React.FC = () => {
-  const { 
-    currentRun, 
-    files, 
-    isRunning, 
-    initMessage, 
+  const {
+    currentRun,
+    files,
+    isRunning,
+    initMessage,
     activeExtractions,
     updateState,
-    openDetails
+    openDetails,
+    searchQuery,
+    agreementFilter,
+    statusFilter,
   } = useAppStore();
 
   useEffect(() => {
     const fetchData = async () => {
+      // In Live View, we specifically want the files for the current run if it exists
       const runId = currentRun?.id;
       try {
-        const data = await API.fetchStatus(1, 50, '', '', '', 'file_path', 'ASC', runId);
+        const data = await API.fetchStatus(
+          1,
+          50,
+          searchQuery,
+          agreementFilter,
+          statusFilter,
+          'file_path',
+          'ASC',
+          runId,
+        );
         updateState(data);
       } catch (err) {
         console.error('LiveView fetch failed', err);
       }
     };
     fetchData();
-  }, [currentRun?.id, updateState]);
+  }, [currentRun?.id, updateState, searchQuery, agreementFilter, statusFilter]);
 
   const handleClearCompleted = async () => {
     await API.clearCompleted();
@@ -41,9 +54,8 @@ const LiveView: React.FC = () => {
   const processing = files.filter((f) => f.status === 'processing');
   const completed = files.filter((f) => ['completed', 'skipped', 'error'].includes(f.status)).slice(0, 10);
 
-  const progress = currentRun && currentRun.total_engines > 0 
-    ? (currentRun.completed_engines / currentRun.total_engines) * 100 
-    : 0;
+  const progress =
+    currentRun && currentRun.total_engines > 0 ? (currentRun.completed_engines / currentRun.total_engines) * 100 : 0;
 
   const showProgress = isRunning || (currentRun && currentRun.status === 'running');
 
@@ -58,8 +70,13 @@ const LiveView: React.FC = () => {
               <div className="flex gap-4 text-sm text-foreground-secondary font-medium">
                 {currentRun ? (
                   <>
-                    <span>Movies: {currentRun.completed_videos} / {currentRun.total_videos}</span>
-                    <span>Subtitles: {currentRun.completed + currentRun.skipped + currentRun.failed} / {currentRun.total_files}</span>
+                    <span>
+                      Movies: {currentRun.completed_videos} / {currentRun.total_videos}
+                    </span>
+                    <span>
+                      Subtitles: {currentRun.completed + currentRun.skipped + currentRun.failed} /{' '}
+                      {currentRun.total_files}
+                    </span>
                   </>
                 ) : (
                   <span>{initMessage || 'Scanning Library...'}</span>
@@ -69,8 +86,8 @@ const LiveView: React.FC = () => {
             <div className="text-2xl font-black text-primary">{Math.round(progress)}%</div>
           </div>
           <div className="h-3 w-full bg-secondary rounded-full overflow-hidden">
-            <div 
-              className="h-full bg-primary transition-all duration-500 ease-out" 
+            <div
+              className="h-full bg-primary transition-all duration-500 ease-out"
               style={{ width: `${progress}%` }}
             ></div>
           </div>
@@ -85,7 +102,7 @@ const LiveView: React.FC = () => {
             <Subheading>Active Processing</Subheading>
             <Badge status="processing">{activeExtractions.length + processing.length}</Badge>
           </div>
-          
+
           <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-3">
             {activeExtractions.map((path) => (
               <div key={path} className="p-4 bg-primary/5 border border-primary/10 rounded-lg animate-pulse">
@@ -93,12 +110,14 @@ const LiveView: React.FC = () => {
                   <div className="font-semibold text-sm text-primary flex items-center gap-2 truncate pr-2">
                     <span>🎬</span> {basename(path)}
                   </div>
-                  <Badge status="processing" className="shrink-0">Extracting Audio</Badge>
+                  <Badge status="processing" className="shrink-0">
+                    Extracting Audio
+                  </Badge>
                 </div>
                 <div className="text-xs text-primary/60 font-medium">Preparing reference audio via FFmpeg...</div>
               </div>
             ))}
-            
+
             {processing.map((f) => (
               <div key={f.file_path} onClick={() => openDetails(f)} className="cursor-pointer">
                 <FileCard file={f} />
@@ -117,9 +136,11 @@ const LiveView: React.FC = () => {
         <div className="flex flex-col min-h-0 space-y-4">
           <div className="flex items-center justify-between px-1">
             <Subheading>Recently Completed</Subheading>
-            <Button variant="link" size="sm" onClick={handleClearCompleted}>Clear</Button>
+            <Button variant="link" size="sm" onClick={handleClearCompleted}>
+              Clear
+            </Button>
           </div>
-          
+
           <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar space-y-3">
             {completed.length > 0 ? (
               completed.map((f) => (

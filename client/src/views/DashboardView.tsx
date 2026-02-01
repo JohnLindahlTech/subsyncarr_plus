@@ -31,7 +31,7 @@ const DashboardView: React.FC = () => {
     return (
       <ViewContainer className="items-center justify-center">
         <div className="flex flex-col items-center gap-4">
-          <span className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></span> 
+          <span className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></span>
           <span className="text-foreground-secondary font-medium animate-pulse">Analyzing library statistics...</span>
         </div>
       </ViewContainer>
@@ -65,10 +65,10 @@ const DashboardView: React.FC = () => {
           <CardContent>
             <div className="grid grid-cols-3 gap-4">
               {stats.engines.map((e: EngineStat) => (
-                <StatItem 
-                  key={e.engine} 
-                  label={e.engine} 
-                  value={`${e.total > 0 ? Math.round((e.success / e.total) * 100) : 0}%`} 
+                <StatItem
+                  key={e.engine}
+                  label={e.engine}
+                  value={`${e.total > 0 ? Math.round((e.success / e.total) * 100) : 0}%`}
                   variant="primary"
                 />
               ))}

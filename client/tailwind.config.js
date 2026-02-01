@@ -1,9 +1,6 @@
 /** @type {import('tailwindcss').Config} */
 export default {
-  content: [
-    "./index.html",
-    "./src/**/*.{js,ts,jsx,tsx}",
-  ],
+  content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
   theme: {
     extend: {
       colors: {
@@ -44,7 +41,7 @@ export default {
           error: {
             bg: 'var(--engine-error-bg)',
             text: 'var(--engine-error-text)',
-          }
+          },
         },
         'engine-success-bg': 'var(--engine-success-bg)',
         'engine-error-bg': 'var(--engine-error-bg)',
@@ -53,7 +50,7 @@ export default {
         code: {
           bg: 'var(--code-bg)',
           text: 'var(--code-text)',
-        }
+        },
       },
       borderRadius: {
         DEFAULT: 'var(--radius)',
@@ -64,14 +61,14 @@ export default {
         md: 'var(--shadow-md)',
       },
       fontSize: {
-        'xxs': ['0.625rem', { lineHeight: '1rem' }], // 10px
+        xxs: ['0.625rem', { lineHeight: '1rem' }], // 10px
       },
       minWidth: {
         'filter-search': '240px',
         'filter-select': '180px',
-      }
+      },
     },
   },
   plugins: [],
   darkMode: ['selector', '[data-theme="dark"]'],
-}
+};
