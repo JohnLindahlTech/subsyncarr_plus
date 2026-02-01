@@ -8,11 +8,13 @@ interface LayoutProps {
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   return (
-    <div className="app-layout">
+    <div className="flex h-screen w-full bg-background overflow-hidden text-foreground">
       <Sidebar />
-      <main className="main-content">
+      <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <Header />
-        <div className="view-container">{children}</div>
+        <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
+          {children}
+        </div>
       </main>
     </div>
   );

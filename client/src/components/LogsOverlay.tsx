@@ -1,6 +1,7 @@
 import React from 'react';
 import { useAppStore } from '../store/useAppStore';
 import Overlay from './Overlay';
+import Button from './ui/Button';
 
 const LogsOverlay: React.FC = () => {
   const { isLogsOpen, closeLogs, activeLogs, activeLogsTitle } = useAppStore();
@@ -10,14 +11,18 @@ const LogsOverlay: React.FC = () => {
   };
 
   const headerActions = (
-    <button className="btn btn-secondary btn-sm" onClick={handleCopy}>
+    <Button variant="secondary" size="sm" onClick={handleCopy}>
       📋 Copy Logs
-    </button>
+    </Button>
   );
 
   return (
     <Overlay isOpen={isLogsOpen} onClose={closeLogs} title={activeLogsTitle} headerActions={headerActions}>
-      <pre className="code-block logs-view-large">{activeLogs || 'No logs found.'}</pre>
+      <div className="flex-1 overflow-hidden flex flex-col p-8 bg-code-bg">
+        <pre className="flex-1 overflow-y-auto font-mono text-xs leading-relaxed text-code-text custom-scrollbar selection:bg-primary/30">
+          {activeLogs || 'No logs found.'}
+        </pre>
+      </div>
     </Overlay>
   );
 };

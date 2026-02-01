@@ -3,6 +3,7 @@ import { useAppStore } from '../store/useAppStore';
 import { API } from '../api/api';
 import { ConfigResponse, RunStatus, Run } from '@shared/types';
 import Modal from './Modal';
+import Button from './ui/Button';
 
 const PartialRunModal: React.FC = () => {
   const { isPartialRunOpen, closePartialRun, updateState } = useAppStore();
@@ -49,6 +50,7 @@ const PartialRunModal: React.FC = () => {
       setError(message);
     }
   };
+
   return (
     <Modal
       isOpen={isPartialRunOpen}
@@ -56,53 +58,53 @@ const PartialRunModal: React.FC = () => {
       title="Partial Folder Sync"
       footer={
         <>
-          <button className="btn btn-secondary" onClick={closePartialRun}>
+          <Button variant="secondary" onClick={closePartialRun}>
             Cancel
-          </button>
-          <button className="btn btn-primary" onClick={handleConfirm}>
+          </Button>
+          <Button onClick={handleConfirm}>
             🚀 Start Partial Sync
-          </button>
+          </Button>
         </>
       }
     >
-      <p>
-        Enter a sub-directory path relative to your library roots. The system will only scan and sync files within this
-        path.
-      </p>
-
-      <div className="allowed-roots-box">
-        <label>Authorized Library Roots:</label>
-        <ul className="docs-list small">
-          {config?.paths.map((p) => (
-            <li key={p}>
-              <code
-                className="clickable-path"
-                style={{ cursor: 'pointer' }}
-                title="Click to use this path"
-                onClick={() => setPath(p)}
-              >
-                {p}
-              </code>
-            </li>
-          ))}
-        </ul>
-      </div>
-
-      <div className="input-group">
-        <input
-          type="text"
-          className="search-input"
-          placeholder="/media/tv/My Show/S01"
-          style={{ maxWidth: '100%' }}
-          value={path}
-          onChange={(e) => setPath(e.target.value)}
-        />
-      </div>
-      {error && (
-        <p className="error-text" style={{ marginTop: '10px' }}>
-          {error}
+      <div className="space-y-6">
+        <p className="text-sm text-foreground-secondary leading-relaxed font-medium">
+          Enter a sub-directory path relative to your library roots. The system will only scan and sync files within this
+          path.
         </p>
-      )}
+
+        <div className="p-4 bg-background-alt border border-border rounded-xl space-y-3">
+          <label className="text-[10px] font-black uppercase tracking-widest text-foreground-secondary opacity-60">Authorized Library Roots</label>
+          <ul className="space-y-1">
+            {config?.paths.map((p) => (
+              <li key={p}>
+                <code
+                  className="block px-3 py-2 bg-background border border-border rounded-lg text-xs font-mono text-primary font-bold cursor-pointer hover:border-primary/50 transition-colors"
+                  title="Click to use this path"
+                  onClick={() => setPath(p)}
+                >
+                  {p}
+                </code>
+              </li>
+            ))}
+          </ul>
+        </div>
+
+        <div className="space-y-2">
+          <input
+            type="text"
+            className="w-full h-12 px-4 rounded-lg bg-background border border-border focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all text-sm font-medium"
+            placeholder="/media/tv/My Show/S01"
+            value={path}
+            onChange={(e) => setPath(e.target.value)}
+          />
+          {error && (
+            <p className="text-xs font-bold text-danger animate-in shake-1">
+              {error}
+            </p>
+          )}
+        </div>
+      </div>
     </Modal>
   );
 };

@@ -3,6 +3,8 @@ import { useAppStore } from '../store/useAppStore';
 import { API } from '../api/api';
 import { FileResult } from '@shared/types';
 import clsx from 'clsx';
+import Badge from '../components/ui/Badge';
+import Button from '../components/ui/Button';
 
 const basename = (path: string) => path.split('/').pop() || '';
 
@@ -55,12 +57,10 @@ const ExplorerView: React.FC = () => {
     fetchData(1, false);
   };
 
-  // Initial fetch and fetch on filter change
   useEffect(() => {
     fetchData(1, false);
   }, [fetchData]);
 
-  // Infinite Scroll
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
@@ -100,23 +100,27 @@ const ExplorerView: React.FC = () => {
     setFilters({ sortColumn: column, sortOrder: newOrder });
   };
 
-  const renderSortIcon = (column: string) => {
-    if (sortColumn !== column) return null;
-    return <span className="sort-icon">{sortOrder === 'ASC' ? ' ↑' : ' ↓'}</span>;
+  const getStatusVariant = (status: string): 'success' | 'danger' | 'processing' | 'secondary' => {
+    if (status === 'completed') return 'success';
+    if (status === 'error') return 'danger';
+    if (status === 'processing') return 'processing';
+    return 'secondary';
   };
 
   return (
-    <section id="view-explorer" className="view">
-      <div className="filter-bar">
-        <input
-          type="text"
-          placeholder="Search library..."
-          className="search-input"
-          value={searchQuery}
-          onChange={handleSearchChange}
-        />
+    <section className="space-y-6 animate-in fade-in duration-500">
+      <div className="flex flex-wrap gap-4 p-4 bg-surface border border-border rounded-xl shadow-sm">
+        <div className="flex-1 min-w-filter-search">
+          <input
+            type="text"
+            placeholder="Search library by filename..."
+            className="w-full h-10 px-4 rounded-lg bg-background border border-border focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all text-sm"
+            value={searchQuery}
+            onChange={handleSearchChange}
+          />
+        </div>
         <select
-          className="search-input select-filter"
+          className="h-10 px-4 rounded-lg bg-background border border-border outline-none text-sm font-medium focus:ring-2 focus:ring-primary/20 min-w-filter-select"
           value={statusFilter}
           onChange={(e) => handleFilterChange('statusFilter', e.target.value)}
         >
@@ -128,7 +132,7 @@ const ExplorerView: React.FC = () => {
           <option value="skipped">⏭ Skipped</option>
         </select>
         <select
-          className="search-input select-filter"
+          className="h-10 px-4 rounded-lg bg-background border border-border outline-none text-sm font-medium focus:ring-2 focus:ring-primary/20 min-w-filter-select"
           value={agreementFilter}
           onChange={(e) => handleFilterChange('agreementFilter', e.target.value)}
         >
@@ -139,71 +143,77 @@ const ExplorerView: React.FC = () => {
         </select>
       </div>
 
-      <div id="explorerResults" className="explorer-results">
-        <table className="data-table">
+      <div className="bg-surface border border-border rounded-xl shadow-sm overflow-hidden">
+        <table className="w-full text-left border-collapse">
           <thead>
-            <tr>
-              <th
-                className={clsx('sortable', sortColumn === 'file_path' && 'active-sort')}
-                onClick={() => handleSort('file_path')}
-              >
-                File Name {renderSortIcon('file_path')}
-              </th>
-              <th
-                className={clsx('sortable', sortColumn === 'status' && 'active-sort')}
-                onClick={() => handleSort('status')}
-              >
-                Status {renderSortIcon('status')}
-              </th>
-              <th
-                className={clsx('sortable', sortColumn === 'best_engine' && 'active-sort')}
-                onClick={() => handleSort('best_engine')}
-              >
-                Best Engine {renderSortIcon('best_engine')}
-              </th>
-              <th
-                className={clsx('sortable', sortColumn === 'best_score' && 'active-sort')}
-                onClick={() => handleSort('best_score')}
-              >
-                Score {renderSortIcon('best_score')}
-              </th>
-              <th>Actions</th>
+            <tr className="bg-background-alt/50 border-b border-border">
+              {[
+                { key: 'file_path', label: 'File Name' },
+                { key: 'status', label: 'Status' },
+                { key: 'best_engine', label: 'Best Engine' },
+                { key: 'best_score', label: 'Score' }
+              ].map((col) => (
+                <th 
+                  key={col.key}
+                  className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-foreground-secondary cursor-pointer hover:text-primary transition-colors group"
+                  onClick={() => handleSort(col.key as keyof FileResult)}
+                >
+                  <div className="flex items-center gap-2">
+                    {col.label}
+                    <span className={clsx(
+                      "text-primary transition-opacity",
+                      sortColumn === col.key ? "opacity-100" : "opacity-0 group-hover:opacity-40"
+                    )}>
+                      {sortColumn === col.key && sortOrder === 'DESC' ? '↓' : '↑'}
+                    </span>
+                  </div>
+                </th>
+              ))}
+              <th className="px-6 py-4 text-xs font-bold uppercase tracking-wider text-foreground-secondary">Actions</th>
             </tr>
           </thead>
-          <tbody id="explorerBody">
+          <tbody className="divide-y divide-border">
             {files.length > 0 ? (
               files.map((f) => (
-                <tr key={`${f.run_id}-${f.file_path}`}>
-                  <td>{basename(f.file_path)}</td>
-                  <td>
-                    <span className={clsx('status-badge', f.status)}>{f.status}</span>
+                <tr key={`${f.run_id}-${f.file_path}`} className="hover:bg-primary/5 transition-colors group">
+                  <td className="px-6 py-4 text-sm font-medium text-foreground truncate max-w-md" title={f.file_path}>
+                    {basename(f.file_path)}
                   </td>
-                  <td>{f.best_engine || '-'}</td>
-                  <td>{f.best_score ? `${f.best_score}%` : '-'}</td>
-                  <td>
-                    {['completed', 'error', 'skipped'].includes(f.status) && (
-                      <button className="btn-link" onClick={() => openDetails(f)}>
-                        🔍 Details
-                      </button>
-                    )}
-                    {f.status === 'completed' && f.agreement_status !== 'verified' && (
-                      <button className="btn-link" onClick={() => handleVerify(f.file_path)}>
-                        ✅ Verify
-                      </button>
-                    )}
+                  <td className="px-6 py-4">
+                    <Badge variant={getStatusVariant(f.status)}>{f.status}</Badge>
+                  </td>
+                  <td className="px-6 py-4 text-sm text-foreground-secondary font-medium">
+                    {f.best_engine || <span className="opacity-30">—</span>}
+                  </td>
+                  <td className="px-6 py-4 text-sm font-bold text-foreground">
+                    {f.best_score ? (
+                      <span className={clsx(f.best_score < 50 ? "text-danger" : "text-success")}>
+                        {f.best_score}%
+                      </span>
+                    ) : <span className="opacity-30">—</span>}
+                  </td>
+                  <td className="px-6 py-4 text-sm">
+                    <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      {['completed', 'error', 'skipped'].includes(f.status) && (
+                        <Button variant="ghost" size="sm" onClick={() => openDetails(f)} className="h-8">🔍 Details</Button>
+                      )}
+                      {f.status === 'completed' && f.agreement_status !== 'verified' && (
+                        <Button variant="ghost" size="sm" onClick={() => handleVerify(f.file_path)} className="h-8 text-success hover:bg-success/10">✅ Verify</Button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               ))
             ) : (
               <tr>
-                <td colSpan={5} className="no-data">
+                <td colSpan={5} className="px-6 py-12 text-center text-foreground-secondary italic font-medium">
                   No files found matching your search.
                 </td>
               </tr>
             )}
           </tbody>
         </table>
-        <div ref={sentinelRef} className="sentinel"></div>
+        <div ref={sentinelRef} className="h-10"></div>
       </div>
     </section>
   );

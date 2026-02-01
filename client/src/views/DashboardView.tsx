@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { API, DashboardResponse } from '../api/api';
+import { Card, CardHeader, CardContent } from '../components/ui/Card';
 
 type ErrorGroup = DashboardResponse['errors'][0];
 type EngineStat = DashboardResponse['stats']['engines'][0];
@@ -25,10 +26,10 @@ const DashboardView: React.FC = () => {
 
   if (loading) {
     return (
-      <section className="view">
-        <div className="dashboard-loading-placeholder">
-          <span className="spinner-sm"></span>
-          <span className="loading-text">Analyzing library statistics...</span>
+      <section className="flex items-center justify-center min-h-[400px]">
+        <div className="flex flex-col items-center gap-4">
+          <span className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin"></span> 
+          <span className="text-foreground-secondary font-medium animate-pulse">Analyzing library statistics...</span>
         </div>
       </section>
     );
@@ -39,54 +40,77 @@ const DashboardView: React.FC = () => {
   const { stats, errors } = data;
 
   return (
-    <section id="view-dashboard" className="view">
-      <div className="dashboard-grid">
-        <div className="card">
-          <h4>Library Statistics</h4>
-          <div className="summary-grid">
-            <div className="summary-card">
-              <label>Total</label>
-              <div className="summary-value">{stats.total_files}</div>
-            </div>
-            <div className="summary-card success">
-              <label>Success</label>
-              <div className="summary-value">{stats.success_count}</div>
-            </div>
-            <div className="summary-card danger">
-              <label>Errors</label>
-              <div className="summary-value">{stats.error_count}</div>
-            </div>
-          </div>
-        </div>
-
-        <div className="card">
-          <h4>Engine Performance</h4>
-
-          <div className="summary-grid">
-            {stats.engines.map((e: EngineStat) => (
-              <div key={e.engine} className="summary-card">
-                <label>{e.engine}</label>
-
-                <div className="summary-value">{e.total > 0 ? Math.round((e.success / e.total) * 100) : 0}%</div>
+    <section id="view-dashboard" className="space-y-8 animate-in fade-in duration-500">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        <Card>
+          <CardHeader>
+            <h4 className="font-bold text-foreground">Library Statistics</h4>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-3 gap-4">
+              <div className="p-4 bg-background-alt rounded-lg border border-border space-y-1">
+                <label className="text-xxs uppercase font-bold tracking-wider text-foreground-secondary">Total Files</label>
+                <div className="text-2xl font-black text-foreground">{stats.total_files}</div>
               </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="card full-width">
-          <h4>Common Failure Patterns</h4>
-
-          <div className="detail-list">
-            {errors.map((g: ErrorGroup, i: number) => (
-              <div key={i} className="error-group-item">
-                <strong>{g.count} files:</strong> {g.message}
+              <div className="p-4 bg-success/5 rounded-lg border border-success/10 space-y-1">
+                <label className="text-xxs uppercase font-bold tracking-wider text-success/70">Success</label>
+                <div className="text-2xl font-black text-success">{stats.success_count}</div>
               </div>
-            ))}
+              <div className="p-4 bg-danger/5 rounded-lg border border-danger/10 space-y-1">
+                <label className="text-xxs uppercase font-bold tracking-wider text-danger/70">Errors</label>
+                <div className="text-2xl font-black text-danger">{stats.error_count}</div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
 
-            {errors.length === 0 && <p className="no-data-msg">No common failure patterns detected.</p>}
-          </div>
-        </div>
+        <Card>
+          <CardHeader>
+            <h4 className="font-bold text-foreground">Engine Performance</h4>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-3 gap-4">
+              {stats.engines.map((e: EngineStat) => (
+                <div key={e.engine} className="p-4 bg-background-alt rounded-lg border border-border space-y-1">
+                  <label className="text-xxs uppercase font-bold tracking-wider text-foreground-secondary truncate block" title={e.engine}>
+                    {e.engine}
+                  </label>
+                  <div className="text-2xl font-black text-primary">
+                    {e.total > 0 ? Math.round((e.success / e.total) * 100) : 0}%
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
       </div>
+
+      <Card className="w-full">
+        <CardHeader>
+          <h4 className="font-bold text-foreground">Common Failure Patterns</h4>
+        </CardHeader>
+        <CardContent>
+          <div className="divide-y divide-border -mx-6 -my-4">
+            {errors.map((g: ErrorGroup, i: number) => (
+              <div key={i} className="p-6 hover:bg-background-alt transition-colors group">
+                <div className="flex items-start gap-4">
+                  <div className="px-2 py-1 bg-danger/10 text-danger rounded text-xs font-bold shrink-0">
+                    {g.count} files
+                  </div>
+                  <div className="text-sm font-medium text-foreground-secondary group-hover:text-foreground transition-colors leading-relaxed">
+                    {g.message}
+                  </div>
+                </div>
+              </div>
+            ))}
+            {errors.length === 0 && (
+              <div className="p-12 text-center text-foreground-secondary italic font-medium">
+                No common failure patterns detected.
+              </div>
+            )}
+          </div>
+        </CardContent>
+      </Card>
     </section>
   );
 };

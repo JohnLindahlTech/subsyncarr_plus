@@ -3,6 +3,7 @@ import { useAppStore, ViewType } from '../store/useAppStore';
 import { API } from '../api/api';
 import { RunStatus, Run } from '@shared/types';
 import clsx from 'clsx';
+import Button from './ui/Button';
 
 const viewTitles: Record<ViewType, string> = {
   live: 'Live Run',
@@ -96,81 +97,83 @@ const Header = () => {
   };
 
   return (
-    <header className="top-bar">
-      <div className="header-left">
-        <h2 id="viewTitle">{title}</h2>
-        <div className="top-info-area">
-          <div className="top-info-item">
-            <div id="statusLight" className={clsx('status-light-sm', config?.isConfigured ? 'active' : 'inactive')}></div>
-            <span id="statusPaths" className="top-info-text">
-              {pathsLabel}
-            </span>
+    <header className="h-16 border-b border-border bg-background flex items-center justify-between px-8 sticky top-0 z-10">
+      <div className="flex items-center gap-6">
+        <h2 className="text-xl font-bold text-foreground">{title}</h2>
+        <div className="flex items-center gap-4 text-xs">
+          <div className="flex items-center gap-2">
+            <div className={clsx('w-2.5 h-2.5 rounded-full', config?.isConfigured ? 'bg-success shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-foreground-secondary/30')}></div>
+            <span className="text-foreground-secondary font-medium uppercase tracking-wider">{pathsLabel}</span>
           </div>
-          <div className="top-info-item">
-            <span className="top-info-icon">⏰</span>
-            <span id="scheduleTime" className="top-info-text">{scheduleLabel}</span>
+          <div className="flex items-center gap-2 border-l border-border pl-4">
+            <span className="opacity-60">⏰</span>
+            <span className="text-foreground-secondary font-medium uppercase tracking-wider">{scheduleLabel}</span>
           </div>
           {isScanning && (
-            <div className="top-info-badge">
-              <span className="spinner-sm"></span>
-              <span className="top-info-text">
+            <div className="flex items-center gap-2 bg-primary/10 text-primary px-3 py-1 rounded-full animate-pulse">
+              <span className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin"></span>
+              <span className="font-bold uppercase tracking-widest text-xxs">
                 {initMessage || (isDryRunning ? 'Dry Run: Scanning...' : 'Scanning Library...')}
               </span>
             </div>
           )}
           {isMaintenance && (
-            <div className="top-info-badge maintenance">
-              <span className="spinner-sm"></span>
-              <span className="top-info-text">Database Maintenance...</span>
+            <div className="flex items-center gap-2 bg-warning/10 text-warning px-3 py-1 rounded-full">
+              <span className="w-3 h-3 border-2 border-current border-t-transparent rounded-full animate-spin"></span>
+              <span className="font-bold uppercase tracking-widest text-xxs">Database Maintenance...</span>
             </div>
           )}
         </div>
       </div>
-      <div className="header-right">
-        <div className="controls">
-          {isRunning && (
-            <button className="btn btn-danger" onClick={handleStopRun}>
-              ⏹ Stop
-            </button>
-          )}
+      <div className="flex items-center gap-3">
+        {isRunning && (
+          <Button variant="danger" size="sm" onClick={handleStopRun}>⏹ Stop</Button>
+        )}
 
-          <div className="main-actions-group" ref={dropdownRef}>
-            <button className="btn btn-primary" onClick={() => handleStartRun(false)} disabled={isScanning}>
-              {isScanning ? (
-                <>
-                  <span className="spinner-sm"></span> Scanning...
-                </>
-              ) : (
-                '▶ Start Run'
-              )}
-            </button>
+        <div className="relative inline-flex items-center" ref={dropdownRef}>
+          <Button 
+            size="sm" 
+            onClick={() => handleStartRun(false)} 
+            disabled={isScanning}
+            className="rounded-r-none border-r border-primary-hover/30"
+          >
+            {isScanning ? 'Scanning...' : '▶ Start Run'}
+          </Button>
 
-            <div className="dropdown">
-              <button className="btn btn-primary dropdown-toggle" onClick={() => setIsMenuOpen(!isMenuOpen)}>
-                <span className="chevron-down"></span>
+          <Button
+            size="sm"
+            className="rounded-l-none px-2"
+            onClick={() => setIsMenuOpen(!isMenuOpen)}
+          >
+            <span className={clsx(
+              "w-0 h-0 border-l-[4px] border-l-transparent border-r-[4px] border-r-transparent border-t-[4px] border-t-white transition-transform",
+              isMenuOpen && "rotate-180"
+            )}></span>
+          </Button>
+
+          {isMenuOpen && (
+            <div className="absolute right-0 top-full mt-2 w-56 bg-surface border border-border shadow-md rounded-lg overflow-hidden py-1 z-20 animate-in fade-in slide-in-from-top-2 duration-200">
+              <button 
+                className="w-full text-left px-4 py-2.5 text-sm hover:bg-secondary transition-colors text-foreground flex items-center gap-3"
+                onClick={handleDryRun}
+              >
+                <span>🔍</span> Dry Run Impact
               </button>
-              {isMenuOpen && (
-                <div className="dropdown-menu" style={{ display: 'block' }}>
-                  <button className="dropdown-item" onClick={handleDryRun}>
-                    🔍 Dry Run Impact
-                  </button>
-                  <button className="dropdown-item danger" onClick={() => handleStartRun(true)}>
-                    🔥 Force Full Rerun
-                  </button>
-                  <div className="dropdown-divider"></div>
-                  <button
-                    className="dropdown-item"
-                    onClick={() => {
-                      setIsMenuOpen(false);
-                      openPartialRun();
-                    }}
-                  >
-                    📁 Partial Folder Sync
-                  </button>
-                </div>
-              )}
+              <button 
+                className="w-full text-left px-4 py-2.5 text-sm hover:bg-danger/10 text-danger transition-colors border-t border-border flex items-center gap-3"
+                onClick={() => handleStartRun(true)}
+              >
+                <span>🔥</span> Force Full Rerun
+              </button>
+              <div className="border-t border-border"></div>
+              <button 
+                className="w-full text-left px-4 py-2.5 text-sm hover:bg-secondary transition-colors text-foreground flex items-center gap-3"
+                onClick={() => { setIsMenuOpen(false); openPartialRun(); }}
+              >
+                <span>📁</span> Partial Folder Sync
+              </button>
             </div>
-          </div>
+          )}
         </div>
       </div>
     </header>
